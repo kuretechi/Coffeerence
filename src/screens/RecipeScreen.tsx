@@ -20,6 +20,7 @@ interface Draft {
   waterTempC: number | undefined;
   brewer: string;
   pours: DraftPour[];
+  finishSec: number | undefined;
 }
 
 const PRESET_INTERVAL_SEC = 45;
@@ -42,6 +43,7 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   waterTempC: defaults.waterTempC,
   brewer: defaults.brewer,
   pours: presetPours(defaults),
+  finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
 export function RecipeScreen() {
@@ -118,6 +120,7 @@ export function RecipeScreen() {
         startSec: pour.atSec,
         waterTempC: pour.waterTempC ?? draft.waterTempC,
       })),
+      finishSec: draft.finishSec,
       createdAt: new Date().toISOString(),
     };
     await saveRecipe(recipe);
@@ -208,6 +211,14 @@ export function RecipeScreen() {
               </div>
             </div>
           </fieldset>
+          <NumberField
+            label="抽出終了（落ち切り）"
+            suffix="秒"
+            step={5}
+            min={0}
+            value={draft.finishSec}
+            onChange={(finishSec) => setDraft({ ...draft, finishSec })}
+          />
           <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
             レシピを登録
           </button>
@@ -225,6 +236,7 @@ export function RecipeScreen() {
                 <th>粉量</th>
                 <th>湯量</th>
                 <th>注湯</th>
+                <th>終了</th>
                 <th aria-label="操作" />
               </tr>
             </thead>
@@ -244,6 +256,7 @@ export function RecipeScreen() {
                           )
                           .join(' / ')}
                   </td>
+                  <td className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</td>
                   <td>
                     <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
                       削除

@@ -100,3 +100,9 @@ export function beep(enabled: boolean, frequency = 880, durationMs = 160): void 
   }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
 }
+
+/** 「ピピッ」と2回鳴らす合図。 */
+export function doubleBeep(enabled: boolean, frequency = 880, durationMs = 120): void {
+  beep(enabled, frequency, durationMs);
+  window.setTimeout(() => beep(enabled, frequency, durationMs), durationMs + 90);
+}
