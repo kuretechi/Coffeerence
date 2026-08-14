@@ -1,0 +1,169 @@
+import { db } from './db';
+import type {
+  AuditEntry,
+  Bean,
+  Competition,
+  Cup,
+  ExternalLabel,
+  FlavorDescriptorSet,
+  Recipe,
+  RehearsalRecord,
+  Score,
+  Session,
+  Settings,
+  TriangleTrial,
+} from '../domain/types';
+import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
+import { uid } from '../lib/random';
+
+export async function seedIfEmpty(): Promise<void> {
+  const existing = await db.settings.get('settings');
+  if (existing) return;
+
+  const bean: Bean = {
+    id: 'bean_default',
+    name: '練習用の豆',
+    roaster: '',
+    remainingG: 500,
+    note: '設定画面で名前と残量を編集できます',
+  };
+  const descriptors: FlavorDescriptorSet = {
+    id: 'descriptors_default',
+    beanId: bean.id,
+    real: ['赤い果実', '柑橘', '花', '紅茶', 'カカオ', 'ナッツ', 'ハーブ', '蜂蜜'],
+    dummies: ['ピクルス', '燻製肉'],
+  };
+  const recipe: Recipe = {
+    id: 'recipe_base',
+    name: '基準レシピ',
+    beanId: bean.id,
+    doseG: 20,
+    grindSetting: '現状',
+    waterTempC: 92,
+    waterId: '軟水',
+    totalWaterG: 320,
+    targetBeverageG: TARGET_BEVERAGE_G,
+    brewer: 'V60 02',
+    filter: '純正ペーパー',
+    pours: [
+      { index: 1, targetG: 60, startSec: 0, note: '蒸らし' },
+      { index: 2, targetG: 200, startSec: 45 },
+      { index: 3, targetG: 320, startSec: 90 },
+    ],
+    createdAt: new Date().toISOString(),
+  };
+
+  await db.transaction(
+    'rw',
+    [db.competitions, db.beans, db.descriptorSets, db.recipes, db.settings],
+    async () => {
+      await db.competitions.put(DEFAULT_COMPETITION);
+      await db.beans.put(bean);
+      await db.descriptorSets.put(descriptors);
+      await db.recipes.put(recipe);
+      await db.settings.put(DEFAULT_SETTINGS);
+    },
+  );
+}
+
+export async function getSettings(): Promise<Settings> {
+  return (await db.settings.get('settings')) ?? DEFAULT_SETTINGS;
+}
+
+export async function saveSettings(settings: Settings): Promise<void> {
+  await db.settings.put(settings);
+}
+
+export async function getActiveCompetition(): Promise<Competition> {
+  const settings = await getSettings();
+  return (await db.competitions.get(settings.activeCompetitionId)) ?? DEFAULT_COMPETITION;
+}
+
+export async function saveCompetition(competition: Competition): Promise<void> {
+  await db.competitions.put(competition);
+}
+
+export const listBeans = () => db.beans.toArray();
+export const listRecipes = () => db.recipes.toArray();
+export const listSessions = () => db.sessions.orderBy('date').reverse().toArray();
+export const listExternalLabels = () => db.externalLabels.toArray();
+export const listTriangleTrials = () => db.triangleTrials.orderBy('date').toArray();
+export const listRehearsals = () => db.rehearsals.orderBy('date').reverse().toArray();
+export const listAudit = () => db.audit.orderBy('at').reverse().toArray();
+
+export const saveBean = (bean: Bean) => db.beans.put(bean);
+export const saveRecipe = (recipe: Recipe) => db.recipes.put(recipe);
+export const saveSession = (session: Session) => db.sessions.put(session);
+export const saveExternalLabel = (label: ExternalLabel) => db.externalLabels.put(label);
+export const saveTriangleTrial = (trial: TriangleTrial) => db.triangleTrials.put(trial);
+export const saveRehearsal = (record: RehearsalRecord) => db.rehearsals.put(record);
+export const getSession = (id: string) => db.sessions.get(id);
+export const getDescriptorSetForBean = (beanId: string) =>
+  db.descriptorSets.where('beanId').equals(beanId).first();
+export const saveDescriptorSet = (set: FlavorDescriptorSet) => db.descriptorSets.put(set);
+
+export async function recordAudit(entry: Omit<AuditEntry, 'id' | 'at'>): Promise<void> {
+  await db.audit.put({ id: uid('audit'), at: new Date().toISOString(), ...entry });
+}
+
+export class RevealedSessionError extends Error {
+  constructor() {
+    super('リビール済みのセッションは編集できません（NF-07）');
+    this.name = 'RevealedSessionError';
+  }
+}
+
+/** F-04: リビール前は変更可能／リビール後は変更不可。 */
+export async function saveScore(sessionId: string, cupId: string, score: Score): Promise<Session> {
+  const session = await db.sessions.get(sessionId);
+  if (!session) throw new Error('セッションが見つかりません');
+  if (session.status === 'revealed') throw new RevealedSessionError();
+
+  const cups = session.cups.map((cup) => (cup.id === cupId ? { ...cup, score } : cup));
+  const next: Session = { ...session, cups, status: allScored(cups) ? 'comparing' : 'scoring' };
+  await db.sessions.put(next);
+  return next;
+}
+
+export async function saveBrewLog(sessionId: string, cupId: string, brewLog: Cup['brewLog']): Promise<Session> {
+  const session = await db.sessions.get(sessionId);
+  if (!session) throw new Error('セッションが見つかりません');
+  if (session.status === 'revealed') throw new RevealedSessionError();
+  const cups = session.cups.map((cup) => (cup.id === cupId ? { ...cup, brewLog } : cup));
+  const next: Session = { ...session, cups, status: session.status === 'planned' ? 'brewing' : session.status };
+  await db.sessions.put(next);
+  return next;
+}
+
+export function allScored(cups: readonly Cup[]): boolean {
+  return cups.length > 0 && cups.every((cup) => Boolean(cup.score));
+}
+
+/** F-04: 全カップの採点が完了するまでリビールを許可しない。 */
+export async function revealSession(sessionId: string): Promise<Session> {
+  const session = await db.sessions.get(sessionId);
+  if (!session) throw new Error('セッションが見つかりません');
+  if (!allScored(session.cups)) throw new Error('全カップの採点が終わるまでリビールできません');
+  const next: Session = { ...session, status: 'revealed', revealedAt: new Date().toISOString() };
+  await db.sessions.put(next);
+  await recordAudit({ kind: 'reveal', subject: sessionId, detail: `${session.cups.length}杯をリビール` });
+  return next;
+}
+
+/** R-2: 削除は記録に残す。 */
+export async function deleteSession(sessionId: string, reason: string): Promise<void> {
+  const session = await db.sessions.get(sessionId);
+  if (!session) return;
+  await db.sessions.delete(sessionId);
+  await recordAudit({
+    kind: 'delete',
+    subject: sessionId,
+    detail: `${session.date} のセッション（${session.cups.length}杯）を削除: ${reason}`,
+  });
+}
+
+export async function consumeBeans(beanId: string, grams: number): Promise<void> {
+  const bean = await db.beans.get(beanId);
+  if (!bean) return;
+  await db.beans.put({ ...bean, remainingG: Math.max(0, bean.remainingG - grams) });
+}
