@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
+import { SevenSegment } from '../ui/SevenSegment';
 import { useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
@@ -40,9 +41,7 @@ export function TimerScreen() {
             <span>{stopwatch.running ? '抽出中' : '待機'}</span>
             <span className="en">BREW TIME</span>
           </div>
-          <div className="timer" data-ghost="8:88">
-            {formatSeconds(stopwatch.elapsed)}
-          </div>
+          <SevenSegment className="timer" value={formatSeconds(stopwatch.elapsed)} />
         </div>
 
         <div className="row">
