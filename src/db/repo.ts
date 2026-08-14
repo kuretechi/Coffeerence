@@ -7,6 +7,7 @@ import type {
   Cup,
   ExternalLabel,
   FlavorDescriptorSet,
+  Gear,
   Recipe,
   RehearsalRecord,
   Score,
@@ -93,6 +94,8 @@ export const listRehearsals = () => db.rehearsals.orderBy('date').reverse().toAr
 export const listAudit = () => db.audit.orderBy('at').reverse().toArray();
 
 export const saveBean = (bean: Bean) => db.beans.put(bean);
+export const listGear = () => db.gear.toArray();
+export const saveGear = (gear: Gear) => db.gear.put(gear);
 export const saveRecipe = (recipe: Recipe) => db.recipes.put(recipe);
 export const listBrews = () => db.brews.orderBy('date').reverse().toArray();
 export const saveBrew = (brew: BrewRecord) => db.brews.put(brew);
@@ -171,6 +174,18 @@ export async function deleteBrew(brewId: string): Promise<void> {
   if (!brew) return;
   await db.brews.delete(brewId);
   await recordAudit({ kind: 'delete', subject: brewId, detail: `${brew.date} の抽出記録を削除` });
+}
+
+/** R-2: 削除は記録に残す。 */
+export async function deleteGear(gearId: string): Promise<void> {
+  const gear = await db.gear.get(gearId);
+  if (!gear) return;
+  await db.gear.delete(gearId);
+  await recordAudit({
+    kind: 'delete',
+    subject: gearId,
+    detail: `${gear.kind === 'kettle' ? 'ケトル' : 'ミル'}「${gear.name}」を削除`,
+  });
 }
 
 /** R-2: 削除は記録に残す。 */

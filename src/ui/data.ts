@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
-import type { Bean, BrewRecord, Competition, Recipe, Session, Settings } from '../domain/types';
+import type { Bean, BrewRecord, Competition, Gear, GearKind, Recipe, Session, Settings } from '../domain/types';
 
 export function useSettings(): Settings {
   const stored = useLiveQuery(() => db.settings.get('settings'), [], undefined);
@@ -41,6 +41,10 @@ export function useBrews(): BrewRecord[] {
 
 export function useBeans(): Bean[] {
   return useLiveQuery(() => db.beans.toArray(), [], []) ?? [];
+}
+
+export function useGear(kind: GearKind): Gear[] {
+  return useLiveQuery(() => db.gear.where('kind').equals(kind).toArray(), [kind], []) ?? [];
 }
 
 export function useExternalLabels() {

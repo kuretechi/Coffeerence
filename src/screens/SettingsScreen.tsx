@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField } from '../ui/components';
-import { useAudit, useBeans, useBrews, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
-import { saveBean, saveSettings } from '../db/repo';
+import { useAudit, useBeans, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
+import { deleteGear, saveBean, saveGear, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
-import type { RecipeDefaults, ThemeName } from '../domain/types';
+import { uid } from '../lib/random';
+import type { GearKind, RecipeDefaults, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
   { value: 'hud', label: 'HUD' },
+  { value: 'light', label: 'ライト' },
+  { value: 'paper', label: '和紙' },
+  { value: 'midnight', label: '深夜' },
+  { value: 'matcha', label: '抹茶' },
 ];
 
 export function SettingsScreen() {
@@ -115,6 +120,9 @@ export function SettingsScreen() {
         </Field>
       </Card>
 
+      <GearCard kind="kettle" title="ケトル" placeholder="例: 月兎印 ドリップポット 0.7L" notePlaceholder="例: 注ぎ口が細い / 温度計付き" />
+      <GearCard kind="mill" title="ミル" placeholder="例: コマンダンテ C40" notePlaceholder="例: 常用ダイヤル 20 / 臼は標準" />
+
       <Card title="表示と音">
         <Field label="表示テーマ">
           <div className="segmented">
@@ -179,5 +187,65 @@ export function SettingsScreen() {
         )}
       </Card>
     </>
+  );
+}
+
+/** ケトル・ミルの登録。名前だけの軽い台帳で、削除は監査ログに残す。 */
+function GearCard({
+  kind,
+  title,
+  placeholder,
+  notePlaceholder,
+}: {
+  kind: GearKind;
+  title: string;
+  placeholder: string;
+  notePlaceholder: string;
+}) {
+  const gear = useGear(kind);
+  const [name, setName] = useState('');
+  const [note, setNote] = useState('');
+
+  function add() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    void saveGear({ id: uid('gear'), kind, name: trimmed, note: note.trim() || undefined });
+    setName('');
+    setNote('');
+  }
+
+  return (
+    <Card title={title} hint={`使っている${title}を登録しておくと、記録のときに条件を振り返れます。`}>
+      {gear.length === 0 ? (
+        <p className="muted">まだ登録がありません。</p>
+      ) : (
+        <ul className="list-plain">
+          {gear.map((item) => (
+            <li key={item.id} className="row between">
+              <span>
+                <strong>{item.name}</strong>
+                {item.note ? <span className="muted"> / {item.note}</span> : null}
+              </span>
+              <button className="danger" type="button" onClick={() => void deleteGear(item.id)}>
+                削除
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Field label="名前">
+        <input value={name} placeholder={placeholder} onChange={(event) => setName(event.target.value)} />
+      </Field>
+      <Field label="メモ">
+        <input
+          value={note}
+          placeholder={notePlaceholder}
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </Field>
+      <button type="button" disabled={!name.trim()} onClick={add}>
+        追加
+      </button>
+    </Card>
   );
 }
