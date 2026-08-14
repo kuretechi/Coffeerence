@@ -539,6 +539,7 @@ table button {
   gap: 10px;
   align-items: baseline;
   padding: 6px 8px;
+  border: 2px solid transparent;
   border-radius: var(--radius-m);
   background: var(--surface-2);
   opacity: 0.55;
@@ -546,7 +547,9 @@ table button {
 
 .pour-list li.current {
   opacity: 1;
-  border-left: 3px solid var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+  font-weight: 700;
 }
 
 .timer.warning {
