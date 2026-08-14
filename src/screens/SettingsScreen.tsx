@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField } from '../ui/components';
-import { useAudit, useBeans, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
-import { deleteGear, saveBean, saveGear, saveSettings } from '../db/repo';
+import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
+import { deleteGear, saveGear, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import type { GearKind, RecipeDefaults, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
-  { value: 'hud', label: 'HUD' },
   { value: 'light', label: 'ライト' },
   { value: 'paper', label: '和紙' },
   { value: 'midnight', label: '深夜' },
@@ -17,7 +16,6 @@ const THEMES: { value: ThemeName; label: string }[] = [
 
 export function SettingsScreen() {
   const settings = useSettings();
-  const beans = useBeans();
   const brews = useBrews();
   const recipes = useRecipes();
   const audit = useAudit();
@@ -64,20 +62,6 @@ export function SettingsScreen() {
 
   return (
     <>
-      <Card title="豆の残量" hint="残量から、あと何杯試せるかを計算します。">
-        {beans.map((bean) => (
-          <NumberField
-            key={bean.id}
-            label={bean.name}
-            suffix="g"
-            value={bean.remainingG}
-            step={1}
-            min={0}
-            onChange={(value) => void saveBean({ ...bean, remainingG: value ?? 0 })}
-          />
-        ))}
-      </Card>
-
       <Card title="レシピの初期値" hint="レシピ登録フォームの初期値です。注湯は「蒸らし＝粉量×3g → 中間 → 総湯量」で組み立て、各投の湯温には初期湯温が入ります。">
         <div className="row">
           <NumberField
