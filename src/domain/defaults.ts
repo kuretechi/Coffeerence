@@ -83,6 +83,7 @@ export const TARGET_BEVERAGE_G = 158;
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 'settings',
+  theme: 'classic',
   activeCompetitionId: DEFAULT_COMPETITION.id,
   weights: {
     defect: {

@@ -10,8 +10,41 @@
   --danger: #e2735f;
   --ok: #7fbf7f;
   --warn: #e8c05c;
-  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  --on-accent: #23160c;
+  --nav-bg: rgba(23, 16, 12, 0.96);
+  --radius-l: 16px;
+  --radius-m: 12px;
+  --radius-pill: 999px;
+  --font-ui: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', monospace;
+  --font-display: var(--font-ui);
+  font-family: var(--font-ui);
   color-scheme: dark;
+}
+
+/* 計器盤（HUD）テーマ: 黒地・黄色の発光表示・角ばった枠。情報の意味は既定テーマと同じ。 */
+:root[data-theme='hud'] {
+  --bg: #000000;
+  --surface: #06090a;
+  --surface-2: #0d1416;
+  --line: #2f6b3f;
+  --text: #d8f7cf;
+  --muted: #6f9a76;
+  --accent: #f5c518;
+  --accent-strong: #ffd83d;
+  --danger: #ff3b30;
+  --ok: #46d15a;
+  --warn: #ff9f0a;
+  --on-accent: #000000;
+  --nav-bg: rgba(0, 0, 0, 0.96);
+  --radius-l: 0px;
+  --radius-m: 0px;
+  --radius-pill: 0px;
+  --font-ui: var(--font-mono);
+  /* 見出しはマティスが入っている端末ではそれを使い、無ければ OS 標準の明朝に落とす。 */
+  --font-display: 'FOT-マティス Pro EB', 'Matisse Pro EB', 'FOT-Matisse Pro EB', 'マティス',
+    'Matisse', 'Yu Mincho', 'YuMincho', '游明朝', 'Hiragino Mincho ProN', 'ヒラギノ明朝 ProN',
+    'Noto Serif JP', serif;
 }
 
 * {
@@ -63,8 +96,9 @@ nav.tabs {
   display: flex;
   overflow-x: auto;
   gap: 4px;
-  padding: 8px max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-bottom));
-  background: rgba(23, 16, 12, 0.96);
+  padding: 8px max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  background: var(--nav-bg);
   border-top: 1px solid var(--line);
   backdrop-filter: blur(8px);
 }
@@ -72,7 +106,7 @@ nav.tabs {
 nav.tabs a {
   flex: 0 0 auto;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-m);
   font-size: 13px;
   color: var(--muted);
   text-decoration: none;
@@ -89,7 +123,7 @@ nav.tabs a.active {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-l);
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -116,7 +150,7 @@ button,
 .button {
   min-height: 48px;
   padding: 12px 18px;
-  border-radius: 12px;
+  border-radius: var(--radius-m);
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text);
@@ -128,7 +162,7 @@ button,
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #23160c;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -173,7 +207,7 @@ select,
 textarea {
   min-height: 48px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-m);
   border: 1px solid var(--line);
   background: var(--surface-2);
   color: var(--text);
@@ -203,12 +237,12 @@ textarea {
 .segmented button.selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #23160c;
+  color: var(--on-accent);
   font-weight: 700;
 }
 
 .code {
-  font-family: ui-monospace, 'SFMono-Regular', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.2em;
   font-size: 22px;
   color: var(--accent-strong);
@@ -218,7 +252,7 @@ textarea {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   border: 1px solid var(--line);
   color: var(--muted);
@@ -248,7 +282,7 @@ textarea {
 }
 
 .mono {
-  font-family: ui-monospace, 'SFMono-Regular', monospace;
+  font-family: var(--font-mono);
 }
 
 table {
@@ -274,7 +308,7 @@ th {
   font-variant-numeric: tabular-nums;
   text-align: center;
   margin: 12px 0;
-  font-family: ui-monospace, 'SFMono-Regular', monospace;
+  font-family: var(--font-mono);
 }
 
 .timer.warning {
@@ -306,7 +340,7 @@ th {
   gap: 12px;
   align-items: center;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-l);
   background: var(--surface-2);
   border: 1px solid var(--line);
   text-decoration: none;
@@ -333,7 +367,7 @@ th {
 
 .bar {
   height: 8px;
-  border-radius: 4px;
+  border-radius: calc(var(--radius-m) / 3);
   background: var(--surface-2);
   overflow: hidden;
 }
@@ -345,7 +379,7 @@ th {
 }
 
 .banner {
-  border-radius: 12px;
+  border-radius: var(--radius-m);
   padding: 12px 14px;
   font-size: 13px;
   line-height: 1.6;
@@ -361,4 +395,74 @@ th {
 
 .banner.ok {
   border-color: var(--ok);
+}
+
+/* ── HUD テーマの固有装飾 ─────────────── */
+[data-theme='hud'] .app-header {
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 16px;
+}
+
+[data-theme='hud'] .app-header h1,
+[data-theme='hud'] .card h2,
+[data-theme='hud'] .card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+[data-theme='hud'] .app-header h1,
+[data-theme='hud'] .card h2 {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+}
+
+[data-theme='hud'] .app-header h1 {
+  font-size: 24px;
+}
+
+[data-theme='hud'] .card {
+  border-left-width: 4px;
+  border-left-color: var(--accent);
+}
+
+[data-theme='hud'] .card h2::before {
+  content: '■ ';
+}
+
+[data-theme='hud'] .code,
+[data-theme='hud'] .timer {
+  color: var(--accent-strong);
+  text-shadow: 0 0 10px rgba(245, 197, 24, 0.55);
+}
+
+[data-theme='hud'] .timer {
+  letter-spacing: 0.08em;
+  padding: 8px 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  /* 警告帯（斜めストライプ） */
+  border-image: repeating-linear-gradient(45deg, var(--danger) 0 8px, #000000 8px 16px) 8;
+}
+
+[data-theme='hud'] .timer.warning {
+  text-shadow: 0 0 10px rgba(255, 159, 10, 0.6);
+}
+
+[data-theme='hud'] .timer.over {
+  text-shadow: 0 0 10px rgba(255, 59, 48, 0.6);
+}
+
+[data-theme='hud'] .banner.danger {
+  background: rgba(255, 59, 48, 0.12);
+}
+
+[data-theme='hud'] th {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+[data-theme='hud'] nav.tabs a.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
 }

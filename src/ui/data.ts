@@ -4,7 +4,9 @@ import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
 import type { Bean, Competition, Recipe, Session, Settings } from '../domain/types';
 
 export function useSettings(): Settings {
-  return useLiveQuery(() => db.settings.get('settings'), [], undefined) ?? DEFAULT_SETTINGS;
+  const stored = useLiveQuery(() => db.settings.get('settings'), [], undefined);
+  // 既存レコードに後から追加した項目は既定値で補う。
+  return stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
 }
 
 export function useCompetition(): Competition {

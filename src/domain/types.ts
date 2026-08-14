@@ -271,8 +271,11 @@ export interface ScoreWeights {
   flavorDummyPenalty: number;
 }
 
+export type ThemeName = 'classic' | 'hud';
+
 export interface Settings {
   id: 'settings';
+  theme: ThemeName;
   activeCompetitionId: string;
   weights: ScoreWeights;
   detectableEffect: number; // δ（既定 0.5点）
