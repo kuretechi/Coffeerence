@@ -78,56 +78,32 @@ body {
   z-index: 5;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 0 16px;
+  justify-content: center;
+  padding: 12px 0 20px;
   background: var(--bg);
 }
 
 .app-title {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.app-header h1 {
-  font-size: 20px;
   margin: 0;
-  letter-spacing: 0.04em;
-}
-
-.app-header .subtitle {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .app-logo {
-  flex: none;
-  width: 114px;
-  height: 48px;
+  width: min(62vw, 224px);
+  height: auto;
   color: var(--text);
 }
 
-.app-logo-rule {
-  stroke: currentColor;
-  stroke-width: 1;
-  opacity: 0.3;
-}
-
-.app-logo-mark circle {
-  fill: none;
-  stroke: var(--logo-accent);
-  stroke-width: 2.4;
-}
-
-.app-logo-mark .app-logo-dot {
+.app-logo-bar {
   fill: var(--logo-accent);
-  stroke: none;
 }
 
 .app-logo-type path {
   fill: currentColor;
+}
+
+.app-logo-latin {
+  opacity: 0.75;
 }
 
 nav.tabs {
@@ -370,11 +346,22 @@ th {
   letter-spacing: 0.14em;
 }
 
-.timer {
-  font-size: 64px;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  font-family: var(--font-mono);
+.seven-segment {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  margin: 8px auto 0;
+  color: var(--accent-strong);
+}
+
+.seven-segment .seg {
+  fill: currentColor;
+  opacity: 0.1;
+}
+
+.seven-segment .seg.on {
+  opacity: 1;
 }
 
 .timer.warning {
@@ -469,21 +456,19 @@ th {
   margin-bottom: 16px;
 }
 
-[data-theme='hud'] .app-header h1,
 [data-theme='hud'] .card h2,
 [data-theme='hud'] .card h3 {
   font-family: var(--font-display);
   font-weight: 700;
 }
 
-[data-theme='hud'] .app-header h1,
 [data-theme='hud'] .card h2 {
   color: var(--accent);
   letter-spacing: 0.12em;
 }
 
-[data-theme='hud'] .app-header h1 {
-  font-size: 24px;
+[data-theme='hud'] .app-logo {
+  color: var(--accent);
 }
 
 [data-theme='hud'] .card {
@@ -495,8 +480,7 @@ th {
   content: '■ ';
 }
 
-[data-theme='hud'] .code,
-[data-theme='hud'] .timer {
+[data-theme='hud'] .code {
   color: var(--accent-strong);
   text-shadow: 0 0 10px rgba(245, 197, 24, 0.55);
 }
@@ -537,30 +521,9 @@ th {
   font-size: 11px;
 }
 
-[data-theme='hud'] .timer {
-  position: relative;
-  font-size: clamp(48px, 21vw, 96px);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.06em;
-}
-
-/* 消灯セグメント風の下地。実際の桁と同じ字送りで薄く敷く。 */
-[data-theme='hud'] .timer::before {
-  content: attr(data-ghost);
-  position: absolute;
-  inset: 0;
-  color: var(--accent);
-  opacity: 0.12;
-  text-shadow: none;
-}
-
-[data-theme='hud'] .timer.warning {
-  text-shadow: 0 0 10px rgba(255, 159, 10, 0.6);
-}
-
-[data-theme='hud'] .timer.over {
-  text-shadow: 0 0 10px rgba(255, 59, 48, 0.6);
+[data-theme='hud'] .seven-segment {
+  max-width: none;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 
 /* 操作ボタンは参考画像に合わせた赤ラベル＋緑の下線。 */

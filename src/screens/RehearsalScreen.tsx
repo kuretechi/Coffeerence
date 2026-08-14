@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Banner, Card, Pill, formatSeconds } from '../ui/components';
+import { SevenSegment } from '../ui/SevenSegment';
 import { useCompetition, useRehearsals, useSettings } from '../ui/data';
 import { beep, useStopwatch, useWakeLock } from '../ui/useTimer';
 import { saveRehearsal } from '../db/repo';
@@ -90,12 +91,10 @@ export function RehearsalScreen() {
             <span>{PHASE_LABEL[phase]}の残り</span>
             <span className="en">TIME REMAINING</span>
           </div>
-          <div
+          <SevenSegment
             className={`timer ${phase !== 'idle' && phase !== 'done' && remaining <= 30 ? 'warning' : ''}`}
-            data-ghost="8:88"
-          >
-            {formatSeconds(phase === 'idle' || phase === 'done' ? 0 : Math.max(0, remaining))}
-          </div>
+            value={formatSeconds(phase === 'idle' || phase === 'done' ? 0 : Math.max(0, remaining))}
+          />
         </div>
         <div className="row between">
           <Pill tone={phase === 'brew' ? 'danger' : phase === 'prep' ? 'warn' : 'plain'}>{PHASE_LABEL[phase]}</Pill>
