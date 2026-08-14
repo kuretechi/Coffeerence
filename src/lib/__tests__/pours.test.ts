@@ -1,23 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { pourProgress, toPours, toSteps } from '../pours';
+import { pourProgress, toSteps } from '../pours';
 
-const steps = [
-  { waterG: 60, atSec: 0 },
-  { waterG: 100, atSec: 45 },
-  { waterG: 100, atSec: 90 },
+const pours = [
+  { index: 1, targetG: 60, startSec: 0 },
+  { index: 2, targetG: 160, startSec: 45 },
+  { index: 3, targetG: 260, startSec: 90 },
 ];
 
 describe('注湯スケジュール', () => {
-  it('各投の注湯量を累積目標重量に変換する', () => {
-    expect(toPours(steps).map((pour) => pour.targetG)).toEqual([60, 160, 260]);
-  });
-
-  it('累積目標重量から各投の注湯量へ往復できる', () => {
-    expect(toSteps(toPours(steps))).toEqual(steps);
+  it('累積目標重量から各投の注湯量を復元する', () => {
+    expect(toSteps(pours)).toEqual([
+      { waterG: 60, atSec: 0 },
+      { waterG: 100, atSec: 45 },
+      { waterG: 100, atSec: 90 },
+    ]);
   });
 
   it('経過秒から現在と次の投を求める', () => {
-    const pours = toPours(steps);
     const before = pourProgress(pours, 30);
     expect(before.current?.index).toBe(1);
     expect(before.next?.index).toBe(2);

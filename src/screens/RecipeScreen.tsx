@@ -3,12 +3,12 @@ import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/component
 import { useBeans, useRecipes } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
-import { toPours, toSteps } from '../lib/pours';
 import { TARGET_BEVERAGE_G } from '../domain/defaults';
 import type { Recipe } from '../domain/types';
 
 interface DraftPour {
-  waterG: number | undefined;
+  /** その投を終えた時点の累計湯量。 */
+  targetG: number | undefined;
   atSec: number | undefined;
 }
 
@@ -28,9 +28,9 @@ const emptyDraft = (): Draft => ({
   waterTempC: 92,
   brewer: 'V60 02',
   pours: [
-    { waterG: 60, atSec: 0 },
-    { waterG: 130, atSec: 45 },
-    { waterG: 130, atSec: 90 },
+    { targetG: 60, atSec: 0 },
+    { targetG: 190, atSec: 45 },
+    { targetG: 320, atSec: 90 },
   ],
 });
 
@@ -43,9 +43,9 @@ export function RecipeScreen() {
 
   const beanId = beans[0]?.id ?? 'bean_default';
   const filledPours = draft.pours.filter(
-    (pour): pour is { waterG: number; atSec: number } => pour.waterG !== undefined && pour.atSec !== undefined,
+    (pour): pour is { targetG: number; atSec: number } => pour.targetG !== undefined && pour.atSec !== undefined,
   );
-  const totalWaterG = filledPours.reduce((sum, pour) => sum + pour.waterG, 0);
+  const totalWaterG = filledPours[filledPours.length - 1]?.targetG ?? 0;
   const canSave = draft.name.trim() !== '' && draft.doseG !== undefined && filledPours.length > 0;
 
   function setPour(index: number, patch: Partial<DraftPour>) {
@@ -61,7 +61,7 @@ export function RecipeScreen() {
       ...draft,
       pours: [
         ...draft.pours,
-        { waterG: last?.waterG, atSec: last?.atSec === undefined ? undefined : last.atSec + PRESET_INTERVAL_SEC },
+        { targetG: last?.targetG, atSec: last?.atSec === undefined ? undefined : last.atSec + PRESET_INTERVAL_SEC },
       ],
     });
   }
@@ -84,7 +84,7 @@ export function RecipeScreen() {
       targetBeverageG: TARGET_BEVERAGE_G,
       brewer: draft.brewer,
       filter: '',
-      pours: toPours(filledPours),
+      pours: filledPours.map((pour, index) => ({ index: index + 1, targetG: pour.targetG, startSec: pour.atSec })),
       createdAt: new Date().toISOString(),
     };
     await saveRecipe(recipe);
@@ -133,18 +133,18 @@ export function RecipeScreen() {
             </Field>
           </div>
           <fieldset className="pour-editor">
-            <legend>注湯（何投目に何g・開始からの秒数）</legend>
+            <legend>注湯（その投までの累計湯量と開始からの秒数）</legend>
             <div className="stack">
               {draft.pours.map((pour, index) => (
                 <div className="row pour-row" key={index}>
                   <span className="pour-index">{index + 1}投目</span>
                   <NumberField
-                    label="湯量"
+                    label="累計"
                     suffix="g"
                     step={1}
                     min={0}
-                    value={pour.waterG}
-                    onChange={(waterG) => setPour(index, { waterG })}
+                    value={pour.targetG}
+                    onChange={(targetG) => setPour(index, { targetG })}
                   />
                   <NumberField
                     label="開始"
@@ -163,7 +163,7 @@ export function RecipeScreen() {
                 <button type="button" onClick={addPour}>
                   投を追加
                 </button>
-                <span className="muted mono">合計 {totalWaterG}g</span>
+                <span className="muted mono">総湯量 {totalWaterG}g</span>
               </div>
             </div>
           </fieldset>
@@ -196,8 +196,8 @@ export function RecipeScreen() {
                   <td className="mono">
                     {recipe.pours.length === 0
                       ? '—'
-                      : toSteps(recipe.pours)
-                          .map((step) => `${formatSeconds(step.atSec)} ${step.waterG}g`)
+                      : recipe.pours
+                          .map((pour) => `${formatSeconds(pour.startSec)} 累計${pour.targetG}g`)
                           .join(' / ')}
                   </td>
                   <td>
