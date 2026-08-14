@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
-import { useStopwatch } from '../ui/useTimer';
+import { beep, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
+import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord } from '../domain/types';
 
 export function TimerScreen() {
@@ -17,6 +18,19 @@ export function TimerScreen() {
   const [beverageG, setBeverageG] = useState<number | undefined>(undefined);
 
   const selectedId = recipeId || recipes[0]?.id || '';
+  const recipe = recipes.find((item) => item.id === selectedId);
+  const pours = recipe?.pours ?? [];
+  const steps = toSteps(pours);
+  const progress = pourProgress(pours, stopwatch.elapsed);
+  const announcedIndex = useRef(0);
+
+  // 注ぐ時刻に達した投だけ一度鳴らす。リセットで先頭に戻す。
+  useEffect(() => {
+    const index = progress.current?.index ?? 0;
+    if (index === announcedIndex.current) return;
+    if (index > announcedIndex.current && stopwatch.running) beep(settings.soundEnabled);
+    announcedIndex.current = index;
+  }, [progress.current?.index, stopwatch.running, settings.soundEnabled]);
 
   async function finish() {
     if (!selectedId) return;
@@ -28,6 +42,7 @@ export function TimerScreen() {
       beverageG,
     };
     await saveBrew(record);
+    announcedIndex.current = 0;
     stopwatch.reset();
     setBeverageG(undefined);
     navigate('/log');
@@ -35,7 +50,21 @@ export function TimerScreen() {
 
   return (
     <>
-      <Card title="抽出タイマー" hint="レシピを選んで計測します。止めて記録すると味評価に進めます。">
+      <Card title="抽出タイマー" hint="先にレシピを決めてから計測します。注湯のタイミングはタイマーが知らせます。">
+        {recipes.length === 0 ? (
+          <Banner>先にレシピを登録してください。</Banner>
+        ) : (
+          <Field label="レシピ">
+            <select value={selectedId} onChange={(event) => setRecipeId(event.target.value)}>
+              {recipes.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+
         <div className="timer-panel">
           <div className="timer-panel-label">
             <span>{stopwatch.running ? '抽出中' : '待機'}</span>
@@ -43,6 +72,36 @@ export function TimerScreen() {
           </div>
           <SevenSegment className="timer" value={formatSeconds(stopwatch.elapsed)} />
         </div>
+
+        {pours.length === 0 ? (
+          recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
+        ) : (
+          <div className="pour-guide">
+            <p className="pour-now">
+              {!stopwatch.running && stopwatch.elapsed === 0
+                ? `開始したら 1投目 ${steps[0]?.waterG ?? 0}g`
+                : progress.current
+                ? `${progress.current.index}投目 ${steps[progress.current.index - 1]?.waterG ?? 0}g を注いでください（累計 ${progress.current.targetG}g）`
+                : `${formatSeconds(progress.untilNextSec)} 後に 1投目を開始`}
+            </p>
+            <p className="pour-next muted">
+              {progress.next
+                ? `次: ${progress.next.index}投目 ${steps[progress.next.index - 1]?.waterG ?? 0}g （残り ${formatSeconds(progress.untilNextSec)}）`
+                : '注湯は完了です。落ち切りを待ちます。'}
+            </p>
+            <ol className="pour-list">
+              {pours.map((pour, index) => (
+                <li key={pour.index} className={progress.current?.index === pour.index ? 'current' : ''}>
+                  <span className="mono">{formatSeconds(pour.startSec)}</span>
+                  <span>
+                    {pour.index}投目 {steps[index]?.waterG ?? 0}g
+                  </span>
+                  <span className="mono muted">累計 {pour.targetG}g</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
         <div className="row">
           {stopwatch.running ? (
@@ -54,7 +113,13 @@ export function TimerScreen() {
               開始
             </button>
           )}
-          <button type="button" onClick={stopwatch.reset}>
+          <button
+            type="button"
+            onClick={() => {
+              announcedIndex.current = 0;
+              stopwatch.reset();
+            }}
+          >
             リセット
           </button>
         </div>
@@ -65,15 +130,6 @@ export function TimerScreen() {
           <Banner>先にレシピを登録してください。</Banner>
         ) : (
           <div className="stack">
-            <Field label="レシピ">
-              <select value={selectedId} onChange={(event) => setRecipeId(event.target.value)}>
-                {recipes.map((recipe) => (
-                  <option key={recipe.id} value={recipe.id}>
-                    {recipe.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <NumberField label="抽出量" suffix="g" step={1} min={0} value={beverageG} onChange={setBeverageG} />
             <button
               className="primary"
