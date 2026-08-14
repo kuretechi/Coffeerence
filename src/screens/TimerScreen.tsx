@@ -7,7 +7,7 @@ import { beep, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
-import type { BrewRecord } from '../domain/types';
+import type { BrewRecord, Pour } from '../domain/types';
 
 export function TimerScreen() {
   const recipes = useRecipes();
@@ -23,6 +23,11 @@ export function TimerScreen() {
   const steps = toSteps(pours);
   const progress = pourProgress(pours, stopwatch.elapsed);
   const announcedIndex = useRef(0);
+
+  /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
+  function tempOf(pour: Pour | undefined): number {
+    return pour?.waterTempC ?? recipe?.waterTempC ?? 0;
+  }
 
   // 注ぐ時刻に達した投だけ一度鳴らす。リセットで先頭に戻す。
   useEffect(() => {
@@ -79,14 +84,14 @@ export function TimerScreen() {
           <div className="pour-guide">
             <p className="pour-now">
               {!stopwatch.running && stopwatch.elapsed === 0
-                ? `開始したら 1投目 累計${pours[0]?.targetG ?? 0}gまで`
+                ? `開始したら 1投目 累計${pours[0]?.targetG ?? 0}gまで（${tempOf(pours[0])}℃）`
                 : progress.current
-                ? `${progress.current.index}投目 累計${progress.current.targetG}g まで注いでください（この回 ${steps[progress.current.index - 1]?.waterG ?? 0}g）`
+                ? `${progress.current.index}投目 累計${progress.current.targetG}g まで注いでください（この回 ${steps[progress.current.index - 1]?.waterG ?? 0}g・${tempOf(progress.current)}℃）`
                 : `${formatSeconds(progress.untilNextSec)} 後に 1投目を開始`}
             </p>
             <p className="pour-next muted">
               {progress.next
-                ? `次: ${progress.next.index}投目 累計${progress.next.targetG}gまで （残り ${formatSeconds(progress.untilNextSec)}）`
+                ? `次: ${progress.next.index}投目 累計${progress.next.targetG}gまで ${tempOf(progress.next)}℃ （残り ${formatSeconds(progress.untilNextSec)}）`
                 : '注湯は完了です。落ち切りを待ちます。'}
             </p>
             <ol className="pour-list">
@@ -96,7 +101,9 @@ export function TimerScreen() {
                   <span>
                     {pour.index}投目 累計{pour.targetG}g
                   </span>
-                  <span className="mono muted">この回 {steps[index]?.waterG ?? 0}g</span>
+                  <span className="mono muted">
+                    {steps[index]?.waterG ?? 0}g / {tempOf(pour)}℃
+                  </span>
                 </li>
               ))}
             </ol>

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField } from '../ui/components';
-import { useAudit, useBeans, useBrews, useRecipes, useSettings } from '../ui/data';
+import { useAudit, useBeans, useBrews, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
 import { saveBean, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
-import type { ThemeName } from '../domain/types';
+import type { RecipeDefaults, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
@@ -18,6 +18,22 @@ export function SettingsScreen() {
   const audit = useAudit();
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
+  const loaded = useLoadedSettings();
+  // 保存の往復を待たず入力を反映させるため、入力中の値は手元で持つ。
+  const [defaults, setDefaults] = useState<RecipeDefaults>(settings.recipeDefaults);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current || !loaded) return;
+    initialized.current = true;
+    setDefaults(loaded.recipeDefaults);
+  }, [loaded]);
+
+  function saveRecipeDefaults(patch: Partial<RecipeDefaults>) {
+    const next = { ...defaults, ...patch };
+    setDefaults(next);
+    void saveSettings({ ...settings, recipeDefaults: next });
+  }
 
   async function doExportJson() {
     const bundle = await exportAll();
@@ -55,6 +71,48 @@ export function SettingsScreen() {
             onChange={(value) => void saveBean({ ...bean, remainingG: value ?? 0 })}
           />
         ))}
+      </Card>
+
+      <Card title="レシピの初期値" hint="レシピ登録フォームの初期値です。注湯は「蒸らし＝粉量×3g → 中間 → 総湯量」で組み立て、各投の湯温には初期湯温が入ります。">
+        <div className="row">
+          <NumberField
+            label="粉量"
+            suffix="g"
+            step={0.1}
+            min={0}
+            value={defaults.doseG}
+            onChange={(doseG) => saveRecipeDefaults({ doseG: doseG ?? 0 })}
+          />
+          <NumberField
+            label="初期湯温"
+            suffix="℃"
+            step={1}
+            min={0}
+            value={defaults.waterTempC}
+            onChange={(waterTempC) => saveRecipeDefaults({ waterTempC: waterTempC ?? 0 })}
+          />
+        </div>
+        <NumberField
+          label="総湯量"
+          suffix="g"
+          step={1}
+          min={0}
+          value={defaults.totalWaterG}
+          onChange={(totalWaterG) => saveRecipeDefaults({ totalWaterG: totalWaterG ?? 0 })}
+        />
+        <Field label="挽き目">
+          <input
+            value={defaults.grindSetting}
+            placeholder="例: 中細 / ダイヤル 18"
+            onChange={(event) => saveRecipeDefaults({ grindSetting: event.target.value })}
+          />
+        </Field>
+        <Field label="ドリッパー">
+          <input
+            value={defaults.brewer}
+            onChange={(event) => saveRecipeDefaults({ brewer: event.target.value })}
+          />
+        </Field>
       </Card>
 
       <Card title="表示と音">
