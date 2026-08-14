@@ -346,11 +346,22 @@ th {
   letter-spacing: 0.14em;
 }
 
-.timer {
-  font-size: 64px;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  font-family: var(--font-mono);
+.seven-segment {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  height: auto;
+  margin: 8px auto 0;
+  color: var(--accent-strong);
+}
+
+.seven-segment .seg {
+  fill: currentColor;
+  opacity: 0.1;
+}
+
+.seven-segment .seg.on {
+  opacity: 1;
 }
 
 .timer.warning {
@@ -469,8 +480,7 @@ th {
   content: '■ ';
 }
 
-[data-theme='hud'] .code,
-[data-theme='hud'] .timer {
+[data-theme='hud'] .code {
   color: var(--accent-strong);
   text-shadow: 0 0 10px rgba(245, 197, 24, 0.55);
 }
@@ -511,30 +521,9 @@ th {
   font-size: 11px;
 }
 
-[data-theme='hud'] .timer {
-  position: relative;
-  font-size: clamp(48px, 21vw, 96px);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.06em;
-}
-
-/* 消灯セグメント風の下地。実際の桁と同じ字送りで薄く敷く。 */
-[data-theme='hud'] .timer::before {
-  content: attr(data-ghost);
-  position: absolute;
-  inset: 0;
-  color: var(--accent);
-  opacity: 0.12;
-  text-shadow: none;
-}
-
-[data-theme='hud'] .timer.warning {
-  text-shadow: 0 0 10px rgba(255, 159, 10, 0.6);
-}
-
-[data-theme='hud'] .timer.over {
-  text-shadow: 0 0 10px rgba(255, 59, 48, 0.6);
+[data-theme='hud'] .seven-segment {
+  max-width: none;
+  filter: drop-shadow(0 0 8px currentColor);
 }
 
 /* 操作ボタンは参考画像に合わせた赤ラベル＋緑の下線。 */
