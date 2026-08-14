@@ -24,11 +24,9 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">
-          <h1>コーヒーレンス</h1>
-          <span className="subtitle">レシピ・タイマー・味の記録</span>
-        </div>
-        <Logo />
+        <h1 className="app-title">
+          <Logo />
+        </h1>
       </header>
 
       <Routes>

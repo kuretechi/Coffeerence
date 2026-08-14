@@ -78,56 +78,32 @@ body {
   z-index: 5;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
   padding: 8px 0 16px;
   background: var(--bg);
 }
 
 .app-title {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.app-header h1 {
-  font-size: 20px;
   margin: 0;
-  letter-spacing: 0.04em;
-}
-
-.app-header .subtitle {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .app-logo {
-  flex: none;
-  width: 114px;
-  height: 48px;
+  width: 132px;
+  height: 52px;
   color: var(--text);
 }
 
-.app-logo-rule {
-  stroke: currentColor;
-  stroke-width: 1;
-  opacity: 0.3;
-}
-
-.app-logo-mark circle {
-  fill: none;
-  stroke: var(--logo-accent);
-  stroke-width: 2.4;
-}
-
-.app-logo-mark .app-logo-dot {
+.app-logo-bar {
   fill: var(--logo-accent);
-  stroke: none;
 }
 
 .app-logo-type path {
   fill: currentColor;
+}
+
+.app-logo-latin {
+  opacity: 0.75;
 }
 
 nav.tabs {
@@ -469,21 +445,19 @@ th {
   margin-bottom: 16px;
 }
 
-[data-theme='hud'] .app-header h1,
 [data-theme='hud'] .card h2,
 [data-theme='hud'] .card h3 {
   font-family: var(--font-display);
   font-weight: 700;
 }
 
-[data-theme='hud'] .app-header h1,
 [data-theme='hud'] .card h2 {
   color: var(--accent);
   letter-spacing: 0.12em;
 }
 
-[data-theme='hud'] .app-header h1 {
-  font-size: 24px;
+[data-theme='hud'] .app-logo {
+  color: var(--accent);
 }
 
 [data-theme='hud'] .card {
