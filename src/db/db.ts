@@ -2,6 +2,7 @@ import Dexie, { type Table } from 'dexie';
 import type {
   AuditEntry,
   Bean,
+  BrewRecord,
   Competition,
   ExternalLabel,
   FlavorDescriptorSet,
@@ -18,6 +19,7 @@ export class CoffeerenceDb extends Dexie {
   beans!: Table<Bean, string>;
   descriptorSets!: Table<FlavorDescriptorSet, string>;
   recipes!: Table<Recipe, string>;
+  brews!: Table<BrewRecord, string>;
   sessions!: Table<Session, string>;
   externalLabels!: Table<ExternalLabel, string>;
   triangleTrials!: Table<TriangleTrial, string>;
@@ -38,6 +40,9 @@ export class CoffeerenceDb extends Dexie {
       rehearsals: 'id, date',
       settings: 'id',
       audit: 'id, at',
+    });
+    this.version(2).stores({
+      brews: 'id, date, recipeId',
     });
   }
 }

@@ -148,6 +148,25 @@ export interface Score {
   confidence: 1 | 2 | 3;
 }
 
+// ─── 簡易記録（レシピ→タイマー→味評価）─────
+export interface TasteRating {
+  aroma: Likert5;
+  acidity: Likert5;
+  sweetness: Likert5;
+  body: Likert5;
+  overall: Likert5;
+  note?: string;
+}
+
+export interface BrewRecord {
+  id: string;
+  date: string;
+  recipeId: string;
+  totalTimeSec: number;
+  beverageG?: number;
+  taste?: TasteRating;
+}
+
 // ─── セッション ───────────────────────────
 export interface Cup {
   id: string;

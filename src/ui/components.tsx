@@ -55,13 +55,16 @@ export function Segmented<T extends string | number>({
   options,
   value,
   onChange,
+  compact = false,
 }: {
   options: { value: T; label: string }[];
   value: T | undefined;
   onChange: (value: T) => void;
+  /** 短いラベルを狭い画面でも一行に収める。 */
+  compact?: boolean;
 }) {
   return (
-    <div className="segmented">
+    <div className={compact ? 'segmented compact' : 'segmented'}>
       {options.map((option) => (
         <button
           key={String(option.value)}

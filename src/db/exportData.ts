@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { Competition, ScoreWeights, Session } from '../domain/types';
+import type { BrewRecord, Competition, Recipe, ScoreWeights, Session } from '../domain/types';
 import { CRITERION_ORDER } from '../domain/defaults';
 import { composeScores } from '../lib/scoring';
 
@@ -11,6 +11,7 @@ export interface ExportBundle {
   beans: unknown[];
   descriptorSets: unknown[];
   recipes: unknown[];
+  brews: unknown[];
   sessions: unknown[];
   externalLabels: unknown[];
   triangleTrials: unknown[];
@@ -26,6 +27,7 @@ export async function exportAll(): Promise<ExportBundle> {
     beans,
     descriptorSets,
     recipes,
+    brews,
     sessions,
     externalLabels,
     triangleTrials,
@@ -37,6 +39,7 @@ export async function exportAll(): Promise<ExportBundle> {
     db.beans.toArray(),
     db.descriptorSets.toArray(),
     db.recipes.toArray(),
+    db.brews.toArray(),
     db.sessions.toArray(),
     db.externalLabels.toArray(),
     db.triangleTrials.toArray(),
@@ -52,6 +55,7 @@ export async function exportAll(): Promise<ExportBundle> {
     beans,
     descriptorSets,
     recipes,
+    brews,
     sessions,
     externalLabels,
     triangleTrials,
@@ -70,6 +74,7 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       db.beans,
       db.descriptorSets,
       db.recipes,
+      db.brews,
       db.sessions,
       db.externalLabels,
       db.triangleTrials,
@@ -82,6 +87,8 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       await db.beans.bulkPut(bundle.beans as never[]);
       await db.descriptorSets.bulkPut(bundle.descriptorSets as never[]);
       await db.recipes.bulkPut(bundle.recipes as never[]);
+      // brews は v2 で追加したため、古い書き出しには存在しない。
+      await db.brews.bulkPut((bundle.brews ?? []) as never[]);
       await db.sessions.bulkPut(bundle.sessions as never[]);
       await db.externalLabels.bulkPut(bundle.externalLabels as never[]);
       await db.triangleTrials.bulkPut(bundle.triangleTrials as never[]);
@@ -96,6 +103,52 @@ const escapeCsv = (value: string | number | undefined) => {
   const text = value === undefined ? '' : String(value);
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 };
+
+/** 抽出記録単位の CSV。レシピの条件と味評価を同じ行に並べる。 */
+export function brewsToCsv(brews: readonly BrewRecord[], recipes: readonly Recipe[]): string {
+  const header = [
+    'brew_id',
+    'date',
+    'recipe',
+    'dose_g',
+    'water_g',
+    'water_temp_c',
+    'grind',
+    'total_time_sec',
+    'beverage_g',
+    'aroma',
+    'acidity',
+    'sweetness',
+    'body',
+    'overall',
+    'note',
+  ];
+
+  const rows = brews.map((brew) => {
+    const recipe = recipes.find((r) => r.id === brew.recipeId);
+    return [
+      brew.id,
+      brew.date,
+      recipe?.name,
+      recipe?.doseG,
+      recipe?.totalWaterG,
+      recipe?.waterTempC,
+      recipe?.grindSetting,
+      brew.totalTimeSec,
+      brew.beverageG,
+      brew.taste?.aroma,
+      brew.taste?.acidity,
+      brew.taste?.sweetness,
+      brew.taste?.body,
+      brew.taste?.overall,
+      brew.taste?.note,
+    ]
+      .map(escapeCsv)
+      .join(',');
+  });
+
+  return [header.join(','), ...rows].join('\n');
+}
 
 /** カップ単位の CSV。表計算ソフトで自由に分析できる形にする。 */
 export function sessionsToCsv(

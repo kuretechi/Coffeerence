@@ -2,6 +2,7 @@ import { db } from './db';
 import type {
   AuditEntry,
   Bean,
+  BrewRecord,
   Competition,
   Cup,
   ExternalLabel,
@@ -93,6 +94,8 @@ export const listAudit = () => db.audit.orderBy('at').reverse().toArray();
 
 export const saveBean = (bean: Bean) => db.beans.put(bean);
 export const saveRecipe = (recipe: Recipe) => db.recipes.put(recipe);
+export const listBrews = () => db.brews.orderBy('date').reverse().toArray();
+export const saveBrew = (brew: BrewRecord) => db.brews.put(brew);
 export const saveSession = (session: Session) => db.sessions.put(session);
 export const saveExternalLabel = (label: ExternalLabel) => db.externalLabels.put(label);
 export const saveTriangleTrial = (trial: TriangleTrial) => db.triangleTrials.put(trial);
@@ -160,6 +163,14 @@ export async function deleteSession(sessionId: string, reason: string): Promise<
     subject: sessionId,
     detail: `${session.date} のセッション（${session.cups.length}杯）を削除: ${reason}`,
   });
+}
+
+/** R-2: 削除は記録に残す。 */
+export async function deleteBrew(brewId: string): Promise<void> {
+  const brew = await db.brews.get(brewId);
+  if (!brew) return;
+  await db.brews.delete(brewId);
+  await recordAudit({ kind: 'delete', subject: brewId, detail: `${brew.date} の抽出記録を削除` });
 }
 
 export async function consumeBeans(beanId: string, grams: number): Promise<void> {
