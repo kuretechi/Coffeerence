@@ -1,6 +1,9 @@
 // NF-01: オフライン動作。アプリシェルと静的アセットをキャッシュする。
 const CACHE = 'coffeerence-v1';
-const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+// サブパス配信（GitHub Pages 等）でも動くよう、スコープ基準の相対パスで持つ。
+const BASE = new URL('./', self.location.href).pathname;
+const SHELL_DOCUMENT = `${BASE}index.html`;
+const APP_SHELL = [BASE, SHELL_DOCUMENT, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
@@ -24,10 +27,10 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy));
+          caches.open(CACHE).then((cache) => cache.put(SHELL_DOCUMENT, copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then((hit) => hit || Response.error())),
+        .catch(() => caches.match(SHELL_DOCUMENT).then((hit) => hit || Response.error())),
     );
     return;
   }
