@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField } from '../ui/components';
-import { revealedSessions, useAudit, useBeans, useCompetition, useSessions, useSettings } from '../ui/data';
-import { saveBean, saveCompetition, saveSettings } from '../db/repo';
-import { downloadFile, exportAll, importAll, sessionsToCsv } from '../db/exportData';
-import { DEFECTS } from '../domain/defaults';
+import { useAudit, useBeans, useBrews, useRecipes, useSettings } from '../ui/data';
+import { saveBean, saveSettings } from '../db/repo';
+import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import type { ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
@@ -13,9 +12,9 @@ const THEMES: { value: ThemeName; label: string }[] = [
 
 export function SettingsScreen() {
   const settings = useSettings();
-  const competition = useCompetition();
   const beans = useBeans();
-  const sessions = useSessions();
+  const brews = useBrews();
+  const recipes = useRecipes();
   const audit = useAudit();
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
@@ -27,8 +26,8 @@ export function SettingsScreen() {
 
   function doExportCsv() {
     downloadFile(
-      `coffeerence-sessions-${new Date().toISOString().slice(0, 10)}.csv`,
-      sessionsToCsv(revealedSessions(sessions), competition, settings.weights),
+      `coffeerence-brews-${new Date().toISOString().slice(0, 10)}.csv`,
+      brewsToCsv(brews, recipes),
       'text/csv',
     );
   }
@@ -58,54 +57,7 @@ export function SettingsScreen() {
         ))}
       </Card>
 
-      <Card title="大会定義" hint="ルールが確定したらここを更新します。分析は常にこの定義に従います。">
-        <NumberField
-          label="準備時間"
-          suffix="秒"
-          value={competition.prepSeconds}
-          onChange={(value) => void saveCompetition({ ...competition, prepSeconds: value ?? 420 })}
-        />
-        <NumberField
-          label="競技時間"
-          suffix="秒"
-          value={competition.brewSeconds}
-          onChange={(value) => void saveCompetition({ ...competition, brewSeconds: value ?? 420 })}
-        />
-        <NumberField
-          label="審査時間"
-          suffix="秒"
-          value={competition.judgeSeconds}
-          onChange={(value) => void saveCompetition({ ...competition, judgeSeconds: value ?? 180 })}
-        />
-        <NumberField
-          label="最低提出量"
-          suffix="mL"
-          value={competition.minVolumeMl}
-          onChange={(value) => void saveCompetition({ ...competition, minVolumeMl: value ?? 150 })}
-        />
-        <NumberField
-          label="ジャッジ人数"
-          suffix="名"
-          value={competition.judgeCount}
-          onChange={(value) => void saveCompetition({ ...competition, judgeCount: value ?? 3 })}
-        />
-      </Card>
-
-      <Card title="分析パラメータ">
-        <NumberField
-          label="検出したい効果量 δ"
-          suffix="点"
-          step={0.1}
-          value={settings.detectableEffect}
-          onChange={(value) => void saveSettings({ ...settings, detectableEffect: value ?? 0.5 })}
-        />
-        <NumberField
-          label="目標ライン（2回合計）"
-          suffix="点"
-          step={0.5}
-          value={settings.targetLine}
-          onChange={(value) => void saveSettings({ ...settings, targetLine: value ?? 0 })}
-        />
+      <Card title="表示と音">
         <Field label="表示テーマ">
           <div className="segmented">
             {THEMES.map((theme) => (
@@ -127,24 +79,6 @@ export function SettingsScreen() {
             onChange={(event) => void saveSettings({ ...settings, soundEnabled: event.target.checked })}
           />
         </Field>
-      </Card>
-
-      <Card title="スコア合成の重み" hint="欠点の重みを変えると、クリーンカップの減点幅が変わります。">
-        {DEFECTS.map((defect) => (
-          <NumberField
-            key={defect.key}
-            label={defect.label}
-            step={0.1}
-            min={0}
-            value={settings.weights.defect[defect.key]}
-            onChange={(value) =>
-              void saveSettings({
-                ...settings,
-                weights: { ...settings.weights, defect: { ...settings.weights.defect, [defect.key]: value ?? 0 } },
-              })
-            }
-          />
-        ))}
       </Card>
 
       <Card title="データ" hint="すべてこの端末の IndexedDB に保存されています。アカウントもクラウド同期もありません。">

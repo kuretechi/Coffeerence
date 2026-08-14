@@ -234,6 +234,14 @@ textarea {
   line-height: 1.3;
 }
 
+.segmented.compact {
+  flex-wrap: nowrap;
+}
+
+.segmented.compact button {
+  min-width: 0;
+}
+
 .segmented button.selected {
   background: var(--accent);
   border-color: var(--accent);
@@ -525,6 +533,12 @@ th {
 
 [data-theme='hud'] button.primary {
   border-bottom: 3px solid var(--ok);
+}
+
+[data-theme='hud'] .segmented button.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 
 [data-theme='hud'] .banner.danger {
