@@ -78,8 +78,8 @@ body {
   z-index: 5;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding: 8px 0 16px;
+  justify-content: center;
+  padding: 12px 0 20px;
   background: var(--bg);
 }
 
@@ -89,8 +89,8 @@ body {
 }
 
 .app-logo {
-  width: 132px;
-  height: 52px;
+  width: min(62vw, 224px);
+  height: auto;
   color: var(--text);
 }
 
