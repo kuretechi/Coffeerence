@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useSettings } from './ui/data';
+import { Logo } from './ui/Logo';
 import { RecipeScreen } from './screens/RecipeScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
@@ -23,8 +24,11 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>コーヒーレンス</h1>
-        <span className="subtitle">レシピ・タイマー・味の記録</span>
+        <div className="app-title">
+          <h1>コーヒーレンス</h1>
+          <span className="subtitle">レシピ・タイマー・味の記録</span>
+        </div>
+        <Logo />
       </header>
 
       <Routes>

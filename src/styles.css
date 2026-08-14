@@ -11,6 +11,7 @@
   --ok: #7fbf7f;
   --warn: #e8c05c;
   --on-accent: #23160c;
+  --logo-accent: #e8402a;
   --nav-bg: rgba(23, 16, 12, 0.96);
   --radius-l: 16px;
   --radius-m: 12px;
@@ -36,6 +37,7 @@
   --ok: #46d15a;
   --warn: #ff9f0a;
   --on-accent: #000000;
+  --logo-accent: #ff3b30;
   --nav-bg: rgba(0, 0, 0, 0.96);
   --radius-l: 0px;
   --radius-m: 0px;
@@ -71,10 +73,22 @@ body {
 }
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 8px 0 16px;
+  background: var(--bg);
+}
+
+.app-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .app-header h1 {
@@ -86,6 +100,34 @@ body {
 .app-header .subtitle {
   color: var(--muted);
   font-size: 12px;
+}
+
+.app-logo {
+  flex: none;
+  width: 114px;
+  height: 48px;
+  color: var(--text);
+}
+
+.app-logo-rule {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.3;
+}
+
+.app-logo-mark circle {
+  fill: none;
+  stroke: var(--logo-accent);
+  stroke-width: 2.4;
+}
+
+.app-logo-mark .app-logo-dot {
+  fill: var(--logo-accent);
+  stroke: none;
+}
+
+.app-logo-type path {
+  fill: currentColor;
 }
 
 nav.tabs {
