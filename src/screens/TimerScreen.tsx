@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
-import { beep, useStopwatch } from '../ui/useTimer';
+import { doubleBeep, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
@@ -23,6 +23,8 @@ export function TimerScreen() {
   const steps = toSteps(pours);
   const progress = pourProgress(pours, stopwatch.elapsed);
   const announcedIndex = useRef(0);
+  const finishSec = recipe?.finishSec;
+  const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
   function tempOf(pour: Pour | undefined): number {
@@ -33,9 +35,21 @@ export function TimerScreen() {
   useEffect(() => {
     const index = progress.current?.index ?? 0;
     if (index === announcedIndex.current) return;
-    if (index > announcedIndex.current && stopwatch.running) beep(settings.soundEnabled);
+    if (index > announcedIndex.current && stopwatch.running) doubleBeep(settings.soundEnabled);
     announcedIndex.current = index;
   }, [progress.current?.index, stopwatch.running, settings.soundEnabled]);
+
+  // 抽出終了時間に達したら計測を止めて知らせる。
+  useEffect(() => {
+    if (!finished || !stopwatch.running) return;
+    stopwatch.pause();
+    doubleBeep(settings.soundEnabled, 660, 220);
+  }, [finished, stopwatch, settings.soundEnabled]);
+
+  function start() {
+    doubleBeep(settings.soundEnabled);
+    stopwatch.start();
+  }
 
   async function finish() {
     if (!selectedId) return;
@@ -83,16 +97,22 @@ export function TimerScreen() {
         ) : (
           <div className="pour-guide">
             <p className="pour-now">
-              {!stopwatch.running && stopwatch.elapsed === 0
+              {finished
+                ? `抽出終了（${formatSeconds(finishSec ?? 0)}）`
+                : !stopwatch.running && stopwatch.elapsed === 0
                 ? `開始したら 1投目 累計${pours[0]?.targetG ?? 0}gまで（${tempOf(pours[0])}℃）`
                 : progress.current
                 ? `${progress.current.index}投目 累計${progress.current.targetG}g まで注いでください（この回 ${steps[progress.current.index - 1]?.waterG ?? 0}g・${tempOf(progress.current)}℃）`
                 : `${formatSeconds(progress.untilNextSec)} 後に 1投目を開始`}
             </p>
             <p className="pour-next muted">
-              {progress.next
+              {finished
+                ? '抽出終了です。'
+                : progress.next
                 ? `次: ${progress.next.index}投目 累計${progress.next.targetG}gまで ${tempOf(progress.next)}℃ （残り ${formatSeconds(progress.untilNextSec)}）`
-                : '注湯は完了です。落ち切りを待ちます。'}
+                : finishSec === undefined
+                ? '注湯は完了です。落ち切りを待ちます。'
+                : `注湯は完了です。${formatSeconds(finishSec)} で抽出終了（残り ${formatSeconds(Math.max(0, finishSec - stopwatch.elapsed))}）`}
             </p>
             <ol className="pour-list">
               {pours.map((pour, index) => (
@@ -107,6 +127,9 @@ export function TimerScreen() {
                 </li>
               ))}
             </ol>
+            {finishSec === undefined ? null : (
+              <p className="pour-finish mono muted">抽出終了 {formatSeconds(finishSec)}</p>
+            )}
           </div>
         )}
 
@@ -116,7 +139,7 @@ export function TimerScreen() {
               停止
             </button>
           ) : (
-            <button className="primary" type="button" onClick={stopwatch.start}>
+            <button className="primary" type="button" disabled={finished} onClick={start}>
               開始
             </button>
           )}

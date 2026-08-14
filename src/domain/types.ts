@@ -62,6 +62,8 @@ export interface Recipe {
   brewer: string;
   filter: string;
   pours: Pour[];
+  /** 抽出終了（落ち切り）までの秒数。未設定のレシピは自動停止しない。 */
+  finishSec?: number;
   createdAt: string;
 }
 
