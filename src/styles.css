@@ -403,6 +403,26 @@ th {
   padding-bottom: 12px;
 }
 
+table button {
+  white-space: nowrap;
+  padding: 4px 10px;
+  min-height: 0;
+  font-size: 12px;
+}
+
+.timer-record {
+  align-items: end;
+  margin-top: 12px;
+}
+
+.timer-record .field {
+  flex: 0 0 110px;
+}
+
+.timer-record button {
+  flex: 1;
+}
+
 .pour-guide {
   margin: 12px 0;
 }

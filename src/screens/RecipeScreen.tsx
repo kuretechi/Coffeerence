@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes } from '../ui/data';
-import { saveRecipe } from '../db/repo';
+import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
 import { toPours, toSteps } from '../lib/pours';
 import { TARGET_BEVERAGE_G } from '../domain/defaults';
@@ -185,6 +184,7 @@ export function RecipeScreen() {
                 <th>粉量</th>
                 <th>湯量</th>
                 <th>注湯</th>
+                <th aria-label="操作" />
               </tr>
             </thead>
             <tbody>
@@ -200,14 +200,16 @@ export function RecipeScreen() {
                           .map((step) => `${formatSeconds(step.atSec)} ${step.waterG}g`)
                           .join(' / ')}
                   </td>
+                  <td>
+                    <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
+                      削除
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <Link className="button" to="/timer">
-          タイマーへ
-        </Link>
       </Card>
     </>
   );

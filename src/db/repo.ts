@@ -173,6 +173,14 @@ export async function deleteBrew(brewId: string): Promise<void> {
   await recordAudit({ kind: 'delete', subject: brewId, detail: `${brew.date} の抽出記録を削除` });
 }
 
+/** R-2: 削除は記録に残す。 */
+export async function deleteRecipe(recipeId: string): Promise<void> {
+  const recipe = await db.recipes.get(recipeId);
+  if (!recipe) return;
+  await db.recipes.delete(recipeId);
+  await recordAudit({ kind: 'delete', subject: recipeId, detail: `レシピ「${recipe.name}」を削除` });
+}
+
 export async function consumeBeans(beanId: string, grams: number): Promise<void> {
   const bean = await db.beans.get(beanId);
   if (!bean) return;

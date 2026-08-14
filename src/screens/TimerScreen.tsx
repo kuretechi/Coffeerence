@@ -123,13 +123,9 @@ export function TimerScreen() {
             リセット
           </button>
         </div>
-      </Card>
 
-      <Card title="この抽出を記録">
-        {recipes.length === 0 ? (
-          <Banner>先にレシピを登録してください。</Banner>
-        ) : (
-          <div className="stack">
+        {recipes.length === 0 ? null : (
+          <div className="row timer-record">
             <NumberField label="抽出量" suffix="g" step={1} min={0} value={beverageG} onChange={setBeverageG} />
             <button
               className="primary"
@@ -139,9 +135,9 @@ export function TimerScreen() {
             >
               記録して味評価へ
             </button>
-            {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
           </div>
         )}
+        {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
       </Card>
     </>
   );
