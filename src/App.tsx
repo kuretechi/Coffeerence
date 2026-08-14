@@ -2,19 +2,21 @@ import { useEffect } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { useSettings } from './ui/data';
 import { Logo } from './ui/Logo';
+import { TabIcon } from './ui/TabIcon';
+import type { TabIconName } from './ui/TabIcon';
 import { RecipeScreen } from './screens/RecipeScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ComingSoonScreen } from './screens/ComingSoonScreen';
 
-const TABS = [
-  { to: '/', label: 'レシピ' },
-  { to: '/timer', label: 'タイマー' },
-  { to: '/log', label: '記録' },
-  { to: '/friends', label: '豆友' },
-  { to: '/account', label: 'アカウント' },
-  { to: '/settings', label: '設定' },
+const TABS: { to: string; label: string; icon: TabIconName }[] = [
+  { to: '/', label: 'レシピ', icon: 'recipe' },
+  { to: '/timer', label: 'タイマー', icon: 'timer' },
+  { to: '/log', label: '記録', icon: 'log' },
+  { to: '/friends', label: '豆友', icon: 'friends' },
+  { to: '/account', label: 'アカウント', icon: 'account' },
+  { to: '/settings', label: '設定', icon: 'settings' },
 ];
 
 export function App() {
@@ -51,7 +53,8 @@ export function App() {
       <nav className="tabs">
         {TABS.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
-            {tab.label}
+            <TabIcon name={tab.icon} />
+            <span>{tab.label}</span>
           </NavLink>
         ))}
       </nav>
