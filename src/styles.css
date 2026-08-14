@@ -17,6 +17,7 @@
   --radius-pill: 999px;
   --font-ui: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', monospace;
+  --font-display: var(--font-ui);
   font-family: var(--font-ui);
   color-scheme: dark;
 }
@@ -40,6 +41,10 @@
   --radius-m: 0px;
   --radius-pill: 0px;
   --font-ui: var(--font-mono);
+  /* 見出しはマティスが入っている端末ではそれを使い、無ければ OS 標準の明朝に落とす。 */
+  --font-display: 'FOT-マティス Pro EB', 'Matisse Pro EB', 'FOT-Matisse Pro EB', 'マティス',
+    'Matisse', 'Yu Mincho', 'YuMincho', '游明朝', 'Hiragino Mincho ProN', 'ヒラギノ明朝 ProN',
+    'Noto Serif JP', serif;
 }
 
 * {
@@ -399,9 +404,20 @@ th {
 }
 
 [data-theme='hud'] .app-header h1,
+[data-theme='hud'] .card h2,
+[data-theme='hud'] .card h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+[data-theme='hud'] .app-header h1,
 [data-theme='hud'] .card h2 {
   color: var(--accent);
   letter-spacing: 0.12em;
+}
+
+[data-theme='hud'] .app-header h1 {
+  font-size: 24px;
 }
 
 [data-theme='hud'] .card {
