@@ -4,6 +4,12 @@ import { revealedSessions, useAudit, useBeans, useCompetition, useSessions, useS
 import { saveBean, saveCompetition, saveSettings } from '../db/repo';
 import { downloadFile, exportAll, importAll, sessionsToCsv } from '../db/exportData';
 import { DEFECTS } from '../domain/defaults';
+import type { ThemeName } from '../domain/types';
+
+const THEMES: { value: ThemeName; label: string }[] = [
+  { value: 'classic', label: '既定' },
+  { value: 'hud', label: 'HUD' },
+];
 
 export function SettingsScreen() {
   const settings = useSettings();
@@ -100,6 +106,20 @@ export function SettingsScreen() {
           value={settings.targetLine}
           onChange={(value) => void saveSettings({ ...settings, targetLine: value ?? 0 })}
         />
+        <Field label="表示テーマ">
+          <div className="segmented">
+            {THEMES.map((theme) => (
+              <button
+                key={theme.value}
+                type="button"
+                className={settings.theme === theme.value ? 'selected' : ''}
+                onClick={() => void saveSettings({ ...settings, theme: theme.value })}
+              >
+                {theme.label}
+              </button>
+            ))}
+          </div>
+        </Field>
         <Field label="タイマー音">
           <input
             type="checkbox"

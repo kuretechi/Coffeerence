@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { useSettings } from './ui/data';
 import { HomeScreen } from './screens/HomeScreen';
 import { SessionPlanScreen } from './screens/SessionPlanScreen';
 import { BrewScreen } from './screens/BrewScreen';
@@ -24,6 +26,12 @@ const TABS = [
 ];
 
 export function App() {
+  const settings = useSettings();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings.theme]);
+
   return (
     <div className="app">
       <header className="app-header">
