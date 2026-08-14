@@ -6,20 +6,6 @@ export interface PourStep {
   atSec: number;
 }
 
-/** 各投の注湯量を、データモデルの累積目標重量（`Pour.targetG`）に変換する。 */
-export function toPours(steps: readonly PourStep[]): Pour[] {
-  let cumulative = 0;
-  return steps.map((step, i) => {
-    cumulative += step.waterG;
-    return {
-      index: i + 1,
-      targetG: Math.round(cumulative * 10) / 10,
-      startSec: step.atSec,
-      note: i === 0 ? '蒸らし' : undefined,
-    };
-  });
-}
-
 /** 累積目標重量から、各投の注湯量を復元する。 */
 export function toSteps(pours: readonly Pour[]): PourStep[] {
   let previous = 0;

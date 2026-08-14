@@ -79,14 +79,14 @@ export function TimerScreen() {
           <div className="pour-guide">
             <p className="pour-now">
               {!stopwatch.running && stopwatch.elapsed === 0
-                ? `開始したら 1投目 ${steps[0]?.waterG ?? 0}g`
+                ? `開始したら 1投目 累計${pours[0]?.targetG ?? 0}gまで`
                 : progress.current
-                ? `${progress.current.index}投目 ${steps[progress.current.index - 1]?.waterG ?? 0}g を注いでください（累計 ${progress.current.targetG}g）`
+                ? `${progress.current.index}投目 累計${progress.current.targetG}g まで注いでください（この回 ${steps[progress.current.index - 1]?.waterG ?? 0}g）`
                 : `${formatSeconds(progress.untilNextSec)} 後に 1投目を開始`}
             </p>
             <p className="pour-next muted">
               {progress.next
-                ? `次: ${progress.next.index}投目 ${steps[progress.next.index - 1]?.waterG ?? 0}g （残り ${formatSeconds(progress.untilNextSec)}）`
+                ? `次: ${progress.next.index}投目 累計${progress.next.targetG}gまで （残り ${formatSeconds(progress.untilNextSec)}）`
                 : '注湯は完了です。落ち切りを待ちます。'}
             </p>
             <ol className="pour-list">
@@ -94,9 +94,9 @@ export function TimerScreen() {
                 <li key={pour.index} className={progress.current?.index === pour.index ? 'current' : ''}>
                   <span className="mono">{formatSeconds(pour.startSec)}</span>
                   <span>
-                    {pour.index}投目 {steps[index]?.waterG ?? 0}g
+                    {pour.index}投目 累計{pour.targetG}g
                   </span>
-                  <span className="mono muted">累計 {pour.targetG}g</span>
+                  <span className="mono muted">この回 {steps[index]?.waterG ?? 0}g</span>
                 </li>
               ))}
             </ol>
@@ -123,13 +123,9 @@ export function TimerScreen() {
             リセット
           </button>
         </div>
-      </Card>
 
-      <Card title="この抽出を記録">
-        {recipes.length === 0 ? (
-          <Banner>先にレシピを登録してください。</Banner>
-        ) : (
-          <div className="stack">
+        {recipes.length === 0 ? null : (
+          <div className="row timer-record">
             <NumberField label="抽出量" suffix="g" step={1} min={0} value={beverageG} onChange={setBeverageG} />
             <button
               className="primary"
@@ -139,9 +135,9 @@ export function TimerScreen() {
             >
               記録して味評価へ
             </button>
-            {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
           </div>
         )}
+        {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
       </Card>
     </>
   );
