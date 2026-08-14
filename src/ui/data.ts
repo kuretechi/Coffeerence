@@ -1,18 +1,25 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
+import { THEME_NAMES } from '../domain/types';
 import type { Bean, BrewRecord, Competition, Gear, GearKind, Recipe, Session, Settings } from '../domain/types';
+
+/** 廃止したテーマ（HUD）が保存されたままの端末を既定へ戻す。 */
+function normalize(stored: Settings): Settings {
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  return THEME_NAMES.includes(merged.theme) ? merged : { ...merged, theme: DEFAULT_SETTINGS.theme };
+}
 
 export function useSettings(): Settings {
   const stored = useLiveQuery(() => db.settings.get('settings'), [], undefined);
   // 既存レコードに後から追加した項目は既定値で補う。
-  return stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
+  return stored ? normalize(stored) : DEFAULT_SETTINGS;
 }
 
 /** 読み込み中は undefined。保存済みの値でフォームを初期化したいときに使う。 */
 export function useLoadedSettings(): Settings | undefined {
   const stored = useLiveQuery(() => db.settings.get('settings'), [], undefined);
-  return stored ? { ...DEFAULT_SETTINGS, ...stored } : undefined;
+  return stored ? normalize(stored) : undefined;
 }
 
 export function useCompetition(): Competition {

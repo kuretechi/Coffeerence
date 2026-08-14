@@ -291,7 +291,9 @@ export interface ScoreWeights {
   flavorDummyPenalty: number;
 }
 
-export type ThemeName = 'classic' | 'hud' | 'light' | 'paper' | 'midnight' | 'matcha';
+export const THEME_NAMES = ['classic', 'light', 'paper', 'midnight', 'matcha'] as const;
+
+export type ThemeName = (typeof THEME_NAMES)[number];
 
 // ─── 機材 ─────────────────────────────────
 export type GearKind = 'kettle' | 'mill';
