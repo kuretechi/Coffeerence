@@ -6,11 +6,14 @@ import { RecipeScreen } from './screens/RecipeScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { ComingSoonScreen } from './screens/ComingSoonScreen';
 
 const TABS = [
   { to: '/', label: 'レシピ' },
   { to: '/timer', label: 'タイマー' },
   { to: '/log', label: '記録' },
+  { to: '/friends', label: '豆友' },
+  { to: '/account', label: 'アカウント' },
   { to: '/settings', label: '設定' },
 ];
 
@@ -33,6 +36,14 @@ export function App() {
         <Route path="/" element={<RecipeScreen />} />
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
+        <Route
+          path="/friends"
+          element={<ComingSoonScreen title="豆友" description="他の競技者のレシピを見たり、自分のレシピを投稿したりする画面です。" />}
+        />
+        <Route
+          path="/account"
+          element={<ComingSoonScreen title="アカウント" description="アカウント登録とログインの画面です。" />}
+        />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
