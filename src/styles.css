@@ -379,7 +379,7 @@ th {
 
 .pour-row {
   display: grid;
-  grid-template-columns: auto 1fr 1fr auto;
+  grid-template-columns: auto 1fr 1fr 1fr auto;
   gap: 6px;
   align-items: end;
 }

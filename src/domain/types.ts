@@ -45,6 +45,7 @@ export interface Pour {
   index: number;
   targetG: number; // 累積目標重量
   startSec: number;
+  waterTempC?: number; // 省略時は Recipe.waterTempC（初期湯温）
   note?: string;
 }
 
@@ -292,8 +293,18 @@ export interface ScoreWeights {
 
 export type ThemeName = 'classic' | 'hud';
 
+/** レシピ登録フォームの初期値。 */
+export interface RecipeDefaults {
+  doseG: number;
+  waterTempC: number;
+  totalWaterG: number;
+  grindSetting: string;
+  brewer: string;
+}
+
 export interface Settings {
   id: 'settings';
+  recipeDefaults: RecipeDefaults;
   theme: ThemeName;
   activeCompetitionId: string;
   weights: ScoreWeights;

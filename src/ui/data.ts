@@ -9,6 +9,12 @@ export function useSettings(): Settings {
   return stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
 }
 
+/** 読み込み中は undefined。保存済みの値でフォームを初期化したいときに使う。 */
+export function useLoadedSettings(): Settings | undefined {
+  const stored = useLiveQuery(() => db.settings.get('settings'), [], undefined);
+  return stored ? { ...DEFAULT_SETTINGS, ...stored } : undefined;
+}
+
 export function useCompetition(): Competition {
   const settings = useSettings();
   return (
