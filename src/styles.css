@@ -303,11 +303,27 @@ th {
   font-weight: 500;
 }
 
+.timer-panel {
+  margin: 12px 0;
+}
+
+.timer-panel-label {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.timer-panel-label .en {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+}
+
 .timer {
   font-size: 64px;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  margin: 12px 0;
   font-family: var(--font-mono);
 }
 
@@ -435,13 +451,58 @@ th {
   text-shadow: 0 0 10px rgba(245, 197, 24, 0.55);
 }
 
-[data-theme='hud'] .timer {
+/* 計器盤のカウントダウン: 黒地に緑の細枠、上端に虹〜緑の帯、点灯していないセグメントを薄く残す。 */
+[data-theme='hud'] .timer-panel {
+  background: #000000;
+  border: 1px solid var(--ok);
+  padding: 8px 10px 12px;
+  position: relative;
+}
+
+[data-theme='hud'] .timer-panel::before {
+  content: '';
+  display: block;
+  height: 6px;
+  margin: -8px -10px 8px;
+  background: linear-gradient(
+    90deg,
+    #ff3b30 0%,
+    #ff9f0a 14%,
+    #f5c518 28%,
+    #46d15a 46%,
+    #46d15a 100%
+  );
+}
+
+[data-theme='hud'] .timer-panel-label {
+  justify-content: space-between;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 14px;
   letter-spacing: 0.08em;
-  padding: 8px 0;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  /* 警告帯（斜めストライプ） */
-  border-image: repeating-linear-gradient(45deg, var(--danger) 0 8px, #000000 8px 16px) 8;
+}
+
+[data-theme='hud'] .timer-panel-label .en {
+  color: var(--ok);
+  font-size: 11px;
+}
+
+[data-theme='hud'] .timer {
+  position: relative;
+  font-size: clamp(48px, 21vw, 96px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+}
+
+/* 消灯セグメント風の下地。実際の桁と同じ字送りで薄く敷く。 */
+[data-theme='hud'] .timer::before {
+  content: attr(data-ghost);
+  position: absolute;
+  inset: 0;
+  color: var(--accent);
+  opacity: 0.12;
+  text-shadow: none;
 }
 
 [data-theme='hud'] .timer.warning {
@@ -450,6 +511,20 @@ th {
 
 [data-theme='hud'] .timer.over {
   text-shadow: 0 0 10px rgba(255, 59, 48, 0.6);
+}
+
+/* 操作ボタンは参考画像に合わせた赤ラベル＋緑の下線。 */
+[data-theme='hud'] button:not(.primary):not(.danger) {
+  background: var(--danger);
+  border-color: var(--danger);
+  border-bottom: 3px solid var(--ok);
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+[data-theme='hud'] button.primary {
+  border-bottom: 3px solid var(--ok);
 }
 
 [data-theme='hud'] .banner.danger {

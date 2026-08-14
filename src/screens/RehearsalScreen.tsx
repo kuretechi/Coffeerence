@@ -85,8 +85,17 @@ export function RehearsalScreen() {
   return (
     <>
       <Card title="競技リハーサル" hint="準備7:00 → 競技7:00 → 審査3:00 を自動で遷移します。一時停止はできません。">
-        <div className={`timer ${phase !== 'idle' && phase !== 'done' && remaining <= 30 ? 'warning' : ''}`}>
-          {phase === 'idle' || phase === 'done' ? '—:—' : formatSeconds(Math.max(0, remaining))}
+        <div className="timer-panel">
+          <div className="timer-panel-label">
+            <span>{PHASE_LABEL[phase]}の残り</span>
+            <span className="en">TIME REMAINING</span>
+          </div>
+          <div
+            className={`timer ${phase !== 'idle' && phase !== 'done' && remaining <= 30 ? 'warning' : ''}`}
+            data-ghost="8:88"
+          >
+            {formatSeconds(phase === 'idle' || phase === 'done' ? 0 : Math.max(0, remaining))}
+          </div>
         </div>
         <div className="row between">
           <Pill tone={phase === 'brew' ? 'danger' : phase === 'prep' ? 'warn' : 'plain'}>{PHASE_LABEL[phase]}</Pill>
