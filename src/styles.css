@@ -88,6 +88,19 @@ body {
   margin: 0;
 }
 
+.app-title a {
+  display: flex;
+  color: inherit;
+}
+
+.app-header.compact {
+  padding: 6px 0 8px;
+}
+
+.app-header.compact .app-logo {
+  width: min(34vw, 128px);
+}
+
 .app-logo {
   width: min(62vw, 224px);
   height: auto;
@@ -235,6 +248,11 @@ label.field {
   font-size: 13px;
   color: var(--muted);
   flex: 1 1 140px;
+}
+
+/* 縦積みでは flex-basis が高さになってしまい、入力欄の間が空きすぎる。 */
+.stack > label.field {
+  flex: 0 0 auto;
 }
 
 input,

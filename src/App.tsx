@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSettings } from './ui/data';
 import { Logo } from './ui/Logo';
 import { TabIcon } from './ui/TabIcon';
@@ -21,6 +21,8 @@ const TABS: { to: string; label: string; icon: TabIconName }[] = [
 
 export function App() {
   const settings = useSettings();
+  // タイマー画面は数字と注湯案内を一画面に収めたいので、ロゴを小さくする。
+  const compactHeader = useLocation().pathname === '/timer';
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -28,9 +30,11 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header className={compactHeader ? 'app-header compact' : 'app-header'}>
         <h1 className="app-title">
-          <Logo />
+          <Link to="/" aria-label="レシピへ">
+            <Logo />
+          </Link>
         </h1>
       </header>
 
