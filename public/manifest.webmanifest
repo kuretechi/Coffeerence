@@ -1,0 +1,20 @@
+{
+  "name": "コーヒーレンス",
+  "short_name": "Coffeerence",
+  "description": "ブリューイング競技のための、統計に基づく練習支援アプリ",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#17100c",
+  "theme_color": "#2b1d15",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
