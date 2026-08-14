@@ -10,6 +10,7 @@ export interface ExportBundle {
   competitions: unknown[];
   beans: unknown[];
   descriptorSets: unknown[];
+  gear: unknown[];
   recipes: unknown[];
   brews: unknown[];
   sessions: unknown[];
@@ -26,6 +27,7 @@ export async function exportAll(): Promise<ExportBundle> {
     competitions,
     beans,
     descriptorSets,
+    gear,
     recipes,
     brews,
     sessions,
@@ -38,6 +40,7 @@ export async function exportAll(): Promise<ExportBundle> {
     db.competitions.toArray(),
     db.beans.toArray(),
     db.descriptorSets.toArray(),
+    db.gear.toArray(),
     db.recipes.toArray(),
     db.brews.toArray(),
     db.sessions.toArray(),
@@ -54,6 +57,7 @@ export async function exportAll(): Promise<ExportBundle> {
     competitions,
     beans,
     descriptorSets,
+    gear,
     recipes,
     brews,
     sessions,
@@ -73,6 +77,7 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       db.competitions,
       db.beans,
       db.descriptorSets,
+      db.gear,
       db.recipes,
       db.brews,
       db.sessions,
@@ -86,6 +91,8 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       await db.competitions.bulkPut(bundle.competitions as never[]);
       await db.beans.bulkPut(bundle.beans as never[]);
       await db.descriptorSets.bulkPut(bundle.descriptorSets as never[]);
+      // gear は v3 で追加したため、古い書き出しには存在しない。
+      await db.gear.bulkPut((bundle.gear ?? []) as never[]);
       await db.recipes.bulkPut(bundle.recipes as never[]);
       // brews は v2 で追加したため、古い書き出しには存在しない。
       await db.brews.bulkPut((bundle.brews ?? []) as never[]);

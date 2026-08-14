@@ -6,6 +6,7 @@ import type {
   Competition,
   ExternalLabel,
   FlavorDescriptorSet,
+  Gear,
   Recipe,
   RehearsalRecord,
   Session,
@@ -18,6 +19,7 @@ export class CoffeerenceDb extends Dexie {
   competitions!: Table<Competition, string>;
   beans!: Table<Bean, string>;
   descriptorSets!: Table<FlavorDescriptorSet, string>;
+  gear!: Table<Gear, string>;
   recipes!: Table<Recipe, string>;
   brews!: Table<BrewRecord, string>;
   sessions!: Table<Session, string>;
@@ -43,6 +45,9 @@ export class CoffeerenceDb extends Dexie {
     });
     this.version(2).stores({
       brews: 'id, date, recipeId',
+    });
+    this.version(3).stores({
+      gear: 'id, kind',
     });
   }
 }

@@ -49,6 +49,82 @@
     'Noto Serif JP', serif;
 }
 
+/* 明るい場所で使うための白基調テーマ。 */
+:root[data-theme='light'] {
+  --bg: #f7f3ee;
+  --surface: #ffffff;
+  --surface-2: #efe8e0;
+  --line: #ddd2c6;
+  --text: #241a13;
+  --muted: #7a6a5c;
+  --accent: #a4632a;
+  --accent-strong: #8a4f1c;
+  --danger: #c0392b;
+  --ok: #2f8f4e;
+  --warn: #b7791f;
+  --on-accent: #ffffff;
+  --logo-accent: #c0392b;
+  --nav-bg: rgba(247, 243, 238, 0.96);
+  color-scheme: light;
+}
+
+/* 和紙のような生成り地に墨と朱。 */
+:root[data-theme='paper'] {
+  --bg: #efe9dc;
+  --surface: #f7f2e8;
+  --surface-2: #e3dbca;
+  --line: #cabfa8;
+  --text: #23201b;
+  --muted: #6f6757;
+  --accent: #b4372a;
+  --accent-strong: #8f2a20;
+  --danger: #8f2a20;
+  --ok: #4a7a4a;
+  --warn: #a5762a;
+  --on-accent: #f7f2e8;
+  --logo-accent: #b4372a;
+  --nav-bg: rgba(239, 233, 220, 0.96);
+  --font-display: 'Yu Mincho', 'YuMincho', '游明朝', 'Hiragino Mincho ProN', 'ヒラギノ明朝 ProN',
+    'Noto Serif JP', serif;
+  color-scheme: light;
+}
+
+/* 夜間・暗所向けの紺地＋シアン。 */
+:root[data-theme='midnight'] {
+  --bg: #0b1020;
+  --surface: #141b30;
+  --surface-2: #1d2740;
+  --line: #2e3b5c;
+  --text: #e6ecff;
+  --muted: #8b9ac4;
+  --accent: #5cc8ff;
+  --accent-strong: #8ad9ff;
+  --danger: #ff6b81;
+  --ok: #5ce1a6;
+  --warn: #ffc75c;
+  --on-accent: #08111f;
+  --logo-accent: #5cc8ff;
+  --nav-bg: rgba(11, 16, 32, 0.96);
+}
+
+/* 深緑と抹茶。落ち着いた低彩度のダーク。 */
+:root[data-theme='matcha'] {
+  --bg: #101711;
+  --surface: #17201a;
+  --surface-2: #1f2b22;
+  --line: #2f4034;
+  --text: #e8f2e4;
+  --muted: #93ac96;
+  --accent: #a8c545;
+  --accent-strong: #c1dc63;
+  --danger: #e2735f;
+  --ok: #7fbf7f;
+  --warn: #e8c05c;
+  --on-accent: #131a13;
+  --logo-accent: #a8c545;
+  --nav-bg: rgba(16, 23, 17, 0.96);
+}
+
 * {
   box-sizing: border-box;
 }

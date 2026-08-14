@@ -291,7 +291,18 @@ export interface ScoreWeights {
   flavorDummyPenalty: number;
 }
 
-export type ThemeName = 'classic' | 'hud';
+export type ThemeName = 'classic' | 'hud' | 'light' | 'paper' | 'midnight' | 'matcha';
+
+// ─── 機材 ─────────────────────────────────
+export type GearKind = 'kettle' | 'mill';
+
+/** 設定画面で登録するケトル・ミル。レシピの挽き目メモなどと紐づけて使う。 */
+export interface Gear {
+  id: string;
+  kind: GearKind;
+  name: string;
+  note?: string;
+}
 
 /** レシピ登録フォームの初期値。 */
 export interface RecipeDefaults {
