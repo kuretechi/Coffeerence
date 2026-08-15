@@ -204,7 +204,7 @@ export function TimerScreen() {
             {active.index === undefined ? null : (
               <>
                 <div>
-                  <dt>注ぐ</dt>
+                  <dt>湯量</dt>
                   <dd className="mono">{active.waterG}g</dd>
                 </div>
                 <div>
