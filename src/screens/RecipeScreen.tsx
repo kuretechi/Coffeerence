@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { Banner, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -99,6 +99,7 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -152,12 +153,19 @@ export function RecipeScreen() {
   function startEdit(recipe: Recipe) {
     setEditingId(recipe.id);
     setDraft(draftOf(recipe));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setSheetOpen(true);
   }
 
   function cancelEdit() {
     setEditingId(undefined);
     setDraft(emptyDraft(defaults));
+    setSheetOpen(false);
+  }
+
+  function startCreate() {
+    setEditingId(undefined);
+    setDraft(emptyDraft(defaults));
+    setSheetOpen(true);
   }
 
   async function add() {
@@ -186,157 +194,197 @@ export function RecipeScreen() {
     await saveRecipe(recipe);
     setEditingId(undefined);
     setDraft(emptyDraft(defaults));
+    setSheetOpen(false);
   }
 
-  return (
-    <>
-      <Card
-        title={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
-        hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。"
-      >
-        <div className="stack">
-          <Field label="レシピ名">
-            <input
-              value={draft.name}
-              placeholder="例: 中細 92℃ 1:16"
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-            />
-          </Field>
-          <div className="row">
-            <NumberField
-              label="粉量"
-              suffix="g"
-              step={0.1}
-              min={0}
-              value={draft.doseG}
-              onChange={(doseG) => setDraft({ ...draft, doseG })}
-            />
-            <NumberField
-              label="初期湯温"
-              suffix="℃"
-              step={1}
-              min={0}
-              value={draft.waterTempC}
-              onChange={setInitialTemp}
-            />
-          </div>
-          <div className="row">
-            <Field label="挽き目">
-              <input
-                value={draft.grindSetting}
-                placeholder="例: 中細 / ダイヤル 18"
-                onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
-              />
-            </Field>
-            <Field label="ドリッパー">
-              <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="pour-editor">
-            <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
-            <div className="stack">
-              {draft.pours.map((pour, index) => (
-                <div className="row pour-row" key={index}>
-                  <span className="pour-index">{index + 1}投目</span>
-                  <NumberField
-                    label="累計"
-                    suffix="g"
-                    step={1}
-                    min={0}
-                    value={pour.targetG}
-                    onChange={(targetG) => setPour(index, { targetG })}
-                  />
-                  <NumberField
-                    label="開始"
-                    suffix="秒"
-                    step={5}
-                    min={0}
-                    value={pour.atSec}
-                    onChange={(atSec) => setPour(index, { atSec })}
-                  />
-                  <NumberField
-                    label="湯温"
-                    suffix="℃"
-                    step={1}
-                    min={0}
-                    value={pour.waterTempC}
-                    onChange={(waterTempC) => setPour(index, { waterTempC })}
-                  />
-                  <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
-                    削除
-                  </button>
-                </div>
-              ))}
-              <div className="row between">
-                <button type="button" onClick={addPour}>
-                  投を追加
-                </button>
-                <span className="muted mono">総湯量 {totalWaterG}g</span>
-              </div>
-            </div>
-          </fieldset>
-          <NumberField
-            label="抽出終了（落ち切り）"
-            suffix="秒"
-            step={5}
-            min={0}
-            value={draft.finishSec}
-            onChange={(finishSec) => setDraft({ ...draft, finishSec })}
+  const form = (
+    <div className="stack">
+      <Field label="レシピ名">
+        <input
+          value={draft.name}
+          placeholder="例: 中細 92℃ 1:16"
+          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+        />
+      </Field>
+      <div className="row">
+        <NumberField
+          label="粉量"
+          suffix="g"
+          step={0.1}
+          min={0}
+          value={draft.doseG}
+          onChange={(doseG) => setDraft({ ...draft, doseG })}
+        />
+        <NumberField
+          label="初期湯温"
+          suffix="℃"
+          step={1}
+          min={0}
+          value={draft.waterTempC}
+          onChange={setInitialTemp}
+        />
+      </div>
+      <div className="row">
+        <Field label="挽き目">
+          <input
+            value={draft.grindSetting}
+            placeholder="例: 中細 / ダイヤル 18"
+            onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
           />
-          <div className="row">
-            <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
-              {editing ? 'レシピを更新' : 'レシピを登録'}
-            </button>
-            {editing ? (
-              <button type="button" onClick={cancelEdit}>
-                編集をやめる
+        </Field>
+        <Field label="ドリッパー">
+          <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
+        </Field>
+      </div>
+      <fieldset className="pour-editor">
+        <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
+        <div className="stack">
+          {draft.pours.map((pour, index) => (
+            <div className="row pour-row" key={index}>
+              <span className="pour-index">{index + 1}投目</span>
+              <NumberField
+                label="累計"
+                suffix="g"
+                step={1}
+                min={0}
+                value={pour.targetG}
+                onChange={(targetG) => setPour(index, { targetG })}
+              />
+              <NumberField
+                label="開始"
+                suffix="秒"
+                step={5}
+                min={0}
+                value={pour.atSec}
+                onChange={(atSec) => setPour(index, { atSec })}
+              />
+              <NumberField
+                label="湯温"
+                suffix="℃"
+                step={1}
+                min={0}
+                value={pour.waterTempC}
+                onChange={(waterTempC) => setPour(index, { waterTempC })}
+              />
+              <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
+                削除
               </button>
-            ) : null}
+            </div>
+          ))}
+          <div className="row between">
+            <button type="button" onClick={addPour}>
+              投を追加
+            </button>
+            <span className="muted mono">総湯量 {totalWaterG}g</span>
           </div>
         </div>
-      </Card>
+      </fieldset>
+      <NumberField
+        label="抽出終了（落ち切り）"
+        suffix="秒"
+        step={5}
+        min={0}
+        value={draft.finishSec}
+        onChange={(finishSec) => setDraft({ ...draft, finishSec })}
+      />
+      <div className="row">
+        <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
+          {editing ? 'レシピを更新' : 'レシピを登録'}
+        </button>
+        {editing ? (
+          <button type="button" onClick={cancelEdit}>
+            編集をやめる
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
 
-      <Card title="登録済みレシピ" hint="レシピ名をタップすると詳細が見られます。">
-        {recipes.length === 0 ? (
-          <Banner>まだレシピがありません。</Banner>
-        ) : (
-          <div className="stack">
-            {recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item recipe-item">
-                <button
-                  className="log-summary"
-                  type="button"
-                  aria-expanded={openId === recipe.id}
-                  onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
-                >
-                  <strong>{recipe.name}</strong>
-                </button>
+  return (
+    <div className="recipe-dense">
+      <div className="recipe-dense-toolbar">
+        <button className="primary" type="button" onClick={startCreate}>
+          新規レシピ
+        </button>
+        <span className="muted mono">{recipes.length}件</span>
+      </div>
 
-                {openId === recipe.id ? (
-                  <>
-                    <RecipeDetail recipe={recipe} />
-                    <div className="row">
-                      <button type="button" onClick={() => startEdit(recipe)}>
-                        編集
-                      </button>
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={() => {
-                          if (recipe.id === editingId) cancelEdit();
-                          void deleteRecipe(recipe.id);
-                        }}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            ))}
+      {recipes.length === 0 ? (
+        <Banner>まだレシピがありません。</Banner>
+      ) : (
+        <div className="recipe-dense-list">
+          <div className="recipe-dense-line recipe-dense-head" aria-hidden="true">
+            <span>レシピ名</span>
+            <span>粉量</span>
+            <span>湯温</span>
+            <span>総湯量</span>
+            <span>時間</span>
           </div>
-        )}
-      </Card>
-    </>
+          {recipes.map((recipe) => (
+            <div
+              key={recipe.id}
+              className={openId === recipe.id ? 'recipe-dense-row selected' : 'recipe-dense-row'}
+            >
+              <button
+                className="recipe-dense-line"
+                type="button"
+                aria-expanded={openId === recipe.id}
+                onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
+              >
+                <span className="recipe-dense-name">{recipe.name}</span>
+                <span className="mono">{recipe.doseG}g</span>
+                <span className="mono">{recipe.waterTempC}℃</span>
+                <span className="mono">{recipe.totalWaterG}g</span>
+                <span className="mono">
+                  {recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}
+                </span>
+              </button>
+
+              {openId === recipe.id ? (
+                <div className="recipe-dense-detail">
+                  <RecipeDetail recipe={recipe} />
+                  <div className="row">
+                    <button type="button" onClick={() => startEdit(recipe)}>
+                      編集
+                    </button>
+                    <button
+                      className="danger"
+                      type="button"
+                      onClick={() => {
+                        if (recipe.id === editingId) cancelEdit();
+                        void deleteRecipe(recipe.id);
+                      }}
+                    >
+                      削除
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {sheetOpen ? (
+        <>
+          <button className="recipe-dense-scrim" type="button" aria-label="閉じる" onClick={cancelEdit} />
+          <div
+            className="recipe-dense-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
+          >
+            <div className="recipe-dense-sheet-head">
+              <strong>{editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}</strong>
+              <button className="recipe-dense-close" type="button" aria-label="閉じる" onClick={cancelEdit}>
+                ×
+              </button>
+            </div>
+            <p className="recipe-dense-hint">淹れる条件を登録します。タイマーで計測するときにここから選びます。</p>
+            {form}
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
