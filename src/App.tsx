@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useSettings } from './ui/data';
+import { useCustomChime } from './ui/useTimer';
 import { Logo } from './ui/Logo';
 import { TabIcon } from './ui/TabIcon';
 import type { TabIconName } from './ui/TabIcon';
@@ -25,6 +26,8 @@ export function App() {
   const settings = useSettings();
   // レシピ画面以外は本文を広く使いたいので、ロゴを小さくする。
   const compactHeader = useLocation().pathname !== '/';
+
+  useCustomChime();
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;

@@ -40,7 +40,7 @@ export function RehearsalScreen() {
     if (phase === 'idle' || phase === 'done') return;
     if (remaining > 0) return;
     const elapsed = Math.round(stopwatch.elapsed);
-    chime(settings.soundEnabled);
+    chime(settings.soundEnabled, settings.soundId);
     if (phase === 'prep') {
       setActuals((a) => ({ ...a, prep: elapsed }));
       setPhase('brew');
