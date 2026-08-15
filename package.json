@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "slides": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --preview",
     "slides:watch": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --watch -o docs/slides/dist/coffeerence.html",
-    "slides:pdf": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --pdf --allow-local-files -o docs/slides/dist/coffeerence.pdf",
+    "slides:pdf": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --pdf --allow-local-files -o docs/slides/coffeerence.pdf",
     "slides:png": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --images png --allow-local-files -o docs/slides/dist/coffeerence.png"
   },
   "dependencies": {

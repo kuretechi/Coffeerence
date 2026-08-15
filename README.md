@@ -77,9 +77,12 @@ Marp（Markdown）で書いています。1スライド1テーマ、発表 8 分
 ```sh
 npm run slides       # ブラウザでプレビュー
 npm run slides:watch # HTML を書き出して自動更新
-npm run slides:pdf   # docs/slides/dist/coffeerence.pdf
-npm run slides:png   # 1枚ずつ PNG
+npm run slides:pdf   # docs/slides/coffeerence.pdf を更新（原稿を直したら毎回これを実行してコミットする）
+npm run slides:png   # 1枚ずつ PNG（docs/slides/dist/、追跡しない）
 ```
+
+書き出した PDF [docs/slides/coffeerence.pdf](docs/slides/coffeerence.pdf) はリポジトリに置いてあります。
+原稿や見た目を変えた PR で PDF を更新し忘れていると CI（`slides` ジョブ）が落ちます。
 
 VS Code なら拡張「Marp for VS Code」でそのままプレビューできます。
 
