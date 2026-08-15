@@ -385,6 +385,15 @@ input.slider {
   gap: 8px;
 }
 
+/* オクターブ数の選択が横幅を占めて「閉じる」を押し出さないようにする。 */
+.keyboard-full-bar select {
+  width: auto;
+}
+
+.keyboard-full-bar button {
+  white-space: nowrap;
+}
+
 .keyboard {
   position: relative;
   height: 100%;
