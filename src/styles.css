@@ -1687,3 +1687,28 @@ table button {
     display: none;
   }
 }
+
+/* 統計タブ: 要因・水準ペアの切り替えチップ */
+.stats-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.stats-chip {
+  flex: none;
+  padding: 6px 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.stats-chip.active {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  color: var(--accent-strong);
+}
