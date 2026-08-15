@@ -54,6 +54,11 @@ export function useRecipes(): Recipe[] {
   return useLiveQuery(() => db.recipes.toArray(), [], []) ?? [];
 }
 
+/** 読み込み中は undefined。存在しないIDを判定したいときに使う。 */
+export function useLoadedRecipes(): Recipe[] | undefined {
+  return useLiveQuery(() => db.recipes.toArray(), [], undefined);
+}
+
 export function useBrews(): BrewRecord[] {
   return useLiveQuery(() => db.brews.orderBy('date').reverse().toArray(), [], []) ?? [];
 }

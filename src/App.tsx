@@ -6,6 +6,7 @@ import { Logo } from './ui/Logo';
 import { TabIcon } from './ui/TabIcon';
 import type { TabIconName } from './ui/TabIcon';
 import { RecipeScreen } from './screens/RecipeScreen';
+import { RecipeViewScreen } from './screens/RecipeViewScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -45,6 +46,7 @@ export function App() {
 
       <Routes>
         <Route path="/" element={<RecipeScreen />} />
+        <Route path="/recipes/:recipeId" element={<RecipeViewScreen />} />
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
         <Route path="/friends" element={<FriendsScreen />} />
