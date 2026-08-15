@@ -601,12 +601,12 @@ table button {
   font-weight: 700;
 }
 
-/* 進捗リングと「いま注ぐ投」の大カードを組み合わせたタイマー画面。 */
-.timer-stage {
+/* 重量ファーストのタイマー画面（案L）。中心は目標累計gと水位ゲージ、時間は上部の細いタイムライン。 */
+.timer-scale-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .timer-stage-recipe {
@@ -620,168 +620,217 @@ table button {
   text-align: center;
 }
 
-.timer-stage-ring {
-  position: relative;
-  width: min(56vw, 232px);
-  aspect-ratio: 1;
-}
-
-.timer-stage-ring svg {
+.timer-line {
   width: 100%;
-  height: 100%;
-}
-
-.ring-track,
-.ring-value {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.ring-track {
-  stroke: var(--line);
-}
-
-.ring-value {
-  stroke: var(--accent);
-  transition: stroke-dashoffset 0.2s linear;
-}
-
-.timer-stage-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-  padding: 0 18%;
-}
-
-.timer-stage-elapsed {
-  font-size: clamp(32px, 11vw, 48px);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-strong);
-}
-
-.timer-stage-headline {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.timer-stage-remain {
-  font-size: 13px;
-}
-
-.timer-next-card {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 14px 16px 16px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius-l);
-  background: var(--surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.timer-next-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
   gap: 8px;
 }
 
-.timer-next-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.timer-line-elapsed {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
   color: var(--accent-strong);
 }
 
-.timer-next-at {
+.timer-line-end {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.timer-next-title {
-  margin: 0;
-  font-size: 16px;
+.timer-line-track {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.timer-line-value {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+
+.timer-line-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--muted);
+}
+
+.timer-line-tick.past {
+  background: var(--accent-strong);
+}
+
+.timer-scale-main {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  align-items: stretch;
+  gap: 16px;
+}
+
+.timer-scale-gauge {
+  position: relative;
+  height: 188px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.timer-scale-base,
+.timer-scale-add {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.timer-scale-base {
+  bottom: 0;
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.timer-scale-add {
+  background: var(--accent);
+}
+
+.timer-scale-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+}
+
+.timer-scale-read {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.timer-scale-label {
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong);
 }
 
-.timer-next-index {
-  font-size: 40px;
+.timer-scale-target {
+  font-size: clamp(48px, 17vw, 68px);
+  font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  margin-right: 4px;
-  color: var(--accent-strong);
 }
 
-.timer-next-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.timer-next-grid dt {
-  font-size: 11px;
+.timer-scale-target small {
+  font-size: 0.36em;
+  margin-left: 2px;
   color: var(--muted);
 }
 
-.timer-next-grid dd {
-  margin: 2px 0 0;
-  font-size: 22px;
+.timer-scale-delta {
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.timer-next-done {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
+.timer-scale-note {
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-.timer-queue {
+.timer-scale-steps {
   list-style: none;
   margin: 0;
   padding: 0;
   width: 100%;
   display: flex;
-  flex-direction: column;
   gap: 6px;
 }
 
-.timer-queue li {
-  display: grid;
-  grid-template-columns: 52px 1fr auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 6px 12px;
+.timer-scale-step {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 48px;
+  padding: 5px 2px;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: transparent;
-  opacity: 0.75;
+  opacity: 0.6;
 }
 
-.timer-queue-time {
-  font-size: 12px;
+.timer-scale-step.past {
+  opacity: 0.9;
 }
 
-.timer-queue-main {
-  font-size: 14px;
+.timer-scale-step.current {
+  opacity: 1;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+
+.timer-scale-step-index {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.timer-scale-step.current .timer-scale-step-index {
+  color: var(--accent-strong);
   font-weight: 700;
 }
 
-.timer-queue-sub {
-  font-size: 12px;
+.timer-scale-step-g {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-scale-step-add {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-scale-detail {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
+}
+
+.timer-scale-detail-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.timer-scale-detail-grid dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.timer-scale-detail-grid dd {
+  margin: 1px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .timer-stage-actions {

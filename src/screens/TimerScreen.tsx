@@ -8,9 +8,6 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-const RING_R = 132;
-const RING_C = 2 * Math.PI * RING_R;
-
 export function TimerScreen() {
   const recipes = useRecipes();
   const settings = useSettings();
@@ -27,12 +24,12 @@ export function TimerScreen() {
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
 
-  // リングは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
-  const segmentStart = progress.current?.startSec ?? 0;
-  const segmentEnd = progress.next?.startSec ?? finishSec ?? segmentStart;
-  const segmentLength = Math.max(segmentEnd - segmentStart, 1);
-  const ratio = Math.min(Math.max((stopwatch.elapsed - segmentStart) / segmentLength, 0), 1);
+  const segmentEnd = progress.next?.startSec ?? finishSec ?? stopwatch.elapsed;
   const remainSec = Math.max(segmentEnd - stopwatch.elapsed, 0);
+
+  /** タイムラインの右端。抽出終了があればそこ、なければ最後の投。 */
+  const timelineEnd = Math.max(finishSec ?? pours[pours.length - 1]?.startSec ?? 0, 1);
+  const timelineRatio = Math.min(stopwatch.elapsed / timelineEnd, 1);
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
   function tempOf(pour: Pour | undefined): number {
@@ -76,25 +73,19 @@ export function TimerScreen() {
     navigate('/log');
   }
 
-  const headline = finished
-    ? '抽出終了'
-    : pours.length === 0
-    ? '注湯の内訳なし'
-    : !stopwatch.running && stopwatch.elapsed === 0
-    ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
-    : progress.current
-    ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
-    : `まもなく 1投目`;
-
-  // 大カードは「いま注ぐ投」を映す。開始前は1投目、注ぎ終えたら終了の案内に切り替える。
+  // 重量ファースト。中心は「いま何gまで注ぐか」で、時間は補助情報に降格する。
   const focus = progress.current ?? pours[0];
   const focusIndex = pours.findIndex((pour) => pour.index === focus?.index);
   const focusWaterG = focusIndex < 0 ? 0 : steps[focusIndex]?.waterG ?? 0;
-  const upcoming = focusIndex < 0 ? [] : pours.slice(focusIndex + 1);
   const focusDone = finished || (progress.current !== undefined && progress.next === undefined);
+  const totalG = Math.max(pours[pours.length - 1]?.targetG ?? 0, 1);
+  const targetG = focus?.targetG ?? 0;
+  const baseG = Math.round((targetG - focusWaterG) * 10) / 10;
+  const basePct = Math.min((baseG / totalG) * 100, 100);
+  const addPct = Math.min((focusWaterG / totalG) * 100, 100 - basePct);
 
   return (
-    <div className="timer-stage">
+    <div className="timer-scale-stage">
       {recipes.length === 0 ? (
         <Banner>先にレシピを登録してください。</Banner>
       ) : (
@@ -112,99 +103,114 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-stage-ring">
-        <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
-          <circle className="ring-track" cx="150" cy="150" r={RING_R} />
-          <circle
-            className="ring-value"
-            cx="150"
-            cy="150"
-            r={RING_R}
-            strokeDasharray={RING_C}
-            strokeDashoffset={RING_C * (1 - ratio)}
-            transform="rotate(-90 150 150)"
-          />
-        </svg>
-        <div className="timer-stage-center">
-          <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
-          <span className="timer-stage-headline">{headline}</span>
-          {pours.length > 0 ? null : (
-            <span className="timer-stage-remain muted">
-              {finished
-                ? '抽出終了です'
-                : finishSec === undefined
-                ? '注湯完了'
-                : `抽出終了まで ${formatSeconds(remainSec)}`}
-            </span>
-          )}
+      <div className="timer-line" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
+        <span className="timer-line-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
+        <div className="timer-line-track">
+          <div className="timer-line-value" style={{ width: `${timelineRatio * 100}%` }} />
+          {pours.map((pour) => (
+            <span
+              key={pour.index}
+              className={`timer-line-tick${stopwatch.elapsed >= pour.startSec ? ' past' : ''}`}
+              style={{ left: `${Math.min((pour.startSec / timelineEnd) * 100, 100)}%` }}
+            />
+          ))}
         </div>
+        <span className="timer-line-end mono muted">{formatSeconds(timelineEnd)}</span>
       </div>
 
       {pours.length === 0 ? (
-        recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
+        recipe ? (
+          <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
+        ) : null
       ) : (
         <>
-          {focus === undefined ? null : (
-            <section className="timer-next-card" aria-live="polite">
-              <header className="timer-next-head">
-                <span className="timer-next-label">{focusDone ? 'このあと' : 'いま注ぐ'}</span>
-                <span className="timer-next-at mono muted">{formatSeconds(focus.startSec)}〜</span>
-              </header>
+          <div className="timer-scale-main" aria-live="polite">
+            <div
+              className="timer-scale-gauge"
+              role="img"
+              aria-label={`累計 ${totalG}g のうち ${targetG}g まで`}
+            >
+              <div className="timer-scale-base" style={{ height: `${basePct}%` }} />
+              {focusDone ? null : (
+                <div className="timer-scale-add" style={{ bottom: `${basePct}%`, height: `${addPct}%` }} />
+              )}
+              {pours.map((pour) => (
+                <span
+                  key={pour.index}
+                  className="timer-scale-mark"
+                  style={{ bottom: `${Math.min((pour.targetG / totalG) * 100, 100)}%` }}
+                />
+              ))}
+            </div>
+            <div className="timer-scale-read">
               {focusDone ? (
-                <p className="timer-next-done">
-                  {finished
-                    ? '抽出終了です。ドリッパーを外してください。'
-                    : finishSec === undefined
-                    ? '注湯は完了です。落ち切りを待ちます。'
-                    : `落ち切りまで あと ${formatSeconds(remainSec)}`}
-                </p>
+                <>
+                  <span className="timer-scale-label">注湯完了</span>
+                  <span className="timer-scale-target mono">
+                    {totalG}
+                    <small>g</small>
+                  </span>
+                  <span className="timer-scale-note">
+                    {finished
+                      ? '抽出終了です。ドリッパーを外してください。'
+                      : finishSec === undefined
+                      ? '落ち切りを待ちます。'
+                      : `落ち切りまで あと ${formatSeconds(remainSec)}`}
+                  </span>
+                </>
               ) : (
                 <>
-                  <p className="timer-next-title">
-                    <strong className="timer-next-index">{focus.index}</strong>投目
-                  </p>
-                  <dl className="timer-next-grid">
-                    <div>
-                      <dt>この投</dt>
-                      <dd className="mono">{focusWaterG}g</dd>
-                    </div>
-                    <div>
-                      <dt>累計まで</dt>
-                      <dd className="mono">{focus.targetG}g</dd>
-                    </div>
-                    <div>
-                      <dt>湯温</dt>
-                      <dd className="mono">{tempOf(focus)}℃</dd>
-                    </div>
-                    <div>
-                      <dt>{progress.next ? '次まで' : '終了まで'}</dt>
-                      <dd className="mono">{formatSeconds(remainSec)}</dd>
-                    </div>
-                  </dl>
+                  <span className="timer-scale-label">スケールを {focus?.index}投目 の目標まで</span>
+                  <span className="timer-scale-target mono">
+                    {targetG}
+                    <small>g</small>
+                  </span>
+                  <span className="timer-scale-delta mono">
+                    {baseG}g から +{focusWaterG}g
+                  </span>
                 </>
               )}
-            </section>
-          )}
+            </div>
+          </div>
 
-          {upcoming.length === 0 && (finishSec === undefined || finished) ? null : (
-            <ol className="timer-queue">
-              {upcoming.map((pour) => (
-                <li key={pour.index}>
-                  <span className="timer-queue-time mono muted">{formatSeconds(pour.startSec)}</span>
-                  <span className="timer-queue-main">{pour.index}投目</span>
-                  <span className="timer-queue-sub mono muted">
-                    {steps[pours.findIndex((item) => item.index === pour.index)]?.waterG ?? 0}g / {tempOf(pour)}℃
-                  </span>
+          <ol className="timer-scale-steps">
+            {pours.map((pour, index) => {
+              const state = focus && pour.index === focus.index && !focusDone
+                ? ' current'
+                : stopwatch.elapsed >= pour.startSec
+                ? ' past'
+                : '';
+              return (
+                <li key={pour.index} className={`timer-scale-step${state}`}>
+                  <span className="timer-scale-step-index">{pour.index}</span>
+                  <span className="timer-scale-step-g mono">{pour.targetG}g</span>
+                  <span className="timer-scale-step-add mono muted">+{steps[index]?.waterG ?? 0}</span>
                 </li>
-              ))}
-              {finishSec === undefined || finished ? null : (
-                <li>
-                  <span className="timer-queue-time mono muted">{formatSeconds(finishSec)}</span>
-                  <span className="timer-queue-main">終了</span>
-                  <span className="timer-queue-sub mono muted">落ち切り</span>
-                </li>
-              )}
-            </ol>
+              );
+            })}
+          </ol>
+
+          {focus === undefined || focusDone ? null : (
+            <section className="timer-scale-detail">
+              <dl className="timer-scale-detail-grid">
+                <div>
+                  <dt>湯温</dt>
+                  <dd className="mono">{tempOf(focus)}℃</dd>
+                </div>
+                <div>
+                  <dt>この投の開始</dt>
+                  <dd className="mono">{formatSeconds(focus.startSec)}</dd>
+                </div>
+                <div>
+                  <dt>{progress.next ? '次の投まで' : '終了まで'}</dt>
+                  <dd className="mono">{formatSeconds(remainSec)}</dd>
+                </div>
+                <div>
+                  <dt>{progress.next ? '次の目標' : '最終累計'}</dt>
+                  <dd className="mono">{(progress.next ?? focus).targetG}g</dd>
+                </div>
+              </dl>
+            </section>
           )}
         </>
       )}
