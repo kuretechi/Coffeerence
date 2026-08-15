@@ -101,31 +101,70 @@ export function primeAudio(enabled: boolean): void {
   }
 }
 
-/** 鈴の倍音比。基音とこの比の部分音を重ねると「チーン」に近い響きになる。 */
+/**
+ * 卓上ベル（レストランの呼び鈴）の部分音。金属の響きは倍音が整数比から外れ、
+ * 高い部分音のほうが速く減衰するため、比・音量・減衰の長さを個別に持たせる。
+ * detune は同じ部分音をわずかにずらして「うなり」を作り、金属らしい揺れを出す。
+ */
 const BELL_PARTIALS = [
-  { ratio: 1, level: 1 },
-  { ratio: 2.76, level: 0.5 },
-  { ratio: 5.4, level: 0.25 },
+  { ratio: 1, level: 1, decay: 1, detune: 0 },
+  { ratio: 2.02, level: 0.62, decay: 0.78, detune: 1.6 },
+  { ratio: 2.79, level: 0.42, decay: 0.6, detune: -2.4 },
+  { ratio: 4.16, level: 0.24, decay: 0.42, detune: 3.1 },
+  { ratio: 5.43, level: 0.16, decay: 0.3, detune: -3.6 },
+  { ratio: 7.11, level: 0.09, decay: 0.2, detune: 4.2 },
 ];
 
+/** 撞木が当たる瞬間の金属音。短い帯域ノイズで「カン」という立ち上がりを足す。 */
+function strike(ctx: AudioContext, destination: AudioNode, frequency: number, now: number): void {
+  const length = Math.floor(ctx.sampleRate * 0.02);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) samples[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = frequency * 3;
+  band.Q.value = 1.2;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.12;
+  source.connect(band);
+  band.connect(gain);
+  gain.connect(destination);
+  source.start(now);
+  source.stop(now + 0.02);
+}
+
 /** 「チーン」と一度鳴らす合図（音声ファイル不要）。 */
-export function chime(enabled: boolean, frequency = 2093, durationMs = 500): void {
+export function chime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
     if (!ctx) return;
     const now = ctx.currentTime;
-    const end = now + durationMs / 1000;
+    const seconds = durationMs / 1000;
+    // 高域の刺さりを抑えて、器を叩いたような丸い響きにする。
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = frequency * 8;
+    const master = ctx.createGain();
+    master.gain.value = 0.5;
+    tone.connect(master);
+    master.connect(ctx.destination);
+    strike(ctx, master, frequency, now);
     for (const partial of BELL_PARTIALS) {
+      const end = now + seconds * partial.decay;
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
       oscillator.type = 'sine';
       oscillator.frequency.value = frequency * partial.ratio;
+      oscillator.detune.value = partial.detune;
       oscillator.connect(gain);
-      gain.connect(ctx.destination);
-      // 立ち上がりは鋭く、その後は指数的に減衰させて余韻を残す。
+      gain.connect(tone);
+      // 立ち上がりは鋭く、その後は指数的に減衰させて余韻を長く残す。
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.18 * partial.level, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.2 * partial.level, now + 0.006);
       gain.gain.exponentialRampToValueAtTime(0.0001, end);
       oscillator.start(now);
       oscillator.stop(end);
@@ -137,7 +176,7 @@ export function chime(enabled: boolean, frequency = 2093, durationMs = 500): voi
 }
 
 /** 「チーン、チーン」と2回鳴らす合図。 */
-export function doubleChime(enabled: boolean, frequency = 2093, durationMs = 500): void {
+export function doubleChime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
   chime(enabled, frequency, durationMs);
-  window.setTimeout(() => chime(enabled, frequency, durationMs), 260);
+  window.setTimeout(() => chime(enabled, frequency, durationMs), 420);
 }
