@@ -103,11 +103,15 @@ function mediaMimeType(file: File): string {
   return byExtension[extension] ?? 'audio/mpeg';
 }
 
-/** アップロードした合図音を端末内に保存し、その置き場を選択状態にする。 */
-export async function saveCustomSound(file: File, slot: SoundSlot = 'custom'): Promise<void> {
+/**
+ * アップロードした合図音を端末内に保存し、その置き場を選択状態にする。
+ * audio を渡すと、その中身（動画から取り出した音声）を元ファイルの代わりに保存する。
+ */
+export async function saveCustomSound(file: File, slot: SoundSlot = 'custom', audio?: Blob): Promise<void> {
   // File はディスク上の実体への参照なので、そのまま保存すると端末側で
   // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
-  const blob = new Blob([await file.arrayBuffer()], { type: mediaMimeType(file) });
+  const source = audio ?? file;
+  const blob = new Blob([await source.arrayBuffer()], { type: audio ? audio.type : mediaMimeType(file) });
   await db.sounds.put({ id: slot, name: file.name, blob });
   const settings = await getSettings();
   await saveSettings(

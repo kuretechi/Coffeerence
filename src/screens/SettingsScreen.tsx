@@ -19,6 +19,7 @@ import {
   canDecodeChime,
   chime,
   doubleChime,
+  extractAudioTrack,
   primeAudio,
   setCustomChime,
 } from '../ui/useTimer';
@@ -345,14 +346,17 @@ function SoundPicker({
   }
 
   async function upload(file: File) {
-    // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
-    if (!(await canDecodeChime(file))) {
+    // 動画は映像を持たず、音声トラックだけを wav にして保存する。
+    const audio = await extractAudioTrack(file);
+    // 鳴らせない形式を黙って受け入れないよう、保存前に鳴るか確かめる。
+    if (!audio && !(await canDecodeChime(file))) {
       setMessage(`${file.name} はこの端末で再生できません。別の音声ファイルか動画を選んでください。`);
       return;
     }
-    await saveCustomSound(file, slot);
+    const sound = audio ?? file;
+    await saveCustomSound(file, slot, audio);
     // 保存の反映を待たずに鳴らせるよう、この場でも登録しておく。
-    setCustomChime(slot, file, `${file.name}:${file.size}`);
+    setCustomChime(slot, sound, `${file.name}:${sound.size}`);
     setMessage(`${file.name} を${label}にしました。`);
     playPreview(slot);
   }
