@@ -5,3 +5,7 @@ export type { DuplicatePair, ReliabilityResult } from './reliability';
 export { estimateSigma } from './reliability';
 export type { TriangleTestResult } from './triangle';
 export { evaluateTriangleTests } from './triangle';
+export type { BradleyTerryResult, ComparisonResult, LatentScore, PairwiseComparison } from './bradleyTerry';
+export { RESULT_WIN_SHARE_A, fitBradleyTerry } from './bradleyTerry';
+export type { EffectResult, Observation } from './effect';
+export { estimateEffect } from './effect';
