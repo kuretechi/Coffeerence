@@ -14,6 +14,7 @@ import type {
   RehearsalRecord,
   Session,
   Settings,
+  StoredMidi,
   StoredSound,
   TriangleTrial,
 } from '../domain/types';
@@ -36,6 +37,7 @@ export class CoffeerenceDb extends Dexie {
   sounds!: Table<StoredSound, string>;
   loopSounds!: Table<LoopSound, string>;
   beatPatterns!: Table<BeatPattern, string>;
+  midis!: Table<StoredMidi, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -94,6 +96,10 @@ export class CoffeerenceDb extends Dexie {
     this.version(9).stores({
       mixerBoards: null,
       beatPatterns: 'id',
+    });
+    // アップロードした MIDI。
+    this.version(10).stores({
+      midis: 'id, createdAt',
     });
   }
 }

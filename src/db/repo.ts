@@ -17,6 +17,7 @@ import type {
   Settings,
   SharedRecipe,
   SoundSlot,
+  StoredMidi,
   TriangleTrial,
 } from '../domain/types';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
@@ -135,6 +136,22 @@ export async function saveCustomSound(file: File, slot: SoundSlot = 'custom', au
       : { ...settings, finishSoundId: slot, finishCustomSoundName: name },
   );
   return name;
+}
+
+/** アップロードした MIDI を端末内に保存する。 */
+export async function saveMidi(file: File): Promise<StoredMidi> {
+  const midi: StoredMidi = {
+    id: uid('midi'),
+    name: file.name.replace(/\.[^.]+$/, '') || 'MIDI',
+    createdAt: new Date().toISOString(),
+    blob: new Blob([await file.arrayBuffer()], { type: 'audio/midi' }),
+  };
+  await db.midis.put(midi);
+  return midi;
+}
+
+export async function deleteMidi(id: string): Promise<void> {
+  await db.midis.delete(id);
 }
 
 /** アップロードした合図音を捨て、既定の選択に戻す。 */

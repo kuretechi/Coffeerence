@@ -6,10 +6,19 @@ import {
   useCustomSound,
   useGear,
   useLoadedSettings,
+  useMidis,
   useRecipes,
   useSettings,
 } from '../ui/data';
-import { deleteCustomSound, deleteGear, saveCustomSound, saveGear, saveSettings } from '../db/repo';
+import {
+  deleteCustomSound,
+  deleteGear,
+  deleteMidi,
+  saveCustomSound,
+  saveGear,
+  saveMidi,
+  saveSettings,
+} from '../db/repo';
 import {
   CHIME_SOUNDS,
   CUSTOM_FINISH_SOUND_ID,
@@ -24,6 +33,7 @@ import {
   chime,
   extractAudioTrack,
   hasReverb,
+  playSong,
   primeAudio,
   reverbAmount,
   setCustomChime,
@@ -31,6 +41,7 @@ import {
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
+import { MAX_NOTES, parseMidi, type MidiSong } from '../lib/midi';
 import type {
   GearKind,
   RecipeDefaults,
@@ -193,6 +204,11 @@ export function SettingsScreen() {
         />
       </Card>
 
+      <MidiCard
+        effect={settings.soundEffect ?? 'none'}
+        reverb={reverbAmount(settings.soundEffect ?? 'none', settings.soundReverb)}
+      />
+
       <Card title="データ" hint="すべてこの端末の IndexedDB に保存されています。アカウントもクラウド同期もありません。">
         {message ? <Banner>{message}</Banner> : null}
         <div className="row">
@@ -250,6 +266,150 @@ function SignOutCard() {
           ログアウトする
         </button>
       </div>
+    </Card>
+  );
+}
+
+/**
+ * MIDI をアップロードして、選んだ音源でその通りに鳴らす。
+ * 音源はタイマーの内蔵音と、合図音・抽出終了の音としてアップロードした音から選べる。
+ */
+function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmount }) {
+  const midis = useMidis();
+  const custom = useCustomSound(CUSTOM_SOUND_ID);
+  const customFinish = useCustomSound(CUSTOM_FINISH_SOUND_ID);
+  const input = useRef<HTMLInputElement>(null);
+  const [soundId, setSoundId] = useState(CHIME_SOUNDS[0].id);
+  const [playingId, setPlayingId] = useState<string | undefined>();
+  const [message, setMessage] = useState<string | undefined>();
+  // 同じ MIDI を何度も鳴らせるよう、読み取った音の並びは取っておく。
+  const parsed = useRef(new Map<string, MidiSong>());
+  const stop = useRef<(() => void) | undefined>(undefined);
+  const endTimer = useRef<number | undefined>(undefined);
+
+  // 画面を離れたときに鳴り続けないようにする。
+  useEffect(
+    () => () => {
+      stop.current?.();
+      window.clearTimeout(endTimer.current);
+    },
+    [],
+  );
+
+  const sounds = [
+    ...CHIME_SOUNDS.map((sound) => ({ id: sound.id, label: sound.label })),
+    ...(custom ? [{ id: CUSTOM_SOUND_ID as string, label: custom.name }] : []),
+    ...(customFinish ? [{ id: CUSTOM_FINISH_SOUND_ID as string, label: customFinish.name }] : []),
+  ];
+
+  function stopPlaying() {
+    stop.current?.();
+    stop.current = undefined;
+    window.clearTimeout(endTimer.current);
+    setPlayingId(undefined);
+  }
+
+  async function songOf(id: string, blob: Blob): Promise<MidiSong> {
+    const cached = parsed.current.get(id);
+    if (cached) return cached;
+    const song = parseMidi(await blob.arrayBuffer());
+    parsed.current.set(id, song);
+    if (song.truncated) setMessage(`音が多いので、先頭から ${MAX_NOTES} 音だけ鳴らします。`);
+    return song;
+  }
+
+  async function play(midi: { id: string; name: string; blob: Blob }) {
+    stopPlaying();
+    try {
+      const song = await songOf(midi.id, midi.blob);
+      primeAudio(true, soundId);
+      stop.current = playSong(song.notes, soundId, 0, effect, reverb);
+      setPlayingId(midi.id);
+      // 最後の音を鳴らし終えたら「再生」に戻す（余韻ぶん少し待つ）。
+      endTimer.current = window.setTimeout(() => setPlayingId(undefined), (song.seconds + 3) * 1000);
+    } catch (error) {
+      setMessage(`${midi.name} を鳴らせませんでした: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function upload(file: File) {
+    try {
+      const midi = await saveMidi(file);
+      // 保存してから鳴らせないと分からないのを避け、この場で読めるか確かめる。
+      await songOf(midi.id, midi.blob);
+      setMessage(`${midi.name} を読み込みました。`);
+    } catch (error) {
+      setMessage(`${file.name} は読めませんでした: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return (
+    <Card
+      title="MIDI で鳴らす"
+      hint="アップロードした MIDI を、選んだ音（内蔵音・アップロードした音）で鳴らします。効果と残響は合図音の設定を使います。"
+    >
+      <Field label="鳴らす音">
+        <div className="segmented">
+          {sounds.map((sound) => (
+            <button
+              key={sound.id}
+              type="button"
+              className={soundId === sound.id ? 'selected' : ''}
+              onClick={() => setSoundId(sound.id)}
+            >
+              {sound.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      {message ? <Banner>{message}</Banner> : null}
+      {midis.length === 0 ? (
+        <p className="muted">MIDI はまだありません。</p>
+      ) : (
+        <ul className="list-plain">
+          {midis.map((midi) => (
+            <li key={midi.id} className="row between">
+              <span>{midi.name}</span>
+              <span className="row">
+                {playingId === midi.id ? (
+                  <button type="button" onClick={stopPlaying}>
+                    停止
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => void play(midi)}>
+                    再生
+                  </button>
+                )}
+                <button
+                  className="danger"
+                  type="button"
+                  onClick={() => {
+                    if (playingId === midi.id) stopPlaying();
+                    parsed.current.delete(midi.id);
+                    void deleteMidi(midi.id);
+                  }}
+                >
+                  削除
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button type="button" onClick={() => input.current?.click()}>
+        MIDI をアップロード
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept=".mid,.midi,audio/midi,audio/x-midi"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void upload(file);
+          event.target.value = '';
+        }}
+      />
     </Card>
   );
 }
