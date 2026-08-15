@@ -1,4 +1,4 @@
-import type { ModerationVerdict, SharedRecipe } from '../domain/types';
+import type { Gender, ModerationVerdict, SharedRecipe } from '../domain/types';
 
 // Supabase（PostgreSQL）側のテーブル定義。supabase/migrations の SQL と対応させる。
 
@@ -8,6 +8,9 @@ export type ProfileRow = {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  bio: string | null;
+  age: number | null;
+  gender: Gender | null;
   created_at: string;
 };
 
@@ -26,8 +29,22 @@ export type Database = {
     Tables: {
       profiles: {
         Row: ProfileRow;
-        Insert: { id: string; display_name: string; avatar_url?: string | null; created_at?: string };
-        Update: { display_name?: string; avatar_url?: string | null };
+        Insert: {
+          id: string;
+          display_name: string;
+          avatar_url?: string | null;
+          bio?: string | null;
+          age?: number | null;
+          gender?: Gender | null;
+          created_at?: string;
+        };
+        Update: {
+          display_name?: string;
+          avatar_url?: string | null;
+          bio?: string | null;
+          age?: number | null;
+          gender?: Gender | null;
+        };
         Relationships: [];
       };
       posts: {
