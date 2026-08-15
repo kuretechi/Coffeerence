@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Banner, Card, Field, NumberField } from '../ui/components';
+import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
 import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
 import { deleteGear, saveGear, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
@@ -123,13 +123,11 @@ export function SettingsScreen() {
             ))}
           </div>
         </Field>
-        <Field label="タイマー音">
-          <input
-            type="checkbox"
-            checked={settings.soundEnabled}
-            onChange={(event) => void saveSettings({ ...settings, soundEnabled: event.target.checked })}
-          />
-        </Field>
+        <Switch
+          label="タイマー音"
+          checked={settings.soundEnabled}
+          onChange={(soundEnabled) => void saveSettings({ ...settings, soundEnabled })}
+        />
       </Card>
 
       <Card title="データ" hint="すべてこの端末の IndexedDB に保存されています。アカウントもクラウド同期もありません。">
