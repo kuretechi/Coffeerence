@@ -1798,11 +1798,10 @@ table button {
   background: var(--surface);
 }
 
-/* 抽出終了のお祝い。横からヌッと出てくるだけで操作は邪魔しない。 */
+/* 抽出終了のお祝い。画面の縁からヌッと出てくるだけで操作は邪魔しない。
+   出てくる辺と位置は毎回変わるので、座標は要素側の style で与える。 */
 .finish-character {
   position: fixed;
-  right: 0;
-  bottom: 68px;
   z-index: 30;
   pointer-events: none;
 }
@@ -1811,27 +1810,27 @@ table button {
   display: block;
   width: min(46vw, 210px);
   height: auto;
-  filter: drop-shadow(-4px 0 10px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.35));
   animation: character-peek 3.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* 勢いよく出て、少し居座ってから引っ込む。 */
+/* 勢いよく出て、少し居座ってから引っ込む。ずらす向きは辺の外側 (--peek-x/y)。 */
 @keyframes character-peek {
   0% {
-    transform: translateX(100%) rotate(6deg);
+    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg);
   }
   18% {
-    transform: translateX(-4%) rotate(-3deg);
+    transform: translate(calc(var(--peek-x) * -0.04), calc(var(--peek-y) * -0.04)) rotate(-3deg);
   }
   26% {
-    transform: translateX(4%) rotate(1deg);
+    transform: translate(calc(var(--peek-x) * 0.04), calc(var(--peek-y) * 0.04)) rotate(1deg);
   }
   34%,
   78% {
-    transform: translateX(0) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg);
   }
   100% {
-    transform: translateX(100%) rotate(6deg);
+    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg);
   }
 }
 
