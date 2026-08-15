@@ -13,3 +13,7 @@ export type { PowerResult } from './power';
 export { requiredSampleSize } from './power';
 export type { StaircaseState, ThresholdResult } from './staircase';
 export { estimateThreshold, initStaircase, updateStaircase } from './staircase';
+export type { RecipeProjection, StrategyOption } from './strategy';
+export { evaluateStrategies } from './strategy';
+export type { CalibrationPoint, CalibrationResult } from './calibration';
+export { calibrate } from './calibration';
