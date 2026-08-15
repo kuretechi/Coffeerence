@@ -69,7 +69,8 @@ npm run build      # 本番ビルド
 
 ## 発表スライド
 
-Marp（Markdown）で書いています。1スライド1テーマ。
+Marp（Markdown）で書いています。1スライド1テーマ、発表 8 分（うちライブデモ 2 分）+ 質疑 2 分の全10枚。
+持ち時間と話す順はスピーカーノート（各スライド末尾の HTML コメント）に入れています。
 
 - 原稿: [docs/slides/coffeerence.md](docs/slides/coffeerence.md) / 見た目: `docs/slides/theme.css`
 
