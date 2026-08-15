@@ -610,7 +610,7 @@ table button {
   font-weight: 700;
 }
 
-/* 進捗リングと「いま注ぐ投」の大カードを組み合わせたタイマー画面。 */
+/* 縦スクロールする数値タイムラインのタイマー画面。 */
 .timer-stage {
   display: flex;
   flex-direction: column;
@@ -629,239 +629,196 @@ table button {
   text-align: center;
 }
 
-.timer-stage-ring {
-  position: relative;
-  width: min(56vw, 232px);
-  aspect-ratio: 1;
-}
-
-.timer-stage-ring svg {
+/* 上端の細い進捗ラインと大きな経過時間だけのヘッダ。 */
+.timer-line {
   width: 100%;
-  height: 100%;
-}
-
-.ring-track,
-.ring-value {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.ring-track {
-  stroke: var(--line);
-}
-
-.ring-value {
-  stroke: var(--accent);
-  transition: stroke-dashoffset 0.2s linear;
-}
-
-.timer-stage-center {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  text-align: center;
-  padding: 0 18%;
 }
 
-.timer-stage-elapsed {
-  font-size: clamp(32px, 11vw, 48px);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-strong);
-}
-
-.timer-stage-headline {
-  font-size: 17px;
-  font-weight: 700;
-}
-
-/* 控えめに残したリング。デッキが主役なので少し小さくする。 */
-.timer-deck-ring {
-  width: min(42vw, 168px);
-}
-
-.timer-deck-ring .ring-track,
-.timer-deck-ring .ring-value {
-  stroke-width: 8;
-}
-
-.timer-deck-ring .timer-stage-elapsed {
-  font-size: clamp(26px, 8.5vw, 34px);
-}
-
-.timer-deck-ring .timer-stage-headline {
-  font-size: 12px;
-  line-height: 1.25;
-}
-
-.timer-deck-ring .timer-stage-center {
-  padding: 0 14%;
-  gap: 4px;
-}
-
-/* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
-.timer-deck {
+.timer-line-track {
   width: 100%;
-  display: grid;
-  grid-template-areas: 'deck';
-  padding-bottom: 26px;
-  touch-action: pan-y;
-}
-
-.timer-deck-card {
-  grid-area: deck;
-  box-sizing: border-box;
-  padding: 14px 16px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-l);
-  background: var(--surface-2);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  position: relative;
-  overflow: hidden;
-  transform-origin: 50% 100%;
-  transition: transform 0.28s ease, opacity 0.28s ease;
-}
-
-.timer-deck-card.front {
-  border-left: 4px solid var(--accent);
-  z-index: 3;
-}
-
-/* 手で覗いているだけのカードは差し色を外し、計測中の投と見分ける。 */
-.timer-deck-card.front.peek {
-  border-left-color: var(--line);
-}
-
-.timer-deck-card[data-depth='1'] {
-  transform: translateY(13px) scale(0.965) rotate(-1.2deg);
-  opacity: 0.72;
-  z-index: 2;
-}
-
-.timer-deck-card[data-depth='2'] {
-  transform: translateY(24px) scale(0.93) rotate(1.4deg);
-  opacity: 0.45;
-  z-index: 1;
-}
-
-/* 奥のカードは枠だけを見せて束の厚みを出す。 */
-.timer-deck-card:not(.front) > *:not(.timer-deck-edge) {
-  visibility: hidden;
-}
-
-/* 前面カードの枠に沿って進捗を示す線。 */
-.timer-deck-edge {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
   height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.timer-line-value {
+  display: block;
+  width: 100%;
+  height: 100%;
   background: var(--accent);
   transform-origin: 0 50%;
   transition: transform 0.2s linear;
 }
 
-.timer-deck-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.timer-deck-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--accent-strong);
-}
-
-.timer-deck-card:not(.front) .timer-deck-label,
-.timer-deck-card.done .timer-deck-label {
-  color: var(--muted);
-}
-
-.timer-deck-at {
-  font-size: 12px;
-}
-
-.timer-deck-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.timer-deck-index {
-  font-size: 40px;
+.timer-line-elapsed {
+  font-size: clamp(40px, 14vw, 60px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  margin-right: 4px;
   color: var(--accent-strong);
 }
 
-.timer-deck-grid {
+/* 縦一列の時間軸。現在の投が中央にスナップし、過去は上・未来は下に残る。 */
+.timer-lane {
+  list-style: none;
   margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
+  /* カードの offsetTop をレーン基準にして自動スクロールの計算に使う。 */
+  position: relative;
+  /* 先頭と末尾のカードも中央に寄せられるよう、上下に余白を持たせる。 */
+  padding: 20vh 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 42vh;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-snap-type: y proximity;
+  overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
 }
 
-.timer-deck-grid dt {
+.timer-lane-card {
+  box-sizing: border-box;
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  scroll-snap-align: center;
+  opacity: 0.5;
+  transition: opacity 0.28s ease, transform 0.28s ease, background 0.28s ease;
+}
+
+/* 過去の投は薄く小さく、未来は控えめに残す。 */
+.timer-lane-card.done {
+  opacity: 0.34;
+}
+
+.timer-lane-card.now {
+  opacity: 1;
+  transform: scale(1.04);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+}
+
+/* 左端の残り秒バー。現在の投だけ減っていく。 */
+.timer-lane-gauge {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.timer-lane-gauge-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--muted);
+  transform-origin: 50% 100%;
+  transition: transform 0.2s linear;
+}
+
+.timer-lane-card.now .timer-lane-gauge-fill {
+  background: var(--accent);
+}
+
+.timer-lane-card.done .timer-lane-gauge-fill {
+  background: transparent;
+}
+
+.timer-lane-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timer-lane-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.timer-lane-at {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-lane-card.now .timer-lane-at {
+  font-size: 22px;
+  color: var(--accent-strong);
+}
+
+.timer-lane-no {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.timer-lane-card:not(.now) .timer-lane-no {
+  color: var(--fg);
+}
+
+.timer-lane-no small {
   font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 1px;
+}
+
+.timer-lane-mark {
+  font-size: 13px;
+  letter-spacing: 0.06em;
   color: var(--muted);
 }
 
-.timer-deck-grid dd {
-  margin: 2px 0 0;
-  font-size: 22px;
+.timer-lane-state {
+  margin-left: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-lane-card.now .timer-lane-state {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.timer-lane-nums {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 8px;
+}
+
+.timer-lane-nums dt {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.timer-lane-nums dd {
+  margin: 1px 0 0;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.timer-deck-done {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.timer-deck-nav {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.timer-deck-nav .timer-deck-arrow {
-  flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  font-size: 22px;
-  line-height: 1;
-  background: transparent;
-  color: var(--muted);
-}
-
-.timer-deck-count {
-  font-size: 12px;
-}
-
-.timer-deck-nav .timer-deck-back {
-  min-height: 44px;
-  padding: 0 14px;
-  font-size: 13px;
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--fg);
+.timer-lane-card.now .timer-lane-nums dd {
+  font-size: 24px;
 }
 
 .timer-stage-actions {
