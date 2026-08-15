@@ -824,6 +824,12 @@ table button {
   gap: 6px;
 }
 
+.feed-avatar-link {
+  display: flex;
+  flex: 0 0 auto;
+  text-decoration: none;
+}
+
 .feed-author {
   font-weight: 700;
   color: inherit;

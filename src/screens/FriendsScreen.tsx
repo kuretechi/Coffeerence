@@ -206,7 +206,7 @@ export function FriendsScreen() {
           <div className="feed">
             {timeline.posts.map((post) => (
               <article key={post.id} className="feed-item">
-                <Link to={profilePath(post)} aria-label={`${post.author} のプロフィール`}>
+                <Link className="feed-avatar-link" to={profilePath(post)} aria-label={`${post.author} のプロフィール`}>
                   <Avatar name={post.author} url={avatarOf(post)} className="feed-avatar" />
                 </Link>
                 <div className="feed-body">
