@@ -84,11 +84,25 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await db.settings.put(settings);
 }
 
+/** 拡張子から MIME を補う。端末によっては File.type が空で来る。 */
+function audioMimeType(file: File): string {
+  if (file.type) return file.type;
+  const extension = file.name.toLowerCase().split('.').pop() ?? '';
+  const byExtension: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    ogg: 'audio/ogg',
+  };
+  return byExtension[extension] ?? 'audio/mpeg';
+}
+
 /** アップロードした合図音を端末内に保存し、選択状態にする。 */
 export async function saveCustomSound(file: File): Promise<void> {
   // File はディスク上の実体への参照なので、そのまま保存すると端末側で
   // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
-  const blob = new Blob([await file.arrayBuffer()], { type: file.type || 'audio/mpeg' });
+  const blob = new Blob([await file.arrayBuffer()], { type: audioMimeType(file) });
   await db.sounds.put({ id: 'custom', name: file.name, blob });
   const settings = await getSettings();
   await saveSettings({ ...settings, soundId: 'custom', customSoundName: file.name });

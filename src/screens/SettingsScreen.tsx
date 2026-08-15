@@ -73,7 +73,7 @@ export function SettingsScreen() {
   async function uploadSound(file: File) {
     // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
     if (!(await canDecodeChime(file))) {
-      setSoundMessage(`${file.name} はこの端末で再生できません。別の mp3 を選んでください。`);
+      setSoundMessage(`${file.name} はこの端末で再生できません。別の mp3 / wav を選んでください。`);
       return;
     }
     await saveCustomSound(file);
@@ -191,7 +191,7 @@ export function SettingsScreen() {
         {soundMessage ? <Banner>{soundMessage}</Banner> : null}
         <div className="row">
           <button type="button" onClick={() => soundInput.current?.click()}>
-            mp3 をアップロード
+            mp3 / wav をアップロード
           </button>
           <button type="button" onClick={() => playPreview(settings.soundId)}>
             試聴
@@ -211,7 +211,7 @@ export function SettingsScreen() {
         <input
           ref={soundInput}
           type="file"
-          accept="audio/*,.mp3,.m4a,.wav"
+          accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg"
           hidden
           onChange={(event) => {
             const file = event.target.files?.[0];
