@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        # 未設定のときは豆友の投稿が端末内保存のままになるだけで、ビルドは成功する。
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       # SPA 用: 未知のパスでも index.html を返す（本アプリは HashRouter だが保険）
       - run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5

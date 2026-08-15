@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Banner, Field, formatSeconds } from '../ui/components';
-import { usePosts, useRecipes } from '../ui/data';
+import { useRecipes } from '../ui/data';
+import { useTimeline } from '../ui/social';
+import { useAuth } from '../ui/auth';
 import { deletePost, importSharedRecipe, submitPost, toSharedRecipe } from '../db/repo';
-import type { SharedRecipe } from '../domain/types';
+import { SignInRequiredError } from '../db/social';
+import type { Post, SharedRecipe } from '../domain/types';
 
 const MAX_BODY = 500;
 
@@ -70,8 +74,9 @@ function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
 }
 
 /** 投稿フォーム。タイムラインの「投稿する」から開く。 */
-function PostDialog({ onClose }: { onClose: () => void }) {
+function PostDialog({ remote, onPosted, onClose }: { remote: boolean; onPosted: () => void; onClose: () => void }) {
   const recipes = useRecipes();
+  const auth = useAuth();
   const [author, setAuthor] = useState('');
   const [recipeId, setRecipeId] = useState('');
   const [body, setBody] = useState('');
@@ -84,14 +89,23 @@ function PostDialog({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const attached = recipes.find((recipe) => recipe.id === recipeId);
-      const verdict = await submitPost(author, body.trim(), attached ? toSharedRecipe(attached) : undefined);
+      const verdict = await submitPost(
+        remote ? (auth.user?.displayName ?? '') : author,
+        body.trim(),
+        attached ? toSharedRecipe(attached) : undefined,
+      );
       if (verdict.allowed) {
+        onPosted();
         onClose();
         return;
       }
       setNotice(`投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}`);
-    } catch {
-      setNotice('投稿に失敗しました。もう一度お試しください。');
+    } catch (cause) {
+      setNotice(
+        cause instanceof SignInRequiredError
+          ? '投稿にはログインが必要です。アカウントタブからログインしてください。'
+          : '投稿に失敗しました。もう一度お試しください。',
+      );
     } finally {
       setBusy(false);
     }
@@ -113,9 +127,13 @@ function PostDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div className="stack">
-          <Field label="名前">
-            <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
-          </Field>
+          {remote ? (
+            <p className="muted">投稿者名: {auth.user?.displayName}（アカウントの表示名）</p>
+          ) : (
+            <Field label="名前">
+              <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
+            </Field>
+          )}
           <Field label={`本文（${body.length}/${MAX_BODY}）`}>
             <textarea
               value={body}
@@ -148,19 +166,46 @@ function PostDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
+/** 豆友（投稿）。Supabase を設定すると全員のタイムラインになり、未設定なら端末内に残る。 */
 export function FriendsScreen() {
-  const posts = usePosts();
+  const timeline = useTimeline();
+  const auth = useAuth();
   const [composing, setComposing] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const remote = timeline.mode === 'remote';
+  const signedIn = auth.user !== undefined;
+
+  function canDelete(post: Post): boolean {
+    return post.source === 'remote' ? post.userId === auth.user?.id : true;
+  }
+
+  async function remove(target: Post) {
+    try {
+      await deletePost(target);
+      timeline.reload();
+    } catch {
+      setError('削除に失敗しました。もう一度お試しください。');
+    }
+  }
 
   return (
     <>
       <div className="feed-wrap">
-        {posts.length === 0 ? (
+        {remote && !signedIn ? (
+          <Banner>
+            投稿するには<Link to="/account">アカウントタブ</Link>でログインしてください。読むだけならログイン不要です。
+          </Banner>
+        ) : null}
+        {timeline.error ? <Banner tone="danger">タイムラインを読み込めませんでした: {timeline.error}</Banner> : null}
+        {error ? <Banner tone="danger">{error}</Banner> : null}
+        {timeline.loading && timeline.posts.length === 0 ? (
+          <Banner>読み込み中です。</Banner>
+        ) : timeline.posts.length === 0 ? (
           <Banner>まだ投稿がありません。</Banner>
         ) : (
           <div className="feed">
-            {posts.map((post) => (
+            {timeline.posts.map((post) => (
               <article key={post.id} className="feed-item">
                 <div className="account-avatar feed-avatar" aria-hidden="true">
                   {post.author.slice(0, 1)}
@@ -173,14 +218,16 @@ export function FriendsScreen() {
                         {relativeTime(post.createdAt)}
                       </time>
                     </span>
-                    <button
-                      className="feed-delete"
-                      type="button"
-                      aria-label="この投稿を削除"
-                      onClick={() => void deletePost(post.id)}
-                    >
-                      ×
-                    </button>
+                    {canDelete(post) ? (
+                      <button
+                        className="feed-delete"
+                        type="button"
+                        aria-label="この投稿を削除"
+                        onClick={() => void remove(post)}
+                      >
+                        ×
+                      </button>
+                    ) : null}
                   </div>
                   {post.body === '' ? null : <p className="feed-text">{post.body}</p>}
                   {post.recipe ? <AttachedRecipe recipe={post.recipe} /> : null}
@@ -191,7 +238,13 @@ export function FriendsScreen() {
         )}
       </div>
 
-      <button className="fab" type="button" aria-label="投稿する" onClick={() => setComposing(true)}>
+      <button
+        className="fab"
+        type="button"
+        aria-label="投稿する"
+        disabled={remote && !signedIn}
+        onClick={() => setComposing(true)}
+      >
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
           <path
             d="M4 20h4l10-10-4-4L4 16v4zM16.5 3.5l4 4"
@@ -204,7 +257,9 @@ export function FriendsScreen() {
         </svg>
       </button>
 
-      {composing ? <PostDialog onClose={() => setComposing(false)} /> : null}
+      {composing ? (
+        <PostDialog remote={remote} onPosted={timeline.reload} onClose={() => setComposing(false)} />
+      ) : null}
     </>
   );
 }

@@ -21,6 +21,8 @@ import type {
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
 import { uid } from '../lib/random';
 import { moderate } from '../lib/moderation';
+import { isSupabaseConfigured } from '../lib/supabase';
+import { deletePost as deleteRemotePost, insertPost as insertRemotePost } from './social';
 
 export async function seedIfEmpty(): Promise<void> {
   const existing = await db.settings.get('settings');
@@ -212,6 +214,7 @@ export async function consumeBeans(beanId: string, grams: number): Promise<void>
 /**
  * 判定を通った投稿だけを保存する。不適切と判定された場合は保存せず、
  * 判定結果を監査ログに残して呼び出し側に返す。
+ * Supabase を設定したビルドではサーバーへ、未設定なら端末内に保存する。
  */
 export async function submitPost(
   author: string,
@@ -227,9 +230,14 @@ export async function submitPost(
     });
     return verdict;
   }
+  const name = author.trim() === '' ? '豆挽けば名無し' : author.trim();
+  if (isSupabaseConfigured) {
+    await insertRemotePost({ author: name, body, recipe, moderation: verdict });
+    return verdict;
+  }
   const post: Post = {
     id: uid('post'),
-    author: author.trim() === '' ? '豆挽けば名無し' : author.trim(),
+    author: name,
     body,
     createdAt: new Date().toISOString(),
     recipe,
@@ -276,10 +284,14 @@ export async function importSharedRecipe(shared: SharedRecipe): Promise<Recipe> 
   return recipe;
 }
 
-/** R-2: 削除は記録に残す。 */
-export async function deletePost(postId: string): Promise<void> {
-  const post = await db.posts.get(postId);
-  if (!post) return;
-  await db.posts.delete(postId);
-  await recordAudit({ kind: 'delete', subject: postId, detail: `${post.author} の投稿を削除` });
+/** R-2: 削除は記録に残す。サーバー上の投稿は自分のものだけ消せる（RLS）。 */
+export async function deletePost(post: Post): Promise<void> {
+  if (post.source === 'remote') {
+    await deleteRemotePost(post.id);
+  } else {
+    const stored = await db.posts.get(post.id);
+    if (!stored) return;
+    await db.posts.delete(post.id);
+  }
+  await recordAudit({ kind: 'delete', subject: post.id, detail: `${post.author} の投稿を削除` });
 }

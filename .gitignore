@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# 環境変数（Supabase の URL / anon key など）。.env.example だけ追跡する。
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
