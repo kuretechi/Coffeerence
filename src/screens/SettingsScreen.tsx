@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
 import {
   useAudit,
@@ -620,35 +620,14 @@ function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
 
 const { whites: WHITE_KEYS, blacks: BLACK_KEYS } = buildKeys();
 
-/** 白鍵の高さ（px）。画面に収まらない分はスクロールする。 */
-const KEY_HEIGHT = 40;
-
-/** 鍵盤の並び。fill を渡すと高さいっぱいに全鍵を詰める（全画面表示用）。 */
-function Keys({ onPlay, fill }: { onPlay: (semitone: number) => void; fill?: boolean }) {
-  const scroll = useRef<HTMLDivElement>(null);
-
-  // 基準のド（ピッチそのまま）が見える位置から始める。
-  useEffect(() => {
-    const box = scroll.current;
-    if (!box || fill) return;
-    const fromBottom = WHITE_KEYS.findIndex((key) => key.semitone === 0);
-    const baseTop = (WHITE_KEYS.length - fromBottom - 1) * KEY_HEIGHT;
-    box.scrollTop = Math.max(baseTop - box.clientHeight / 2, 0);
-  }, [fill]);
-
-  // 全画面では鍵の高さを画面に合わせるので、黒鍵も割合で置く。
-  const blackHeight = fill ? `${(60 / WHITE_KEYS.length).toFixed(3)}%` : undefined;
+/** 全画面いっぱいに3オクターブを詰めた鍵盤の並び。 */
+function Keys({ onPlay }: { onPlay: (semitone: number) => void }) {
+  // 鍵の高さは画面に合わせて割り付けるので、黒鍵も割合で置く。
+  const blackHeight = `${(60 / WHITE_KEYS.length).toFixed(3)}%`;
 
   return (
-    <div className={fill ? 'keyboard-scroll fill' : 'keyboard-scroll'} ref={scroll}>
-      <div
-        className="keyboard"
-        style={
-          fill
-            ? { height: '100%' }
-            : ({ height: `${WHITE_KEYS.length * KEY_HEIGHT}px`, '--key-height': `${KEY_HEIGHT}px` } as CSSProperties)
-        }
-      >
+    <div className="keyboard-scroll">
+      <div className="keyboard">
         {WHITE_KEYS.map((key) => (
           <button
             key={`white-${key.semitone}`}
@@ -676,8 +655,7 @@ function Keys({ onPlay, fill }: { onPlay: (semitone: number) => void; fill?: boo
 
 /**
  * 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。
- * 3オクターブを鍵の大きさのまま入れるため、低い音を下にした縦型に並べる。
- * 「全画面で開く」を押すと、3オクターブ全部が一度に見える表示に切り替わる。
+ * 設定画面では場所を取らないので置かず、「鍵盤を開く」で全画面表示だけを出す。
  */
 function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
   const [full, setFull] = useState(false);
@@ -691,9 +669,8 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
           if (Date.now() - closedAt.current > 400) setFull(true);
         }}
       >
-        全画面で開く
+        鍵盤を開く
       </button>
-      <Keys onPlay={onPlay} />
       {full ? (
         <div className="keyboard-full">
           <div className="keyboard-full-bar">
@@ -701,7 +678,7 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
             <button
               type="button"
               onClick={() => {
-                // 閉じた直後は同じ操作が下の「全画面で開く」に届くので、少しの間は開き直さない。
+                // 閉じた直後は同じ操作が下の「鍵盤を開く」に届くので、少しの間は開き直さない。
                 closedAt.current = Date.now();
                 setFull(false);
               }}
@@ -709,7 +686,7 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
               閉じる
             </button>
           </div>
-          <Keys onPlay={onPlay} fill />
+          <Keys onPlay={onPlay} />
         </div>
       ) : null}
     </>
