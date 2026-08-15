@@ -6,6 +6,15 @@ import type { SharedRecipe } from '../domain/types';
 
 const MAX_BODY = 500;
 
+/** 「3分」「2時間」のような相対表記。24時間を超えたら日付にする。 */
+function relativeTime(iso: string): string {
+  const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return `${Math.floor(diffSec)}秒`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}分`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}時間`;
+  return new Date(iso).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+}
+
 /** 投稿に添付されたレシピ。取り込むと自分のレシピ一覧に追加される。 */
 function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
   const [imported, setImported] = useState(false);
@@ -128,21 +137,33 @@ export function FriendsScreen() {
         {posts.length === 0 ? (
           <Banner>まだ投稿がありません。</Banner>
         ) : (
-          <div className="stack">
+          <div className="feed">
             {posts.map((post) => (
-              <div key={post.id} className="todo-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                <span className="row between">
-                  <strong>{post.author}</strong>
-                  <span className="muted">{new Date(post.createdAt).toLocaleString('ja-JP')}</span>
-                </span>
-                <p>{post.body}</p>
-                {post.recipe ? <AttachedRecipe recipe={post.recipe} /> : null}
-                <div className="row">
-                  <button className="danger" type="button" onClick={() => void deletePost(post.id)}>
-                    削除
-                  </button>
+              <article key={post.id} className="feed-item">
+                <div className="account-avatar feed-avatar" aria-hidden="true">
+                  {post.author.slice(0, 1)}
                 </div>
-              </div>
+                <div className="feed-body">
+                  <div className="feed-head">
+                    <strong>{post.author}</strong>
+                    <span className="muted">
+                      <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString('ja-JP')}>
+                        {relativeTime(post.createdAt)}
+                      </time>
+                    </span>
+                    <button
+                      className="feed-delete"
+                      type="button"
+                      aria-label="この投稿を削除"
+                      onClick={() => void deletePost(post.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {post.body === '' ? null : <p className="feed-text">{post.body}</p>}
+                  {post.recipe ? <AttachedRecipe recipe={post.recipe} /> : null}
+                </div>
+              </article>
             ))}
           </div>
         )}
