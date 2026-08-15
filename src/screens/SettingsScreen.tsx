@@ -18,7 +18,6 @@ import {
   SAME_AS_CHIME_ID,
   canDecodeChime,
   chime,
-  doubleChime,
   extractAudioTrack,
   primeAudio,
   setCustomChime,
@@ -160,7 +159,7 @@ export function SettingsScreen() {
         />
         <SoundPicker
           label="抽出終了の音"
-          hint="抽出終了で2回鳴らす音だけを別にできます。"
+          hint="抽出終了で鳴らす音だけを別にできます。"
           slot={CUSTOM_FINISH_SOUND_ID}
           selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
@@ -322,13 +321,11 @@ function SoundPicker({
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
-  const isFinish = slot === CUSTOM_FINISH_SOUND_ID;
 
   /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
   function playPreview(soundId: string, previewPitch = pitch) {
     primeAudio(true, soundId);
-    if (isFinish) doubleChime(true, soundId, previewPitch);
-    else chime(true, soundId, previewPitch);
+    chime(true, soundId, previewPitch);
   }
 
   const playedId = selected === SAME_AS_CHIME_ID ? fallbackId : selected;

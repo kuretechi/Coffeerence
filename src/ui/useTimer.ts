@@ -135,8 +135,6 @@ interface ChimeSource {
 const buffers = new Map<string, AudioBuffer>();
 const loads = new Map<string, Promise<AudioBuffer | undefined>>();
 const customSounds = new Map<SoundSlot, { key: string; blob: Blob }>();
-/** media 要素で鳴らした音源の長さ。終了の2打目の間隔に使う。 */
-const elementDurations = new Map<string, number>();
 /** decodeAudioData では開けないアップロード音（動画）。毎回読み直さない。 */
 const elementOnly = new Set<string>();
 
@@ -197,7 +195,7 @@ export function useCustomChime(): void {
  * 動画（iPhone の .MOV など）は decodeAudioData では開けないので、
  * 再生は media 要素に任せて音声トラックだけを鳴らす。
  */
-function playViaElement(key: string, blob: Blob, pitch: number): Promise<boolean> {
+function playViaElement(blob: Blob, pitch: number): Promise<boolean> {
   const url = URL.createObjectURL(blob);
   const element = document.createElement('video');
   element.src = url;
@@ -205,7 +203,6 @@ function playViaElement(key: string, blob: Blob, pitch: number): Promise<boolean
   // 画面には出さず、再生速度でピッチを変える（音高保持を切る）。
   element.playbackRate = pitchRate(pitch);
   element.preservesPitch = false;
-  element.onloadedmetadata = () => elementDurations.set(key, element.duration);
   element.onended = () => URL.revokeObjectURL(url);
   return element
     .play()
@@ -397,7 +394,7 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0)
             return;
           }
           const key = source?.key ?? soundId;
-          void playViaElement(key, blob, pitch).then((played: boolean) => {
+          void playViaElement(blob, pitch).then((played: boolean) => {
             if (played) elementOnly.add(key);
             else synthChime(ctx, 1244 * rate);
           });
@@ -414,14 +411,4 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0)
     /* 音が出せない環境では黙って続行する */
   }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
-}
-
-/** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
-export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
-  chime(enabled, soundId, pitch);
-  const source = chimeSource(soundId);
-  const duration = source ? (buffers.get(source.key)?.duration ?? elementDurations.get(source.key)) : undefined;
-  const played = duration ? duration / pitchRate(pitch) : undefined;
-  const gap = played ? Math.min(played, 1.2) * 1000 : 420;
-  window.setTimeout(() => chime(enabled, soundId, pitch), gap);
 }
