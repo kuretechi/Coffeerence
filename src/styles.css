@@ -1814,23 +1814,26 @@ table button {
   animation: character-peek 3.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-/* 勢いよく出て、少し居座ってから引っ込む。ずらす向きは辺の外側 (--peek-x/y)。 */
+/* 勢いよく出て、少し居座ってから引っ込む。ずらす向きは辺の外側 (--peek-x/y)、
+   絵の向きは辺に合わせた反転 (--peek-flip)。反転は移動量の基準に影響しないよう最後に置く。 */
 @keyframes character-peek {
   0% {
-    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg);
+    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg) var(--peek-flip);
   }
   18% {
-    transform: translate(calc(var(--peek-x) * -0.04), calc(var(--peek-y) * -0.04)) rotate(-3deg);
+    transform: translate(calc(var(--peek-x) * -0.04), calc(var(--peek-y) * -0.04)) rotate(-3deg)
+      var(--peek-flip);
   }
   26% {
-    transform: translate(calc(var(--peek-x) * 0.04), calc(var(--peek-y) * 0.04)) rotate(1deg);
+    transform: translate(calc(var(--peek-x) * 0.04), calc(var(--peek-y) * 0.04)) rotate(1deg)
+      var(--peek-flip);
   }
   34%,
   78% {
-    transform: translate(0, 0) rotate(0deg);
+    transform: translate(0, 0) rotate(0deg) var(--peek-flip);
   }
   100% {
-    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg);
+    transform: translate(var(--peek-x), var(--peek-y)) rotate(6deg) var(--peek-flip);
   }
 }
 
