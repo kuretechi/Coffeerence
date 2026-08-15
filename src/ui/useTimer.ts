@@ -107,6 +107,15 @@ export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
 /** 抽出終了の音を合図音に揃えるときの選択値。 */
 export const SAME_AS_CHIME_ID = 'same';
 
+/** ピッチの調整幅（半音）。 */
+export const PITCH_RANGE = 12;
+
+/** 半音単位のピッチを再生速度に直す。 */
+function pitchRate(semitones: number): number {
+  const clamped = Math.min(PITCH_RANGE, Math.max(-PITCH_RANGE, semitones));
+  return 2 ** (clamped / 12);
+}
+
 /** アップロードした音を指すID（= 置き場の ID）。 */
 export const CUSTOM_SOUND_ID: SoundSlot = 'custom';
 /** 抽出終了用にアップロードした音を指すID。 */
@@ -274,8 +283,8 @@ function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): voi
   }
 }
 
-/** 選んである合図音を一度鳴らす。 */
-export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
+/** 選んである合図音を一度鳴らす。pitch は半音単位。 */
+export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
@@ -284,12 +293,14 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
       // 読み込み前に呼ばれても取りこぼさないよう、完了を待ってから鳴らす。
       const ready = source ? load(ctx, source) : Promise.resolve(undefined);
       void ready.then((buffer) => {
+        const rate = pitchRate(pitch);
         if (!buffer) {
-          synthChime(ctx);
+          synthChime(ctx, 1244 * rate);
           return;
         }
         const source = ctx.createBufferSource();
         source.buffer = buffer;
+        source.playbackRate.value = rate;
         source.connect(ctx.destination);
         source.start();
       });
@@ -301,10 +312,11 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
 }
 
 /** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
-export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
-  chime(enabled, soundId);
+export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
+  chime(enabled, soundId, pitch);
   const source = chimeSource(soundId);
   const loaded = source ? buffers.get(source.key) : undefined;
-  const gap = loaded ? Math.min(loaded.duration, 1.2) * 1000 : 420;
-  window.setTimeout(() => chime(enabled, soundId), gap);
+  const played = loaded ? loaded.duration / pitchRate(pitch) : undefined;
+  const gap = played ? Math.min(played, 1.2) * 1000 : 420;
+  window.setTimeout(() => chime(enabled, soundId, pitch), gap);
 }

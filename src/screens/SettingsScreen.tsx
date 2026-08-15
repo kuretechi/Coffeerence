@@ -14,6 +14,7 @@ import {
   CHIME_SOUNDS,
   CUSTOM_FINISH_SOUND_ID,
   CUSTOM_SOUND_ID,
+  PITCH_RANGE,
   SAME_AS_CHIME_ID,
   canDecodeChime,
   chime,
@@ -152,7 +153,9 @@ export function SettingsScreen() {
           slot={CUSTOM_SOUND_ID}
           selected={settings.soundId}
           fallbackId={settings.soundId}
+          pitch={settings.soundPitch ?? 0}
           onSelect={(soundId) => void saveSettings({ ...settings, soundId })}
+          onPitch={(soundPitch) => void saveSettings({ ...settings, soundPitch })}
         />
         <SoundPicker
           label="抽出終了の音"
@@ -161,7 +164,9 @@ export function SettingsScreen() {
           selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
           sameLabel="合図音と同じ"
+          pitch={settings.finishSoundPitch ?? 0}
           onSelect={(finishSoundId) => void saveSettings({ ...settings, finishSoundId })}
+          onPitch={(finishSoundPitch) => void saveSettings({ ...settings, finishSoundPitch })}
         />
       </Card>
 
@@ -297,7 +302,9 @@ function SoundPicker({
   selected,
   fallbackId,
   sameLabel,
+  pitch,
   onSelect,
+  onPitch,
 }: {
   label: string;
   hint?: string;
@@ -306,7 +313,10 @@ function SoundPicker({
   /** 「合図音と同じ」のときに実際に鳴る音。 */
   fallbackId: string;
   sameLabel?: string;
+  /** ピッチ（半音）。 */
+  pitch: number;
   onSelect: (soundId: string) => void;
+  onPitch: (pitch: number) => void;
 }) {
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
@@ -314,15 +324,24 @@ function SoundPicker({
   const isFinish = slot === CUSTOM_FINISH_SOUND_ID;
 
   /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
-  function playPreview(soundId: string) {
+  function playPreview(soundId: string, previewPitch = pitch) {
     primeAudio(true, soundId);
-    if (isFinish) doubleChime(true, soundId);
-    else chime(true, soundId);
+    if (isFinish) doubleChime(true, soundId, previewPitch);
+    else chime(true, soundId, previewPitch);
   }
+
+  const playedId = selected === SAME_AS_CHIME_ID ? fallbackId : selected;
 
   function select(soundId: string) {
     onSelect(soundId);
     playPreview(soundId === SAME_AS_CHIME_ID ? fallbackId : soundId);
+  }
+
+  /** ピッチを動かすたびにその高さで鳴らして確かめられるようにする。 */
+  function changePitch(next: number) {
+    if (next === pitch) return;
+    onPitch(next);
+    playPreview(playedId, next);
   }
 
   async function upload(file: File) {
@@ -369,12 +388,23 @@ function SoundPicker({
           ) : null}
         </div>
       </Field>
+      <Field label={`${label}のピッチ（${pitch > 0 ? '+' : ''}${pitch} 半音）`}>
+        <input
+          className="slider"
+          type="range"
+          min={-PITCH_RANGE}
+          max={PITCH_RANGE}
+          step={1}
+          value={pitch}
+          onChange={(event) => changePitch(Number(event.target.value))}
+        />
+      </Field>
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
         <button type="button" onClick={() => input.current?.click()}>
           mp3 / wav をアップロード
         </button>
-        <button type="button" onClick={() => playPreview(selected === SAME_AS_CHIME_ID ? fallbackId : selected)}>
+        <button type="button" onClick={() => playPreview(playedId)}>
           試聴
         </button>
         {custom ? (
