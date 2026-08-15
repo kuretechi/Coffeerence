@@ -130,6 +130,15 @@ export function RecipeScreen() {
     });
   }
 
+  /** 累計湯量の差分＝その投で実際に注ぐ量。表示専用。 */
+  function deltaOf(index: number): string | undefined {
+    const current = draft.pours[index]?.targetG;
+    const previous = index === 0 ? 0 : draft.pours[index - 1]?.targetG;
+    if (current === undefined || previous === undefined) return undefined;
+    const delta = Math.round((current - previous) * 10) / 10;
+    return `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}`;
+  }
+
   function addPour() {
     const last = draft.pours[draft.pours.length - 1];
     setDraft({
@@ -232,48 +241,81 @@ export function RecipeScreen() {
               <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
             </Field>
           </div>
-          <fieldset className="pour-editor">
-            <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
-            <div className="stack">
+          <fieldset className="pour-timeline">
+            <legend>注湯（上から下へ時間が流れます）</legend>
+            <ol className="pour-timeline-list">
               {draft.pours.map((pour, index) => (
-                <div className="row pour-row" key={index}>
-                  <span className="pour-index">{index + 1}投目</span>
-                  <NumberField
-                    label="累計"
-                    suffix="g"
-                    step={1}
-                    min={0}
-                    value={pour.targetG}
-                    onChange={(targetG) => setPour(index, { targetG })}
-                  />
-                  <NumberField
-                    label="開始"
-                    suffix="秒"
-                    step={5}
-                    min={0}
-                    value={pour.atSec}
-                    onChange={(atSec) => setPour(index, { atSec })}
-                  />
-                  <NumberField
-                    label="湯温"
-                    suffix="℃"
-                    step={1}
-                    min={0}
-                    value={pour.waterTempC}
-                    onChange={(waterTempC) => setPour(index, { waterTempC })}
-                  />
-                  <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
-                    削除
-                  </button>
-                </div>
+                <li className="pour-node" key={index}>
+                  <div className="pour-node-axis">
+                    <span className="pour-node-badge">{index + 1}</span>
+                    <span className="pour-node-time mono">
+                      {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+                    </span>
+                  </div>
+                  <div className="pour-node-card">
+                    <button
+                      className="pour-node-remove"
+                      type="button"
+                      aria-label={`${index + 1}投目を削除`}
+                      disabled={draft.pours.length <= 1}
+                      onClick={() => removePour(index)}
+                    >
+                      ×
+                    </button>
+                    <label className="pour-node-total">
+                      <span className="pour-node-total-label">累計湯量</span>
+                      <span className="pour-node-total-input">
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step={1}
+                          min={0}
+                          value={pour.targetG ?? ''}
+                          onChange={(event) => {
+                            const raw = event.target.value;
+                            setPour(index, { targetG: raw === '' ? undefined : Number(raw) });
+                          }}
+                        />
+                        <span className="pour-node-unit">g</span>
+                      </span>
+                    </label>
+                    <p className="pour-node-delta mono">
+                      この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
+                    </p>
+                    <div className="pour-node-sub">
+                      <NumberField
+                        label="開始"
+                        suffix="秒"
+                        step={5}
+                        min={0}
+                        value={pour.atSec}
+                        onChange={(atSec) => setPour(index, { atSec })}
+                      />
+                      <NumberField
+                        label="湯温"
+                        suffix="℃"
+                        step={1}
+                        min={0}
+                        value={pour.waterTempC}
+                        onChange={(waterTempC) => setPour(index, { waterTempC })}
+                      />
+                    </div>
+                  </div>
+                </li>
               ))}
-              <div className="row between">
-                <button type="button" onClick={addPour}>
-                  投を追加
+              <li className="pour-node pour-node-last">
+                <div className="pour-node-axis">
+                  <span className="pour-node-badge ghost">＋</span>
+                </div>
+                <button className="pour-node-add" type="button" onClick={addPour}>
+                  ＋ この投を追加
                 </button>
-                <span className="muted mono">総湯量 {totalWaterG}g</span>
-              </div>
-            </div>
+              </li>
+            </ol>
+            <p className="pour-timeline-total">
+              <span className="muted">総湯量</span>
+              <strong className="mono">{totalWaterG}g</strong>
+            </p>
           </fieldset>
           <NumberField
             label="抽出終了（落ち切り）"

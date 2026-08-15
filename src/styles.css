@@ -498,43 +498,173 @@ th {
   opacity: 1;
 }
 
-.pour-editor {
+/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
+.pour-timeline {
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  padding: 8px 10px 12px;
+  padding: 4px 10px 12px;
   margin: 0;
+  min-width: 0;
 }
 
-.pour-editor legend {
+.pour-timeline legend {
   font-size: 12px;
   color: var(--muted);
   padding: 0 4px;
 }
 
-.pour-row {
+.pour-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pour-node {
   display: grid;
-  grid-template-columns: auto 1fr 1fr 1fr auto;
-  gap: 6px;
-  align-items: end;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
 }
 
-.pour-row .field {
-  min-width: 0;
+.pour-node-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 6px;
 }
 
-.pour-row .field span {
+/* カード間をつなぐ縦線。最後の追加カードの下では消す。 */
+.pour-node-axis::after {
+  content: '';
+  flex: 1;
+  width: 2px;
+  min-height: 12px;
+  background: var(--line);
+}
+
+.pour-node-last .pour-node-axis::after {
+  display: none;
+}
+
+.pour-node-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pour-node-badge.ghost {
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.pour-node-time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-node-card {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 10px 12px 12px;
+  margin-bottom: 12px;
+}
+
+.pour-node-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pour-node-total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pour-node-total-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-node-total-input {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding-right: 40px;
+}
+
+.pour-node-total-input input {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pour-node-unit {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.pour-node-delta {
+  margin: 2px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-node-sub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.pour-node-sub .field span {
   font-size: 11px;
 }
 
-.pour-row button {
-  padding: 0 10px;
+.pour-node-add {
+  width: 100%;
+  margin-bottom: 4px;
+  border: 1px dashed var(--line);
+  background: none;
+  color: var(--accent);
 }
 
-.pour-index {
+.pour-timeline-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
   font-size: 13px;
-  color: var(--muted);
-  white-space: nowrap;
-  padding-bottom: 12px;
 }
 
 table button {
