@@ -4,7 +4,7 @@ import { Banner, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { FinishCharacter } from '../ui/FinishCharacter';
 import { SevenSegment } from '../ui/SevenSegment';
-import { SAME_AS_CHIME_ID, chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
+import { SAME_AS_CHIME_ID, chime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
@@ -38,7 +38,7 @@ export function TimerScreen() {
   const announcedIndex = useRef(0);
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
-  /** 終了の2回鳴らしだけ別の音にできる。 */
+  /** 終了の合図だけ別の音にできる。 */
   const chosenFinishId = settings.finishSoundId ?? SAME_AS_CHIME_ID;
   const finishSoundId = chosenFinishId === SAME_AS_CHIME_ID ? settings.soundId : chosenFinishId;
   const pitch = settings.soundPitch ?? 0;
@@ -68,7 +68,7 @@ export function TimerScreen() {
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    doubleChime(settings.soundEnabled, finishSoundId, finishPitch);
+    chime(settings.soundEnabled, finishSoundId, finishPitch);
     setCheerRun((run) => run + 1);
   }, [finished, stopwatch, settings.soundEnabled, finishSoundId, finishPitch]);
 
@@ -124,7 +124,7 @@ export function TimerScreen() {
   const targetG = progress.current?.targetG ?? pours[0]?.targetG;
 
   return (
-    <div className="timer-stage timer-panel">
+    <div className="timer-stage timer-stage-gauges">
       {recipes.length === 0 ? (
         <Banner>先にレシピを登録してください。</Banner>
       ) : (
