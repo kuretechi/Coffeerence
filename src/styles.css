@@ -883,221 +883,181 @@ table button {
   text-align: center;
 }
 
-/* 計器盤の版。要素が多いので縦の間隔を詰める。 */
-.timer-stage-gauges {
-  gap: 12px;
+/* 「注ぐ量」を主役にした版。時間→注ぐ量→進捗の3段で読ませる。 */
+.timer-stage-z {
+  gap: 14px;
 }
 
-/* 計器盤。等幅数字の大きなセルを並べ、上段に経過時間を置く。 */
-.timer-gauge {
+.timer-z-time {
   width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.timer-gauge-cell {
-  box-sizing: border-box;
-  min-height: 56px;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  background: var(--surface-2);
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
 }
 
-.timer-gauge-cell-wide {
-  grid-column: 1 / -1;
-  min-height: 88px;
-  padding: 12px;
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-}
-
-.timer-gauge-seg {
-  width: 100%;
+.timer-z-seg {
+  flex: 1 1 auto;
   max-width: none;
   margin: 0;
 }
 
-.timer-gauge-value {
-  font-size: 26px;
-  font-weight: 700;
+.timer-z-time-label {
+  font-size: 12px;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  color: var(--muted);
+  letter-spacing: 0.2em;
 }
 
-.timer-gauge-value i {
+/* 注ぐ量とその残り時間。画面のなかで一番大きい数字。 */
+.timer-z-pour {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  padding-bottom: 8px;
+}
+
+.timer-z-pour-main,
+.timer-z-pour-side {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.timer-z-pour-side {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.timer-z-pour-label {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.timer-z-pour-value {
+  font-size: clamp(52px, 18vw, 72px);
+  font-weight: 700;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.timer-z-pour-value i {
   font-style: normal;
-  font-size: 14px;
+  font-size: 24px;
   margin-left: 2px;
   color: var(--muted);
 }
 
-.timer-gauge-cell-wide .timer-gauge-value {
-  font-size: clamp(44px, 15vw, 60px);
-  color: var(--accent-strong);
-}
-
-.timer-gauge-sym {
-  font-size: 14px;
-  line-height: 1;
+.timer-z-pour-upto {
+  font-size: 13px;
   color: var(--muted);
 }
 
-/* 投ごとに1セグメント。現在のセグメントだけ塗りが伸びる。 */
-.timer-seg {
-  width: 100%;
-  display: flex;
-  gap: 3px;
-  height: 10px;
-}
-
-.timer-seg-cell {
-  flex: 1 1 0;
-  position: relative;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--line);
-}
-
-.timer-seg-cell.finish {
-  flex: 0 0 28px;
-}
-
-.timer-seg-cell i {
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  transform-origin: 0 50%;
-  transition: transform 0.2s linear;
-}
-
-.timer-seg-cell.done i {
-  background: color-mix(in srgb, var(--accent) 55%, var(--surface-2));
-}
-
-/* 現在の投だけを数値グリッドのカードにする。 */
-.timer-now {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius-l);
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.timer-now.finish {
-  border-left-color: var(--line);
-}
-
-.timer-now-index {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-}
-
-.timer-now-index strong {
-  font-size: 46px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-strong);
-}
-
-.timer-now-of {
-  font-size: 14px;
-}
-
-.timer-now-mark {
-  font-size: 34px;
-  line-height: 1;
-  color: var(--muted);
-}
-
-.timer-now-grid {
-  margin: 0;
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 8px;
-}
-
-.timer-now.finish .timer-now-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.timer-now-grid dt {
-  font-size: 12px;
-  line-height: 1;
-  color: var(--muted);
-  text-align: center;
-}
-
-.timer-now-grid dd {
-  margin: 4px 0 0;
-  font-size: 20px;
+.timer-z-pour-remain {
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-align: center;
 }
 
-/* ほかの投は数字だけの小さなセルにする。 */
-.timer-cells {
+/* 投の一覧に進捗の塗りを兼ねさせ、現在の行だけ内訳を出す。 */
+.timer-z-steps {
   width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
 
-.timer-cells-item {
+.timer-z-step {
+  position: relative;
+  overflow: hidden;
   box-sizing: border-box;
   min-height: 44px;
-  padding: 5px 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: transparent;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+  align-items: baseline;
+  gap: 10px;
   opacity: 0.55;
 }
 
-.timer-cells-item.now {
+.timer-z-step.now {
   opacity: 1;
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
 }
 
-.timer-cells-item.done {
+.timer-z-step.done {
   opacity: 0.4;
 }
 
-.timer-cells-at {
-  font-size: 10px;
+.timer-z-step-fill {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  transform-origin: 0 50%;
+  transition: transform 0.2s linear;
+}
+
+.timer-z-step.done .timer-z-step-fill {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.timer-z-step > span {
+  position: relative;
+}
+
+.timer-z-step-at {
+  flex: 0 0 auto;
+  font-size: 14px;
   line-height: 1;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
-.timer-cells-value {
-  font-size: 15px;
+.timer-z-step-name {
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.timer-z-step.now .timer-z-step-name {
+  font-weight: 700;
+}
+
+.timer-z-step-target {
+  flex: 0 0 auto;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.timer-z-step-detail {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-z-step-detail b {
+  font-weight: 700;
+}
+
+.timer-z-step-detail em {
+  font-style: normal;
 }
 
 .timer-stage-actions {

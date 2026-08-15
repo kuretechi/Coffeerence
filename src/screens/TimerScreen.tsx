@@ -10,7 +10,7 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-/** 計器盤のセグメントバー1本ぶん。注湯の投と落ち切りを同じ形で並べる。 */
+/** 進捗リスト1行ぶん。注湯の投と落ち切りを同じ形で並べる。 */
 interface Segment {
   key: string;
   startSec: number;
@@ -119,12 +119,19 @@ export function TimerScreen() {
       : finishSec !== undefined && (finished || poured)
       ? segments.length - 1
       : Math.max(focusIndex, 0);
-  const active = segments[activeIndex];
 
+  // いま何gまで注ぐか。まだ1投目に達していなければ1投目の目標を出す。
   const targetG = progress.current?.targetG ?? pours[0]?.targetG;
+  const remainLabel = finished
+    ? '終了'
+    : progress.next
+    ? '次まで'
+    : finishSec !== undefined
+    ? '落ち切りまで'
+    : '終了まで';
 
   return (
-    <div className="timer-stage timer-stage-gauges">
+    <div className="timer-stage timer-stage-z">
       {recipes.length === 0 ? (
         <Banner>先にレシピを登録してください。</Banner>
       ) : (
@@ -142,103 +149,62 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-gauge">
-        <div className="timer-gauge-cell timer-gauge-cell-wide">
-          <SevenSegment className="timer-gauge-seg" value={formatSeconds(stopwatch.elapsed)} />
-        </div>
-        <div className="timer-gauge-cell" aria-label="累計">
-          <span className="timer-gauge-sym mono" aria-hidden="true">
-            Σ
-          </span>
-          <span className="timer-gauge-value mono">
+      <div className="timer-z-time">
+        <span className="timer-z-time-label">経過</span>
+        <SevenSegment className="timer-z-seg" value={formatSeconds(stopwatch.elapsed)} />
+      </div>
+
+      <div className="timer-z-pour" aria-live="polite">
+        <p className="timer-z-pour-main">
+          <span className="timer-z-pour-label">{poured ? '注いだ' : '注ぐ'}</span>
+          <span className="timer-z-pour-value mono">
             {targetG ?? '--'}
             <i>g</i>
           </span>
-        </div>
-        <div className="timer-gauge-cell" aria-label={progress.next ? '次まで' : '終了まで'}>
-          <span className="timer-gauge-sym mono" aria-hidden="true">
-            →
-          </span>
-          <span className="timer-gauge-value mono">
+          {poured ? null : <span className="timer-z-pour-upto">まで</span>}
+        </p>
+        <p className="timer-z-pour-side">
+          <span className="timer-z-pour-label">{remainLabel}</span>
+          <span className="timer-z-pour-remain mono">
             {segments.length === 0 ? '--:--' : formatSeconds(remainSec)}
           </span>
-        </div>
+        </p>
       </div>
-
-      {segments.length === 0 ? null : (
-        <div className="timer-seg" aria-hidden="true">
-          {segments.map((segment, position) => {
-            const done = position < activeIndex;
-            const now = position === activeIndex;
-            return (
-              <span
-                key={segment.key}
-                className={`timer-seg-cell${done ? ' done' : ''}${now ? ' now' : ''}${
-                  segment.index === undefined ? ' finish' : ''
-                }`}
-              >
-                <i style={{ transform: `scaleX(${done ? 1 : now ? ratio : 0})` }} />
-              </span>
-            );
-          })}
-        </div>
-      )}
 
       {recipe && pours.length === 0 ? (
         <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
       ) : null}
 
-      {active === undefined ? null : (
-        <article className={`timer-now${active.index === undefined ? ' finish' : ''}`} aria-live="polite">
-          <div className="timer-now-index">
-            {active.index === undefined ? (
-              <span className="timer-now-mark mono" aria-hidden="true">
-                ▪
-              </span>
-            ) : (
-              <>
-                <strong className="mono">{active.index}</strong>
-                <span className="timer-now-of mono muted">/{pours.length}</span>
-              </>
-            )}
-          </div>
-          <dl className="timer-now-grid">
-            {active.index === undefined ? null : (
-              <>
-                <div>
-                  <dt aria-label="この投">＋</dt>
-                  <dd className="mono">{active.waterG}g</dd>
-                </div>
-                <div>
-                  <dt aria-label="湯温">℃</dt>
-                  <dd className="mono">{active.tempC}</dd>
-                </div>
-              </>
-            )}
-            <div>
-              <dt aria-label="開始">▶</dt>
-              <dd className="mono">{formatSeconds(active.startSec)}</dd>
-            </div>
-          </dl>
-        </article>
-      )}
-
       {segments.length === 0 ? null : (
-        <ol className="timer-cells">
+        <ol className="timer-z-steps">
           {segments.map((segment, position) => {
             const done = position < activeIndex;
             const now = position === activeIndex;
             return (
               <li
                 key={segment.key}
-                className={`timer-cells-item${done ? ' done' : ''}${now ? ' now' : ''}${
+                className={`timer-z-step${done ? ' done' : ''}${now ? ' now' : ''}${
                   segment.index === undefined ? ' finish' : ''
                 }`}
               >
-                <span className="timer-cells-at mono">{formatSeconds(segment.startSec)}</span>
-                <span className="timer-cells-value mono">
-                  {segment.targetG === undefined ? '▪' : `${segment.targetG}g`}
+                <i
+                  className="timer-z-step-fill"
+                  aria-hidden="true"
+                  style={{ transform: `scaleX(${done ? 1 : now ? ratio : 0})` }}
+                />
+                <span className="timer-z-step-at mono">{formatSeconds(segment.startSec)}</span>
+                <span className="timer-z-step-name">
+                  {segment.index === undefined ? '落ち切り' : `${segment.index}投目`}
                 </span>
+                <span className="timer-z-step-target mono">
+                  {segment.targetG === undefined ? '' : `${segment.targetG}g`}
+                </span>
+                {now && segment.index !== undefined ? (
+                  <span className="timer-z-step-detail mono">
+                    <b>＋{segment.waterG}g</b>
+                    <em>{segment.tempC}℃</em>
+                  </span>
+                ) : null}
               </li>
             );
           })}
