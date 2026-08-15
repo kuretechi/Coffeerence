@@ -235,7 +235,7 @@ export function StatsScreen() {
               <Interval estimate={effect.estimate} low={effect.ciLow} high={effect.ciHigh} />
               <br />
               セッション {effect.nSessions} 日／記録 {effect.nObservations} 件
-              {effect.lowConfidence ? '／セッションが少ないため区間は狭く出がちです' : ''}
+              {effect.lowConfidence ? '／対応が不完全な日があるため区間は参考値です' : ''}
               {effect.additionalTrialsNeeded ? `／判定にはあと約 ${effect.additionalTrialsNeeded} 回` : ''}
             </p>
           </>
