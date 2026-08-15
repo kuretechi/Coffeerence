@@ -14,6 +14,7 @@ const APP_SHELL = [
   `${BASE}chime-high.mp3`,
   `${BASE}chime-low.mp3`,
   `${BASE}chime-beep.mp3`,
+  `${BASE}chime-tururu.mp3`,
 ];
 
 self.addEventListener('install', (event) => {

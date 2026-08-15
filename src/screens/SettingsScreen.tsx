@@ -14,6 +14,7 @@ import {
   CHIME_SOUNDS,
   CUSTOM_FINISH_SOUND_ID,
   CUSTOM_SOUND_ID,
+  SAME_AS_CHIME_ID,
   canDecodeChime,
   chime,
   doubleChime,
@@ -151,23 +152,16 @@ export function SettingsScreen() {
           slot={CUSTOM_SOUND_ID}
           selected={settings.soundId}
           fallbackId={settings.soundId}
-          onSelect={(soundId) => void saveSettings({ ...settings, soundId: soundId ?? settings.soundId })}
+          onSelect={(soundId) => void saveSettings({ ...settings, soundId })}
         />
         <SoundPicker
           label="抽出終了の音"
           hint="抽出終了で2回鳴らす音だけを別にできます。"
           slot={CUSTOM_FINISH_SOUND_ID}
-          selected={settings.finishSoundId}
+          selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
           sameLabel="合図音と同じ"
-          onSelect={(finishSoundId) => {
-            if (finishSoundId) {
-              void saveSettings({ ...settings, finishSoundId });
-              return;
-            }
-            const { finishSoundId: _id, finishCustomSoundName: _name, ...rest } = settings;
-            void saveSettings(rest);
-          }}
+          onSelect={(finishSoundId) => void saveSettings({ ...settings, finishSoundId })}
         />
       </Card>
 
@@ -308,11 +302,11 @@ function SoundPicker({
   label: string;
   hint?: string;
   slot: SoundSlot;
-  selected: string | undefined;
-  /** 未選択のときに実際に鳴る音。 */
+  selected: string;
+  /** 「合図音と同じ」のときに実際に鳴る音。 */
   fallbackId: string;
   sameLabel?: string;
-  onSelect: (soundId: string | undefined) => void;
+  onSelect: (soundId: string) => void;
 }) {
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
@@ -326,9 +320,9 @@ function SoundPicker({
     else chime(true, soundId);
   }
 
-  function select(soundId: string | undefined) {
+  function select(soundId: string) {
     onSelect(soundId);
-    if (soundId) playPreview(soundId);
+    playPreview(soundId === SAME_AS_CHIME_ID ? fallbackId : soundId);
   }
 
   async function upload(file: File) {
@@ -350,7 +344,11 @@ function SoundPicker({
       <Field label={label}>
         <div className="segmented">
           {sameLabel ? (
-            <button type="button" className={selected ? '' : 'selected'} onClick={() => select(undefined)}>
+            <button
+              type="button"
+              className={selected === SAME_AS_CHIME_ID ? 'selected' : ''}
+              onClick={() => select(SAME_AS_CHIME_ID)}
+            >
               {sameLabel}
             </button>
           ) : null}
@@ -376,7 +374,7 @@ function SoundPicker({
         <button type="button" onClick={() => input.current?.click()}>
           mp3 / wav をアップロード
         </button>
-        <button type="button" onClick={() => playPreview(selected ?? fallbackId)}>
+        <button type="button" onClick={() => playPreview(selected === SAME_AS_CHIME_ID ? fallbackId : selected)}>
           試聴
         </button>
         {custom ? (

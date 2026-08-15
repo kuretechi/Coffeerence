@@ -4,7 +4,7 @@ import { Banner, Card, Field, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
 import { FinishCharacter } from '../ui/FinishCharacter';
-import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
+import { SAME_AS_CHIME_ID, chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
@@ -28,8 +28,9 @@ export function TimerScreen() {
   const announcedIndex = useRef(0);
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
-  /** 終了の2回鳴らしだけ別の音にできる。未設定なら合図音と同じ。 */
-  const finishSoundId = settings.finishSoundId ?? settings.soundId;
+  /** 終了の2回鳴らしだけ別の音にできる。 */
+  const chosenFinishId = settings.finishSoundId ?? SAME_AS_CHIME_ID;
+  const finishSoundId = chosenFinishId === SAME_AS_CHIME_ID ? settings.soundId : chosenFinishId;
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
   function tempOf(pour: Pour | undefined): number {

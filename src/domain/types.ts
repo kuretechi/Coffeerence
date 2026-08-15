@@ -386,7 +386,7 @@ export interface Settings {
   soundId: string;
   /** アップロードした音のファイル名（表示用）。 */
   customSoundName?: string;
-  /** 抽出終了（2回鳴らし）だけに使う音。未設定なら合図音と同じ。 */
+  /** 抽出終了（2回鳴らし）だけに使う音。'same' なら合図音と同じ。 */
   finishSoundId?: string;
   /** 終了用にアップロードした音のファイル名（表示用）。 */
   finishCustomSoundName?: string;
