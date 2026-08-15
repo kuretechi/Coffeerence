@@ -16,6 +16,7 @@ import {
   CUSTOM_SOUND_ID,
   PITCH_RANGE,
   SAME_AS_CHIME_ID,
+  SOUND_EFFECTS,
   canDecodeChime,
   chime,
   extractAudioTrack,
@@ -25,7 +26,7 @@ import {
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
-import type { GearKind, RecipeDefaults, SoundSlot, ThemeName } from '../domain/types';
+import type { GearKind, RecipeDefaults, SoundEffect, SoundSlot, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
@@ -154,8 +155,10 @@ export function SettingsScreen() {
           selected={settings.soundId}
           fallbackId={settings.soundId}
           pitch={settings.soundPitch ?? 0}
+          effect={settings.soundEffect ?? 'none'}
           onSelect={(soundId) => void saveSettings({ ...settings, soundId })}
           onPitch={(soundPitch) => void saveSettings({ ...settings, soundPitch })}
+          onEffect={(soundEffect) => void saveSettings({ ...settings, soundEffect })}
         />
         <SoundPicker
           label="抽出終了の音"
@@ -165,8 +168,10 @@ export function SettingsScreen() {
           fallbackId={settings.soundId}
           sameLabel="合図音と同じ"
           pitch={settings.finishSoundPitch ?? 0}
+          effect={settings.finishSoundEffect ?? 'none'}
           onSelect={(finishSoundId) => void saveSettings({ ...settings, finishSoundId })}
           onPitch={(finishSoundPitch) => void saveSettings({ ...settings, finishSoundPitch })}
+          onEffect={(finishSoundEffect) => void saveSettings({ ...settings, finishSoundEffect })}
         />
       </Card>
 
@@ -303,8 +308,10 @@ function SoundPicker({
   fallbackId,
   sameLabel,
   pitch,
+  effect,
   onSelect,
   onPitch,
+  onEffect,
 }: {
   label: string;
   hint?: string;
@@ -315,17 +322,20 @@ function SoundPicker({
   sameLabel?: string;
   /** ピッチ（半音）。 */
   pitch: number;
+  /** かける効果。 */
+  effect: SoundEffect;
   onSelect: (soundId: string) => void;
   onPitch: (pitch: number) => void;
+  onEffect: (effect: SoundEffect) => void;
 }) {
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
 
   /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
-  function playPreview(soundId: string, previewPitch = pitch) {
+  function playPreview(soundId: string, previewPitch = pitch, previewEffect = effect) {
     primeAudio(true, soundId);
-    chime(true, soundId, previewPitch);
+    chime(true, soundId, previewPitch, previewEffect);
   }
 
   const playedId = selected === SAME_AS_CHIME_ID ? fallbackId : selected;
@@ -340,6 +350,12 @@ function SoundPicker({
     if (next === pitch) return;
     onPitch(next);
     playPreview(playedId, next);
+  }
+
+  /** 効果を変えたときもその場で確かめられるようにする。 */
+  function changeEffect(next: SoundEffect) {
+    onEffect(next);
+    playPreview(playedId, pitch, next);
   }
 
   async function upload(file: File) {
@@ -399,6 +415,20 @@ function SoundPicker({
           value={pitch}
           onChange={(event) => changePitch(Number(event.target.value))}
         />
+      </Field>
+      <Field label={`${label}の効果`}>
+        <div className="segmented">
+          {SOUND_EFFECTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={effect === item.id ? 'selected' : ''}
+              onClick={() => changeEffect(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </Field>
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
