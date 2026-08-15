@@ -347,7 +347,7 @@ function SoundPicker({
   async function upload(file: File) {
     // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
     if (!(await canDecodeChime(file))) {
-      setMessage(`${file.name} はこの端末で再生できません。別の mp3 / wav を選んでください。`);
+      setMessage(`${file.name} はこの端末で再生できません。別の音声ファイルか動画を選んでください。`);
       return;
     }
     await saveCustomSound(file, slot);
@@ -402,7 +402,7 @@ function SoundPicker({
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
         <button type="button" onClick={() => input.current?.click()}>
-          mp3 / wav をアップロード
+          音声 / 動画をアップロード
         </button>
         <button type="button" onClick={() => playPreview(playedId)}>
           試聴
@@ -422,7 +422,7 @@ function SoundPicker({
       <input
         ref={input}
         type="file"
-        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg"
+        accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.mov,.mp4"
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];
