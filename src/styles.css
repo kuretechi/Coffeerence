@@ -469,6 +469,78 @@ input.slider {
   gap: 6px;
 }
 
+/* ─── DM ───────────────────────────────── */
+.dm-threads {
+  gap: 0;
+}
+
+.dm-thread {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+
+.dm-thread-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.dm-thread-excerpt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dm-unread {
+  flex: 0 0 auto;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dm-log {
+  gap: 8px;
+}
+
+.dm-bubble {
+  max-width: 84%;
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: grid;
+  gap: 2px;
+  justify-self: start;
+}
+
+.dm-bubble.mine {
+  justify-self: end;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.dm-bubble-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dm-bubble.mine .dm-bubble-time {
+  color: var(--on-accent);
+  opacity: 0.8;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

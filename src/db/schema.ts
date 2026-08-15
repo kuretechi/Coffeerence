@@ -24,6 +24,16 @@ export type PostRow = {
   created_at: string;
 };
 
+export type MessageRow = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string;
+  moderation: ModerationVerdict;
+  created_at: string;
+  read_at: string | null;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -59,6 +69,20 @@ export type Database = {
           created_at?: string;
         };
         Update: { body?: string; moderation?: ModerationVerdict };
+        Relationships: [];
+      };
+      messages: {
+        Row: MessageRow;
+        Insert: {
+          id?: string;
+          sender_id: string;
+          recipient_id: string;
+          body: string;
+          moderation: ModerationVerdict;
+          created_at?: string;
+          read_at?: string | null;
+        };
+        Update: { read_at?: string | null };
         Relationships: [];
       };
     };

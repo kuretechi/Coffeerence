@@ -131,6 +131,15 @@ export function formatSeconds(totalSeconds: number): string {
   return `${sign}${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+/** 「3分」「2時間」のような相対表記。24時間を超えたら日付にする。 */
+export function relativeTime(iso: string): string {
+  const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return `${Math.floor(diffSec)}秒`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}分`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}時間`;
+  return new Date(iso).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+}
+
 export function formatSigned(value: number, digits = 2): string {
   return `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(digits)}`;
 }

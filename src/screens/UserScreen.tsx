@@ -51,6 +51,17 @@ export function UserScreen() {
               <strong>{name}</strong>
             </div>
           </div>
+          {auth.user ? (
+            <div className="row">
+              <Link className="button primary" to={`/dm/${userId}`}>
+                DM を送る
+              </Link>
+            </div>
+          ) : (
+            <p className="muted">
+              DM を送るには<Link to="/account">ログイン</Link>が必要です。
+            </p>
+          )}
           {error ? <Banner tone="danger">{error}</Banner> : null}
           {loading ? <Banner>読み込み中です。</Banner> : null}
           <p>{profile?.bio ?? '自己紹介はまだありません。'}</p>

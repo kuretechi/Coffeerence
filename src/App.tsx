@@ -15,6 +15,8 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { FriendsScreen } from './screens/FriendsScreen';
 import { AccountScreen } from './screens/AccountScreen';
 import { UserScreen } from './screens/UserScreen';
+import { MessagesScreen } from './screens/MessagesScreen';
+import { DmThreadScreen } from './screens/DmThreadScreen';
 
 const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
@@ -58,6 +60,8 @@ export function App() {
         <Route path="/friends" element={<FriendsScreen />} />
         <Route path="/account" element={<AccountScreen />} />
         <Route path="/users/:userId" element={<UserScreen />} />
+        <Route path="/dm" element={<MessagesScreen />} />
+        <Route path="/dm/:userId" element={<DmThreadScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

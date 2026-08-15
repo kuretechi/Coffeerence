@@ -61,11 +61,13 @@ npm run build      # 本番ビルド
 
 | 環境変数 | 未設定のとき | 設定したとき |
 | --- | --- | --- |
-| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | 投稿は端末内にのみ保存。ログイン不可 | 全員共有のタイムラインとメール認証 |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | 投稿は端末内にのみ保存。ログインと DM は不可 | 全員共有のタイムラインとメール認証、DM |
 
-- テーブルと権限（RLS）: `supabase/migrations/0001_social.sql`
+- テーブルと権限（RLS）: `supabase/migrations/0001_social.sql`、DM は `supabase/migrations/0004_direct_messages.sql`
 - 設定手順（プロジェクト作成・鍵・公開ビルド）: [docs/supabase-setup.md](docs/supabase-setup.md)
 - 読むのは誰でも、書く・消すのは本人の行だけ（サーバー側でも強制）。投稿は必ず自動判定を通る。
+- DM（`/dm`）は当人同士だけが読める。受信時のメール通知は Edge Function `supabase/functions/notify-dm`
+  （デプロイと Resend の設定が必要。未設定なら DM は届くがメールは送られない）。
 
 ## 発表スライド
 

@@ -24,6 +24,7 @@ import { uid } from '../lib/random';
 import { moderate } from '../lib/moderation';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { deletePost as deleteRemotePost, insertPost as insertRemotePost } from './social';
+import { insertMessage } from './messages';
 
 export async function seedIfEmpty(): Promise<void> {
   const existing = await db.settings.get('settings');
@@ -359,4 +360,24 @@ export async function deletePost(post: Post): Promise<void> {
     await db.posts.delete(post.id);
   }
   await recordAudit({ kind: 'delete', subject: post.id, detail: `${post.author} の投稿を削除` });
+}
+
+// ─── DM ───────────────────────────────────
+/**
+ * 判定を通った DM だけを送る。投稿と同じ自動判定を必ず通し、
+ * 不適切と判定された場合は送らずに監査ログへ残して呼び出し側に返す。
+ */
+export async function sendDirectMessage(recipientId: string, body: string): Promise<ModerationVerdict> {
+  const text = body.trim();
+  const verdict = await moderate(text);
+  if (!verdict.allowed) {
+    await recordAudit({
+      kind: 'moderation',
+      subject: 'dm',
+      detail: `DM を拒否（${verdict.provider}: ${verdict.categories.join(', ') || '不適切'}）`,
+    });
+    return verdict;
+  }
+  await insertMessage({ recipientId, body: text, moderation: verdict });
+  return verdict;
 }
