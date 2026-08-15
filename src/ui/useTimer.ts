@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import type { SoundSlot } from '../domain/types';
 
 interface WakeLockSentinelLike {
   release: () => Promise<void>;
@@ -102,8 +103,15 @@ export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
   { id: 'beep', label: '電子音', file: 'chime-beep.mp3' },
 ];
 
-/** アップロードした音を指すID。 */
-export const CUSTOM_SOUND_ID = 'custom';
+/** アップロードした音を指すID（= 置き場の ID）。 */
+export const CUSTOM_SOUND_ID: SoundSlot = 'custom';
+/** 抽出終了用にアップロードした音を指すID。 */
+export const CUSTOM_FINISH_SOUND_ID: SoundSlot = 'custom-finish';
+const SOUND_SLOTS: SoundSlot[] = [CUSTOM_SOUND_ID, CUSTOM_FINISH_SOUND_ID];
+
+function isCustom(soundId: string): soundId is SoundSlot {
+  return (SOUND_SLOTS as string[]).includes(soundId);
+}
 
 /** 鳴らす音源。key でデコード結果を使い回す。 */
 interface ChimeSource {
@@ -113,21 +121,22 @@ interface ChimeSource {
 
 const buffers = new Map<string, AudioBuffer>();
 const loads = new Map<string, Promise<AudioBuffer | undefined>>();
-let customSound: { key: string; blob: Blob } | undefined;
+const customSounds = new Map<SoundSlot, { key: string; blob: Blob }>();
 
 /**
  * アップロードした音源を登録する。Blob URL を介さず Blob から直接
  * デコードするので、URL の失効で鳴らなくなることがない。
  */
-export function setCustomChime(blob: Blob | undefined, key = ''): void {
-  customSound = blob ? { key, blob } : undefined;
+export function setCustomChime(slot: SoundSlot, blob: Blob | undefined, key = ''): void {
+  if (blob) customSounds.set(slot, { key, blob });
+  else customSounds.delete(slot);
 }
 
 function chimeSource(soundId: string): ChimeSource | undefined {
-  if (soundId === CUSTOM_SOUND_ID) {
-    const current = customSound;
+  if (isCustom(soundId)) {
+    const current = customSounds.get(soundId);
     if (!current) return undefined;
-    return { key: `custom:${current.key}`, data: () => current.blob.arrayBuffer() };
+    return { key: `${soundId}:${current.key}`, data: () => current.blob.arrayBuffer() };
   }
   const sound = CHIME_SOUNDS.find((item) => item.id === soundId) ?? CHIME_SOUNDS[0];
   const url = `${import.meta.env.BASE_URL}${sound.file}`;
@@ -156,10 +165,14 @@ function load(ctx: AudioContext, source: ChimeSource): Promise<AudioBuffer | und
 
 /** アップロードされた合図音を鳴らせるよう登録しておく。 */
 export function useCustomChime(): void {
-  const stored = useLiveQuery(() => db.sounds.get(CUSTOM_SOUND_ID), [], undefined);
+  const stored = useLiveQuery(() => db.sounds.toArray(), [], undefined);
 
   useEffect(() => {
-    setCustomChime(stored?.blob, stored ? `${stored.name}:${stored.blob.size}` : '');
+    if (!stored) return;
+    for (const slot of SOUND_SLOTS) {
+      const sound = stored.find((item) => item.id === slot);
+      setCustomChime(slot, sound?.blob, sound ? `${sound.name}:${sound.blob.size}` : '');
+    }
   }, [stored]);
 }
 

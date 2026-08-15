@@ -28,6 +28,8 @@ export function TimerScreen() {
   const announcedIndex = useRef(0);
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
+  /** 終了の2回鳴らしだけ別の音にできる。未設定なら合図音と同じ。 */
+  const finishSoundId = settings.finishSoundId ?? settings.soundId;
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
   function tempOf(pour: Pour | undefined): number {
@@ -46,12 +48,13 @@ export function TimerScreen() {
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    doubleChime(settings.soundEnabled, settings.soundId);
+    doubleChime(settings.soundEnabled, finishSoundId);
     setCheerRun((run) => run + 1);
-  }, [finished, stopwatch, settings.soundEnabled, settings.soundId]);
+  }, [finished, stopwatch, settings.soundEnabled, finishSoundId]);
 
   function start() {
     primeAudio(settings.soundEnabled, settings.soundId);
+    primeAudio(settings.soundEnabled, finishSoundId);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
     chime(settings.soundEnabled, settings.soundId);

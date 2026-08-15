@@ -16,6 +16,7 @@ import type {
   Session,
   Settings,
   SharedRecipe,
+  SoundSlot,
   TriangleTrial,
 } from '../domain/types';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
@@ -98,22 +99,32 @@ function audioMimeType(file: File): string {
   return byExtension[extension] ?? 'audio/mpeg';
 }
 
-/** アップロードした合図音を端末内に保存し、選択状態にする。 */
-export async function saveCustomSound(file: File): Promise<void> {
+/** アップロードした合図音を端末内に保存し、その置き場を選択状態にする。 */
+export async function saveCustomSound(file: File, slot: SoundSlot = 'custom'): Promise<void> {
   // File はディスク上の実体への参照なので、そのまま保存すると端末側で
   // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
   const blob = new Blob([await file.arrayBuffer()], { type: audioMimeType(file) });
-  await db.sounds.put({ id: 'custom', name: file.name, blob });
+  await db.sounds.put({ id: slot, name: file.name, blob });
   const settings = await getSettings();
-  await saveSettings({ ...settings, soundId: 'custom', customSoundName: file.name });
+  await saveSettings(
+    slot === 'custom'
+      ? { ...settings, soundId: slot, customSoundName: file.name }
+      : { ...settings, finishSoundId: slot, finishCustomSoundName: file.name },
+  );
 }
 
-/** アップロードした合図音を捨て、既定音に戻す。 */
-export async function deleteCustomSound(): Promise<void> {
-  await db.sounds.delete('custom');
+/** アップロードした合図音を捨て、既定の選択に戻す。 */
+export async function deleteCustomSound(slot: SoundSlot = 'custom'): Promise<void> {
+  await db.sounds.delete(slot);
   const settings = await getSettings();
-  const { customSoundName: _dropped, ...rest } = settings;
-  await saveSettings({ ...rest, soundId: DEFAULT_SETTINGS.soundId });
+  if (slot === 'custom') {
+    const { customSoundName: _dropped, ...rest } = settings;
+    await saveSettings({ ...rest, soundId: DEFAULT_SETTINGS.soundId });
+    return;
+  }
+  // 終了音は未設定＝合図音と同じなので、項目ごと落とす。
+  const { finishSoundId: _id, finishCustomSoundName: _name, ...rest } = settings;
+  await saveSettings(rest);
 }
 
 export async function getActiveCompetition(): Promise<Competition> {
