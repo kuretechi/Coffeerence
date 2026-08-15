@@ -109,7 +109,7 @@ const BELL_PARTIALS = [
 ];
 
 /** 「チーン」と一度鳴らす合図（音声ファイル不要）。 */
-export function chime(enabled: boolean, frequency = 1046.5, durationMs = 1200): void {
+export function chime(enabled: boolean, frequency = 2093, durationMs = 500): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
@@ -137,7 +137,7 @@ export function chime(enabled: boolean, frequency = 1046.5, durationMs = 1200): 
 }
 
 /** 「チーン、チーン」と2回鳴らす合図。 */
-export function doubleChime(enabled: boolean, frequency = 1046.5, durationMs = 1200): void {
+export function doubleChime(enabled: boolean, frequency = 2093, durationMs = 500): void {
   chime(enabled, frequency, durationMs);
-  window.setTimeout(() => chime(enabled, frequency, durationMs), 550);
+  window.setTimeout(() => chime(enabled, frequency, durationMs), 260);
 }
