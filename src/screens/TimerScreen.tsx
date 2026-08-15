@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { Banner, Field, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
 import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
@@ -68,106 +68,108 @@ export function TimerScreen() {
   }
 
   return (
-    <>
-      <Card title="抽出タイマー" hint="先にレシピを決めてから計測します。注湯のタイミングはタイマーが知らせます。">
-        {recipes.length === 0 ? (
-          <Banner>先にレシピを登録してください。</Banner>
-        ) : (
-          <Field label="レシピ">
-            <select value={selectedId} onChange={(event) => setRecipeId(event.target.value)}>
-              {recipes.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
+    <div className="timer-flat">
+      {recipes.length === 0 ? (
+        <Banner>先にレシピを登録してください。</Banner>
+      ) : (
+        <Field label="レシピ">
+          <select value={selectedId} onChange={(event) => setRecipeId(event.target.value)}>
+            {recipes.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
 
-        <div className="timer-panel">
-          <div className="timer-panel-label">
-            <span>{stopwatch.running ? '抽出中' : '待機'}</span>
-            <span className="en">BREW TIME</span>
-          </div>
-          <SevenSegment className="timer" value={formatSeconds(stopwatch.elapsed)} />
+      <div className="timer-flat-clock">
+        <div className="timer-panel-label">
+          <span>{stopwatch.running ? '抽出中' : '待機'}</span>
+          <span className="en">BREW TIME</span>
         </div>
+        <SevenSegment className="timer" value={formatSeconds(stopwatch.elapsed)} />
+      </div>
 
-        {pours.length === 0 ? (
-          recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
-        ) : (
-          <div className="pour-guide">
-            <p className="pour-now">
-              {finished
-                ? '抽出終了'
-                : !stopwatch.running && stopwatch.elapsed === 0
-                ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
-                : progress.current
-                ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
-                : `${formatSeconds(progress.untilNextSec)} 後に 1投目`}
-            </p>
-            <p className="pour-next muted">
-              {finished
-                ? '抽出終了です。'
-                : progress.next
-                ? `次: ${progress.next.index}投目 ${progress.next.targetG}gまで`
-                : finishSec === undefined
-                ? '注湯完了'
-                : '次: 抽出終了'}
-            </p>
-            <ol className="pour-list">
-              {pours.map((pour, index) => (
-                <li key={pour.index} className={progress.current?.index === pour.index ? 'current' : ''}>
-                  <span className="mono">{formatSeconds(pour.startSec)}</span>
-                  <span>
-                    {pour.index}投目 累計{pour.targetG}g
-                  </span>
-                  <span className="mono muted">
-                    {steps[index]?.waterG ?? 0}g / {tempOf(pour)}℃
-                  </span>
-                </li>
-              ))}
-            </ol>
+      {pours.length === 0 ? (
+        recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
+      ) : (
+        <div className="timer-flat-guide">
+          <p className="pour-now">
+            {finished
+              ? '抽出終了'
+              : !stopwatch.running && stopwatch.elapsed === 0
+              ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
+              : progress.current
+              ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
+              : `${formatSeconds(progress.untilNextSec)} 後に 1投目`}
+          </p>
+          <p className="pour-next muted">
+            {finished
+              ? '抽出終了です。'
+              : progress.next
+              ? `次: ${progress.next.index}投目 ${progress.next.targetG}gまで`
+              : finishSec === undefined
+              ? '注湯完了'
+              : '次: 抽出終了'}
+          </p>
+          <ol className="timer-flat-list">
+            {pours.map((pour, index) => (
+              <li key={pour.index} className={progress.current?.index === pour.index ? 'current' : ''}>
+                <span className="mono">{formatSeconds(pour.startSec)}</span>
+                <span>
+                  {pour.index}投目 累計{pour.targetG}g
+                </span>
+                <span className="mono muted">
+                  {steps[index]?.waterG ?? 0}g / {tempOf(pour)}℃
+                </span>
+              </li>
+            ))}
             {finishSec === undefined ? null : (
-              <p className="pour-finish mono muted">抽出終了 {formatSeconds(finishSec)}</p>
+              <li className="finish">
+                <span className="mono">{formatSeconds(finishSec)}</span>
+                <span>抽出終了</span>
+                <span />
+              </li>
             )}
-          </div>
-        )}
+          </ol>
+        </div>
+      )}
 
-        <div className="row">
-          {stopwatch.running ? (
-            <button type="button" onClick={stopwatch.pause}>
-              停止
-            </button>
-          ) : (
-            <button className="primary" type="button" disabled={finished} onClick={start}>
-              開始
-            </button>
-          )}
+      <div className="row timer-flat-actions">
+        {stopwatch.running ? (
+          <button type="button" onClick={stopwatch.pause}>
+            停止
+          </button>
+        ) : (
+          <button className="primary" type="button" disabled={finished} onClick={start}>
+            開始
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            announcedIndex.current = 0;
+            stopwatch.reset();
+          }}
+        >
+          リセット
+        </button>
+      </div>
+
+      {recipes.length === 0 ? null : (
+        <div className="row timer-record">
           <button
+            className="primary"
             type="button"
-            onClick={() => {
-              announcedIndex.current = 0;
-              stopwatch.reset();
-            }}
+            disabled={stopwatch.elapsed === 0}
+            onClick={() => void finish()}
           >
-            リセット
+            記録して味評価へ
           </button>
         </div>
-
-        {recipes.length === 0 ? null : (
-          <div className="row timer-record">
-            <button
-              className="primary"
-              type="button"
-              disabled={stopwatch.elapsed === 0}
-              onClick={() => void finish()}
-            >
-              記録して味評価へ
-            </button>
-          </div>
-        )}
-        {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
-      </Card>
-    </>
+      )}
+      {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
+    </div>
   );
 }

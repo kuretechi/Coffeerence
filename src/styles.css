@@ -601,6 +601,91 @@ table button {
   font-weight: 700;
 }
 
+/* カード枠を持たない、余白と罫線だけで区切るタイマー画面。 */
+.timer-flat {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.timer-flat .field > span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.timer-flat .field select {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding-left: 0;
+  font-size: 18px;
+}
+
+.timer-flat-clock {
+  text-align: center;
+}
+
+.timer-flat-clock .timer-panel-label {
+  justify-content: center;
+  letter-spacing: 0.14em;
+}
+
+.timer-flat-clock .seven-segment {
+  max-width: min(88vw, 420px);
+  margin-top: 16px;
+}
+
+.timer-flat-guide {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.timer-flat-guide .pour-now {
+  font-size: 26px;
+  letter-spacing: -0.01em;
+}
+
+.timer-flat-guide .pour-next {
+  margin-bottom: 20px;
+}
+
+.timer-flat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.timer-flat-list li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  color: var(--muted);
+}
+
+.timer-flat-list li.current {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.timer-flat-list li.finish {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.timer-flat-actions {
+  gap: 12px;
+}
+
+.timer-flat-actions button {
+  flex: 1;
+}
+
 .timer.warning {
   color: var(--warn);
 }
