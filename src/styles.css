@@ -1226,16 +1226,138 @@ table button {
   color: var(--text);
 }
 
-/* レシピ一覧はレシピ名だけなので、行を詰める。 */
-.recipe-item {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px 12px;
+/* 見出し行。縦スペースを増やさずに操作を置く。 */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.recipe-item .log-summary {
-  min-height: 0;
+.card-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.head-add,
+.head-back,
+.head-edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.head-add {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* レシピ一覧は1行=1レシピの高密度な行。 */
+.recipe-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
+}
+
+.recipe-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.recipe-row-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-row-main .mono {
+  font-size: 12px;
+}
+
+.recipe-row-delete {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 12px;
+  border-color: var(--line);
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.recipe-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0 8px;
+  font-size: 13px;
+}
+
+.recipe-view-name {
+  font-size: 15px;
+}
+
+.pour-view-grid {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+}
+
+.pour-view-grid dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pour-view-grid dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.recipe-view-pours .pour-node:last-child .pour-node-axis::after {
+  display: none;
+}
+
+.recipe-view-start {
+  width: 100%;
+  margin-top: 4px;
 }
 
 /* 記録一覧の行。タップで詳細を開く。 */

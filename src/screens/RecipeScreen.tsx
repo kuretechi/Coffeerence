@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { Link } from 'react-router-dom';
+import { Field, formatSeconds } from '../ui/components';
 import { StepSlider } from './StepSlider';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -127,50 +128,18 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
-/** レシピ名をタップしたときに開く抽出条件の内訳。 */
-function RecipeDetail({ recipe }: { recipe: Recipe }) {
-  return (
-    <dl className="brew-detail">
-      <dt>粉量 / 総湯量</dt>
-      <dd className="mono">
-        {recipe.doseG}g / {recipe.totalWaterG}g
-      </dd>
-      <dt>挽き目 / ドリッパー</dt>
-      <dd>
-        {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
-      </dd>
-      <dt>初期湯温</dt>
-      <dd className="mono">{recipe.waterTempC}℃</dd>
-      <dt>注湯</dt>
-      <dd className="mono">
-        {recipe.pours.length === 0
-          ? '—'
-          : recipe.pours
-              .map(
-                (pour) =>
-                  `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
-              )
-              .join(' / ')}
-      </dd>
-      <dt>抽出終了</dt>
-      <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
-    </dl>
-  );
-}
-
-export function RecipeScreen() {
-  const recipes = useRecipes();
+/**
+ * 作成・編集の段階ウィザード（全画面シート）。
+ * 開いている間だけマウントする。
+ */
+export function RecipeWizard({ recipe: editing, onClose }: { recipe?: Recipe; onClose: () => void }) {
   const beans = useBeans();
   const defaults = useSettings().recipeDefaults;
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
-  const [editingId, setEditingId] = useState<string | undefined>(undefined);
-  const [openId, setOpenId] = useState<string | undefined>(undefined);
-  // ウィザードを開いているときだけ 0〜2 のステップを持つ。
-  const [step, setStep] = useState<number | undefined>(undefined);
+  const [draft, setDraft] = useState<Draft>(() => (editing ? draftOf(editing) : emptyDraft(DEFAULT_SETTINGS.recipeDefaults)));
+  const [step, setStep] = useState(0);
   // カードをまたいで 1 つだけ拡大しているフィールド。
   const [focus, setFocus] = useState<{ index: number; field: PourFieldKey }>({ index: 0, field: 'targetG' });
-  const editing = recipes.find((recipe) => recipe.id === editingId);
-  const open = step !== undefined;
+  const editingId = editing?.id;
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
   useEffect(() => {
@@ -235,27 +204,6 @@ export function RecipeScreen() {
     }));
   }
 
-  function openCreate() {
-    setEditingId(undefined);
-    setDraft(emptyDraft(defaults));
-    setFocus({ index: 0, field: 'targetG' });
-    setStep(0);
-  }
-
-  function openEdit(recipe: Recipe) {
-    setEditingId(recipe.id);
-    setDraft(draftOf(recipe));
-    setFocus({ index: 0, field: 'targetG' });
-    setStep(0);
-  }
-
-  function close() {
-    setStep(undefined);
-    setEditingId(undefined);
-    setDraft(emptyDraft(defaults));
-    setFocus({ index: 0, field: 'targetG' });
-  }
-
   async function save() {
     if (!canSave) return;
     const recipe: Recipe = {
@@ -280,56 +228,13 @@ export function RecipeScreen() {
       createdAt: editing?.createdAt ?? new Date().toISOString(),
     };
     await saveRecipe(recipe);
-    close();
+    onClose();
   }
 
   const nextDisabled = step === 0 && !baseReady;
 
   return (
-    <>
-      <Card title="レシピ">
-        <div className="stack">
-          <button className="primary" type="button" onClick={openCreate}>
-            ＋ 追加
-          </button>
-          {recipes.length === 0 ? (
-            <Banner>まだレシピがありません。</Banner>
-          ) : (
-            recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item recipe-item">
-                <button
-                  className="log-summary"
-                  type="button"
-                  aria-expanded={openId === recipe.id}
-                  onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
-                >
-                  <strong>{recipe.name}</strong>
-                  <span className="mono muted">
-                    {recipe.doseG}g / {recipe.totalWaterG}g / {recipe.waterTempC}℃
-                  </span>
-                </button>
-
-                {openId === recipe.id ? (
-                  <>
-                    <RecipeDetail recipe={recipe} />
-                    <div className="row">
-                      <button type="button" onClick={() => openEdit(recipe)}>
-                        編集
-                      </button>
-                      <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
-                        削除
-                      </button>
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
-
-      {open ? (
-        <div className="modal-backdrop" onClick={close}>
+        <div className="modal-backdrop" onClick={onClose}>
           <div
             className="modal recipe-wizard"
             role="dialog"
@@ -339,7 +244,7 @@ export function RecipeScreen() {
           >
             <div className="wizard-head">
               <strong>{editing ? `編集: ${editing.name}` : 'レシピ追加'}</strong>
-              <button className="wizard-close" type="button" aria-label="閉じる" onClick={close}>
+              <button className="wizard-close" type="button" aria-label="閉じる" onClick={onClose}>
                 ×
               </button>
             </div>
@@ -542,7 +447,68 @@ export function RecipeScreen() {
             </div>
           </div>
         </div>
-      ) : null}
+  );
+}
+
+/**
+ * レシピ一覧。見出し行の右端の ＋ から作成ウィザードを開き、
+ * 行のタップで閲覧＋演習の画面へ移る。
+ */
+export function RecipeScreen() {
+  const recipes = useRecipes();
+  const [creating, setCreating] = useState(false);
+
+  function remove(recipe: Recipe) {
+    if (!window.confirm(`「${recipe.name}」を削除しますか？`)) return;
+    void deleteRecipe(recipe.id);
+  }
+
+  return (
+    <>
+      <section className="card">
+        <div className="card-head">
+          <h2>レシピ</h2>
+          <button className="head-add" type="button" aria-label="レシピを追加" onClick={() => setCreating(true)}>
+            ＋
+          </button>
+        </div>
+
+        {recipes.length === 0 ? (
+          <div className="recipe-empty">
+            <span className="muted">レシピなし</span>
+            <button className="primary" type="button" onClick={() => setCreating(true)}>
+              ＋ 追加
+            </button>
+          </div>
+        ) : (
+          <ul className="recipe-rows">
+            {recipes.map((recipe) => (
+              <li className="recipe-row" key={recipe.id}>
+                <Link className="recipe-row-main" to={`/recipes/${recipe.id}`}>
+                  <strong>{recipe.name}</strong>
+                  <span className="mono muted">
+                    {recipe.doseG}g / {recipe.totalWaterG}g / {recipe.waterTempC}℃
+                  </span>
+                </Link>
+                <button
+                  className="recipe-row-delete"
+                  type="button"
+                  aria-label={`${recipe.name}を削除`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    remove(recipe);
+                  }}
+                >
+                  削除
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {creating ? <RecipeWizard onClose={() => setCreating(false)} /> : null}
     </>
   );
 }
