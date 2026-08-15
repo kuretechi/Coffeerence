@@ -12,6 +12,7 @@ import type {
   Recipe,
   Session,
   Settings,
+  SoundSlot,
   StoredSound,
 } from '../domain/types';
 
@@ -62,8 +63,8 @@ export function usePosts(): Post[] {
 }
 
 /** アップロードした合図音（未設定なら undefined）。 */
-export function useCustomSound(): StoredSound | undefined {
-  return useLiveQuery(() => db.sounds.get('custom'), [], undefined);
+export function useCustomSound(slot: SoundSlot = 'custom'): StoredSound | undefined {
+  return useLiveQuery(() => db.sounds.get(slot), [slot], undefined);
 }
 
 export function useBeans(): Bean[] {

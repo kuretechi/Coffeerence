@@ -386,12 +386,19 @@ export interface Settings {
   soundId: string;
   /** アップロードした音のファイル名（表示用）。 */
   customSoundName?: string;
+  /** 抽出終了（2回鳴らし）だけに使う音。未設定なら合図音と同じ。 */
+  finishSoundId?: string;
+  /** 終了用にアップロードした音のファイル名（表示用）。 */
+  finishCustomSoundName?: string;
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
+/** アップロード音の置き場。合図音と終了音で別のファイルを持てる。 */
+export type SoundSlot = 'custom' | 'custom-finish';
+
 /** アップロードした合図音。音源は Blob のまま端末内に置く。 */
 export interface StoredSound {
-  id: 'custom';
+  id: SoundSlot;
   name: string;
   blob: Blob;
 }
