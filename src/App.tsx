@@ -9,6 +9,7 @@ import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { ComingSoonScreen } from './screens/ComingSoonScreen';
+import { FriendsScreen } from './screens/FriendsScreen';
 
 const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
@@ -42,10 +43,7 @@ export function App() {
         <Route path="/" element={<RecipeScreen />} />
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
-        <Route
-          path="/friends"
-          element={<ComingSoonScreen title="豆友" description="他の競技者のレシピを見たり、自分のレシピを投稿したりする画面です。" />}
-        />
+        <Route path="/friends" element={<FriendsScreen />} />
         <Route
           path="/account"
           element={<ComingSoonScreen title="アカウント" description="アカウント登録とログインの画面です。" />}

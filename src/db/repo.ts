@@ -8,6 +8,8 @@ import type {
   ExternalLabel,
   FlavorDescriptorSet,
   Gear,
+  ModerationVerdict,
+  Post,
   Recipe,
   RehearsalRecord,
   Score,
@@ -17,6 +19,7 @@ import type {
 } from '../domain/types';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
 import { uid } from '../lib/random';
+import { moderate } from '../lib/moderation';
 
 export async function seedIfEmpty(): Promise<void> {
   const existing = await db.settings.get('settings');
@@ -200,4 +203,64 @@ export async function consumeBeans(beanId: string, grams: number): Promise<void>
   const bean = await db.beans.get(beanId);
   if (!bean) return;
   await db.beans.put({ ...bean, remainingG: Math.max(0, bean.remainingG - grams) });
+}
+
+// ─── 豆友（投稿と自動判定）───────────────
+/**
+ * 判定を通った投稿だけを保存する。不適切と判定された場合は保存せず、
+ * 判定結果を監査ログに残して呼び出し側に返す。
+ */
+export async function submitPost(author: string, body: string): Promise<ModerationVerdict> {
+  const settings = await getSettings();
+  const verdict = await moderate(body, settings.moderation);
+  if (!verdict.allowed) {
+    await recordAudit({
+      kind: 'moderation',
+      subject: 'post',
+      detail: `投稿を拒否（${verdict.provider}: ${verdict.categories.join(', ') || '不適切'}）`,
+    });
+    return verdict;
+  }
+  const post: Post = {
+    id: uid('post'),
+    author: author.trim() === '' ? '名無し' : author.trim(),
+    body,
+    createdAt: new Date().toISOString(),
+    moderation: verdict,
+  };
+  await db.posts.put(post);
+  return verdict;
+}
+
+/**
+ * 保存済みの投稿をまとめて再判定し、不適切なものを削除する。
+ * 判定器を差し替えた（APIキーを設定した）あとの遡り適用に使う。
+ */
+export async function remoderatePosts(): Promise<number> {
+  const settings = await getSettings();
+  const posts = await db.posts.toArray();
+  let removed = 0;
+  for (const post of posts) {
+    const verdict = await moderate(post.body, settings.moderation);
+    if (verdict.allowed) {
+      await db.posts.put({ ...post, moderation: verdict });
+      continue;
+    }
+    await db.posts.delete(post.id);
+    removed += 1;
+    await recordAudit({
+      kind: 'moderation',
+      subject: post.id,
+      detail: `再判定で削除（${verdict.provider}: ${verdict.categories.join(', ') || '不適切'}）`,
+    });
+  }
+  return removed;
+}
+
+/** R-2: 削除は記録に残す。 */
+export async function deletePost(postId: string): Promise<void> {
+  const post = await db.posts.get(postId);
+  if (!post) return;
+  await db.posts.delete(postId);
+  await recordAudit({ kind: 'delete', subject: postId, detail: `${post.author} の投稿を削除` });
 }

@@ -2,7 +2,17 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
 import { THEME_NAMES } from '../domain/types';
-import type { Bean, BrewRecord, Competition, Gear, GearKind, Recipe, Session, Settings } from '../domain/types';
+import type {
+  Bean,
+  BrewRecord,
+  Competition,
+  Gear,
+  GearKind,
+  Post,
+  Recipe,
+  Session,
+  Settings,
+} from '../domain/types';
 
 /** 廃止したテーマ（HUD）が保存されたままの端末を既定へ戻す。 */
 function normalize(stored: Settings): Settings {
@@ -44,6 +54,10 @@ export function useRecipes(): Recipe[] {
 
 export function useBrews(): BrewRecord[] {
   return useLiveQuery(() => db.brews.orderBy('date').reverse().toArray(), [], []) ?? [];
+}
+
+export function usePosts(): Post[] {
+  return useLiveQuery(() => db.posts.orderBy('createdAt').reverse().toArray(), [], []) ?? [];
 }
 
 export function useBeans(): Bean[] {
