@@ -105,34 +105,52 @@ export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
 /** アップロードした音を指すID。 */
 export const CUSTOM_SOUND_ID = 'custom';
 
+/** 鳴らす音源。key でデコード結果を使い回す。 */
+interface ChimeSource {
+  key: string;
+  data: () => Promise<ArrayBuffer>;
+}
+
 const buffers = new Map<string, AudioBuffer>();
 const loads = new Map<string, Promise<AudioBuffer | undefined>>();
-let customUrl: string | undefined;
+let customSound: { key: string; blob: Blob } | undefined;
 
-/** アップロードした音の Blob URL を差し替える。 */
-function setCustomChimeUrl(url: string | undefined): void {
-  customUrl = url;
+/**
+ * アップロードした音源を登録する。Blob URL を介さず Blob から直接
+ * デコードするので、URL の失効で鳴らなくなることがない。
+ */
+export function setCustomChime(blob: Blob | undefined, key = ''): void {
+  customSound = blob ? { key, blob } : undefined;
 }
 
-function soundUrl(soundId: string): string | undefined {
-  if (soundId === CUSTOM_SOUND_ID) return customUrl;
+function chimeSource(soundId: string): ChimeSource | undefined {
+  if (soundId === CUSTOM_SOUND_ID) {
+    const current = customSound;
+    if (!current) return undefined;
+    return { key: `custom:${current.key}`, data: () => current.blob.arrayBuffer() };
+  }
   const sound = CHIME_SOUNDS.find((item) => item.id === soundId) ?? CHIME_SOUNDS[0];
-  return `${import.meta.env.BASE_URL}${sound.file}`;
+  const url = `${import.meta.env.BASE_URL}${sound.file}`;
+  return { key: url, data: () => fetch(url).then((response) => response.arrayBuffer()) };
 }
 
-/** 音源をURLごとに一度だけデコードして使い回す。 */
-function load(ctx: AudioContext, url: string): Promise<AudioBuffer | undefined> {
-  const cached = loads.get(url);
+/** 音源を一度だけデコードして使い回す。 */
+function load(ctx: AudioContext, source: ChimeSource): Promise<AudioBuffer | undefined> {
+  const cached = loads.get(source.key);
   if (cached) return cached;
-  const pending = fetch(url)
-    .then((response) => response.arrayBuffer())
+  const pending = source
+    .data()
     .then((data) => ctx.decodeAudioData(data))
     .then((buffer) => {
-      buffers.set(url, buffer);
+      buffers.set(source.key, buffer);
       return buffer;
     })
-    .catch(() => undefined);
-  loads.set(url, pending);
+    .catch(() => {
+      // 失敗を覚えたままにせず、次回また読めるようにする。
+      loads.delete(source.key);
+      return undefined;
+    });
+  loads.set(source.key, pending);
   return pending;
 }
 
@@ -141,17 +159,20 @@ export function useCustomChime(): void {
   const stored = useLiveQuery(() => db.sounds.get(CUSTOM_SOUND_ID), [], undefined);
 
   useEffect(() => {
-    if (!stored) {
-      setCustomChimeUrl(undefined);
-      return;
-    }
-    const url = URL.createObjectURL(stored.blob);
-    setCustomChimeUrl(url);
-    return () => {
-      setCustomChimeUrl(undefined);
-      URL.revokeObjectURL(url);
-    };
+    setCustomChime(stored?.blob, stored ? `${stored.name}:${stored.blob.size}` : '');
   }, [stored]);
+}
+
+/** 鳴らせる音源かを調べる（アップロード直後の検査用）。 */
+export async function canDecodeChime(blob: Blob): Promise<boolean> {
+  const ctx = audioContext();
+  if (!ctx) return false;
+  try {
+    await ctx.decodeAudioData(await blob.arrayBuffer());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
@@ -159,8 +180,8 @@ export function primeAudio(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void
   if (!enabled) return;
   try {
     const ctx = audioContext();
-    const url = soundUrl(soundId);
-    if (ctx && url !== undefined) void load(ctx, url);
+    const source = chimeSource(soundId);
+    if (ctx && source) void load(ctx, source);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
@@ -242,9 +263,9 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
   try {
     const ctx = audioContext();
     if (ctx) {
-      const url = soundUrl(soundId);
+      const source = chimeSource(soundId);
       // 読み込み前に呼ばれても取りこぼさないよう、完了を待ってから鳴らす。
-      const ready = url === undefined ? Promise.resolve(undefined) : load(ctx, url);
+      const ready = source ? load(ctx, source) : Promise.resolve(undefined);
       void ready.then((buffer) => {
         if (!buffer) {
           synthChime(ctx);
@@ -265,8 +286,8 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
 /** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
 export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
   chime(enabled, soundId);
-  const url = soundUrl(soundId);
-  const loaded = url === undefined ? undefined : buffers.get(url);
+  const source = chimeSource(soundId);
+  const loaded = source ? buffers.get(source.key) : undefined;
   const gap = loaded ? Math.min(loaded.duration, 1.2) * 1000 : 420;
   window.setTimeout(() => chime(enabled, soundId), gap);
 }
