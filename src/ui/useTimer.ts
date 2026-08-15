@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import type { SoundSlot } from '../domain/types';
+import type { SoundEffect, SoundSlot } from '../domain/types';
 
 interface WakeLockSentinelLike {
   release: () => Promise<void>;
@@ -108,12 +108,97 @@ export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
 export const SAME_AS_CHIME_ID = 'same';
 
 /** ピッチの調整幅（半音）。 */
-export const PITCH_RANGE = 12;
+export const PITCH_RANGE = 24;
 
 /** 半音単位のピッチを再生速度に直す。 */
 function pitchRate(semitones: number): number {
   const clamped = Math.min(PITCH_RANGE, Math.max(-PITCH_RANGE, semitones));
   return 2 ** (clamped / 12);
+}
+
+/** 合図音にかけられる効果。 */
+export const SOUND_EFFECTS: { id: SoundEffect; label: string }[] = [
+  { id: 'none', label: 'そのまま' },
+  { id: 'room', label: '残響（小）' },
+  { id: 'hall', label: '残響（大）' },
+  { id: 'echo', label: 'やまびこ' },
+  { id: 'muffled', label: 'こもり' },
+  { id: 'radio', label: '電話ごし' },
+];
+
+/** 残響の長さ（秒）。 */
+const REVERB_SECONDS: Record<'room' | 'hall', number> = { room: 0.8, hall: 2.6 };
+const impulses = new Map<string, AudioBuffer>();
+
+/**
+ * 残響用のインパルス応答。音源を同梱せずに済むよう、指数的に減衰する
+ * ノイズから作る（部屋の反射が一様に散っていく様子の近似）。
+ */
+function impulse(ctx: AudioContext, kind: 'room' | 'hall'): AudioBuffer {
+  const cached = impulses.get(kind);
+  if (cached) return cached;
+  const length = Math.floor(ctx.sampleRate * REVERB_SECONDS[kind]);
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+  for (let channel = 0; channel < 2; channel += 1) {
+    const samples = buffer.getChannelData(channel);
+    for (let i = 0; i < length; i += 1) {
+      samples[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.5;
+    }
+  }
+  impulses.set(kind, buffer);
+  return buffer;
+}
+
+/**
+ * 効果の配線を組み、音源をつなぐ先を返す。出口側は destination まで
+ * つないだ状態で返るので、呼ぶ側は返り値に音源を connect するだけでよい。
+ */
+function effectInput(ctx: AudioContext, effect: SoundEffect = 'none'): AudioNode {
+  if (effect === 'room' || effect === 'hall') {
+    // 原音と残響を混ぜる。混ぜないと遠くで鳴っているようにしか聞こえない。
+    const input = ctx.createGain();
+    const wet = ctx.createGain();
+    wet.gain.value = effect === 'hall' ? 0.9 : 0.6;
+    const convolver = ctx.createConvolver();
+    convolver.buffer = impulse(ctx, effect);
+    input.connect(ctx.destination);
+    input.connect(convolver);
+    convolver.connect(wet);
+    wet.connect(ctx.destination);
+    return input;
+  }
+  if (effect === 'echo') {
+    const input = ctx.createGain();
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = 0.24;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.45;
+    input.connect(ctx.destination);
+    input.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(ctx.destination);
+    return input;
+  }
+  if (effect === 'muffled') {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 700;
+    filter.connect(ctx.destination);
+    return filter;
+  }
+  if (effect === 'radio') {
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1600;
+    filter.Q.value = 3;
+    const gain = ctx.createGain();
+    gain.gain.value = 1.8;
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    return filter;
+  }
+  return ctx.destination;
 }
 
 /** アップロードした音を指すID（= 置き場の ID）。 */
@@ -340,7 +425,7 @@ function strike(ctx: AudioContext, destination: AudioNode, frequency: number, no
 }
 
 /** ベル音が読み込めない環境向けの合成音。 */
-function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): void {
+function synthChime(ctx: AudioContext, frequency = 1244, out: AudioNode = ctx.destination, durationMs = 2200): void {
   try {
     const now = ctx.currentTime;
     const seconds = durationMs / 1000;
@@ -351,7 +436,7 @@ function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): voi
     const master = ctx.createGain();
     master.gain.value = 0.5;
     tone.connect(master);
-    master.connect(ctx.destination);
+    master.connect(out);
     strike(ctx, master, frequency, now);
     for (const partial of BELL_PARTIALS) {
       const end = now + seconds * partial.decay;
@@ -375,7 +460,12 @@ function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): voi
 }
 
 /** 選んである合図音を一度鳴らす。pitch は半音単位。 */
-export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
+export function chime(
+  enabled: boolean,
+  soundId = CHIME_SOUNDS[0].id,
+  pitch = 0,
+  effect: SoundEffect = 'none',
+): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
@@ -386,24 +476,25 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0)
         source && !elementOnly.has(source.key) ? load(ctx, source) : Promise.resolve<AudioBuffer | undefined>(undefined);
       void ready.then((buffer) => {
         const rate = pitchRate(pitch);
+        const out = effectInput(ctx, effect);
         if (!buffer) {
           // decode できないアップロード音（動画）は media 要素で鳴らす。
           const blob = isCustom(soundId) ? customSounds.get(soundId)?.blob : undefined;
           if (!blob) {
-            synthChime(ctx, 1244 * rate);
+            synthChime(ctx, 1244 * rate, out);
             return;
           }
           const key = source?.key ?? soundId;
           void playViaElement(blob, pitch).then((played: boolean) => {
             if (played) elementOnly.add(key);
-            else synthChime(ctx, 1244 * rate);
+            else synthChime(ctx, 1244 * rate, out);
           });
           return;
         }
         const node = ctx.createBufferSource();
         node.buffer = buffer;
         node.playbackRate.value = rate;
-        node.connect(ctx.destination);
+        node.connect(out);
         node.start();
       });
     }
