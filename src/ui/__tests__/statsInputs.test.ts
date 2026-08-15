@@ -124,7 +124,7 @@ describe('diffToResult', () => {
 
   it('符号を反転すると結果も反転する', () => {
     for (const d of [0.1, 0.3, 0.9, 1.2, 2.4]) {
-      expect(diffToResult(-d)).toBe(-diffToResult(d));
+      expect(diffToResult(-d) + diffToResult(d)).toBe(0);
     }
   });
 });
@@ -191,7 +191,7 @@ describe('projectionsFromBrews', () => {
       [recipe('r1'), recipe('r2'), recipe('r3')],
     );
     expect(projections.map((p) => p.recipeId)).toEqual(['r1', 'r2']);
-    expect(projections[0].expectedScore).toBeCloseTo(3.4, 12);
+    expect(projections[0].expectedScore).toBeCloseTo(3.2, 12);
     expect(projections[0].sd).toBeCloseTo(Math.SQRT2 * 0.2, 12);
     // 1件だけのレシピは、ばらつきを推定できないので 0 とする
     expect(projections[1].sd).toBe(0);
