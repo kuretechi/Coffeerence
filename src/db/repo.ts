@@ -233,30 +233,6 @@ export async function submitPost(author: string, body: string): Promise<Moderati
   return verdict;
 }
 
-/**
- * 保存済みの投稿をまとめて再判定し、不適切なものを削除する。
- * 判定器を差し替えた（APIキーを設定した）あとの遡り適用に使う。
- */
-export async function remoderatePosts(): Promise<number> {
-  const posts = await db.posts.toArray();
-  let removed = 0;
-  for (const post of posts) {
-    const verdict = await moderate(post.body);
-    if (verdict.allowed) {
-      await db.posts.put({ ...post, moderation: verdict });
-      continue;
-    }
-    await db.posts.delete(post.id);
-    removed += 1;
-    await recordAudit({
-      kind: 'moderation',
-      subject: post.id,
-      detail: `再判定で削除（${verdict.provider}: ${verdict.categories.join(', ') || '不適切'}）`,
-    });
-  }
-  return removed;
-}
-
 /** R-2: 削除は記録に残す。 */
 export async function deletePost(postId: string): Promise<void> {
   const post = await db.posts.get(postId);

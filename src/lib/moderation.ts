@@ -18,46 +18,68 @@ interface Rule {
   pattern: RegExp;
 }
 
-// 語彙は最小限にとどめ、運用しながら足していく。
+// 語彙は運用しながら足していく。パターンは正規化後（全角・カタカナ・空白・記号を落とした形）の文字列に当てる。
 const RULES: Rule[] = [
   {
     category: 'violence',
     label: '暴力・脅迫',
-    pattern: /(殺す|殺害|死ね|しね|ぶっ殺|刺す|kill you|i'?ll kill)/i,
+    pattern:
+      /(殺す|殺して|殺され|殺害|殺人|ころす|ころして|ころされ|死ね|しね|死んで|しんで|ぶっころ|ぶっ殺|殴り殺|なぐりころ|刺し殺|やってやる|killyou|illkill|murder)/,
   },
   {
     category: 'harassment',
     label: '侮辱・嫌がらせ',
-    pattern: /(死ねばいい|クズ|カス野郎|バカ野郎|アホ死|きもい|キモい|ブス|デブ|fuck you|idiot|moron)/i,
+    pattern:
+      /(くず(?!れ|こ|もち|ゆ)|クズ|かす野郎|かすやろう|ばか(?!り)|馬鹿|あほ|阿呆|まぬけ|間抜け|むのう|無能|きもい|ぶす(?!う)|でぶ|うざい|うっとうしい|きちがい|いじめ|嫌がらせ|いやがらせ|fuck|shit|bitch|asshole|idiot|moron|stupid|loser)/,
   },
   {
     category: 'sexual',
     label: '性的表現',
-    pattern: /(セックス|セフレ|エロ画像|裸(?:の)?画像|ポルノ|porn|nude)/i,
+    pattern: /(せっくす|せふれ|えろい|えろがぞう|えろどうが|はだかがぞう|裸画像|ぽるの|ふうぞく|えっち|ちんこ|まんこ|porn|nude|sex)/,
   },
   {
     category: 'discrimination',
     label: '差別',
-    pattern: /(差別的|土人|劣等民族|nigger|retard)/i,
+    pattern: /(どじん|土人|劣等民族|れっとうみんぞく|差別的|さべつてき|めくら|つんぼ|nigger|retard)/,
   },
   {
     category: 'self_harm',
     label: '自傷',
-    pattern: /(自殺(?:したい|方法)|首を吊|リストカット|suicide method)/i,
+    pattern: /(自殺|じさつ|首を吊|くびをつ|くびつり|りすとかっと|おばどず|suicide|killmyself)/,
   },
   {
     category: 'spam',
     label: 'スパム・勧誘',
-    pattern: /(https?:\/\/\S+\s*){3,}|(儲かる|副業で稼|必ず稼げる|投資で稼|出会い系)/i,
+    pattern: /(儲かる|もうかる|副業で稼|ふくぎょうでかせ|必ず稼げる|かならずかせげる|投資で稼|とうしでかせ|出会い系|であいけい|初回無料|しょかいむりょう)/,
   },
 ];
 
 const ALLOWED: ModerationVerdict = { allowed: true, categories: [], provider: 'local' };
 
+const URL_PATTERN = /https?:\/\/\S+/g;
+
+/**
+ * 判定をすり抜けにくくするための正規化。全角を半角に、カタカナをひらがなに寄せ、
+ * 空白・記号・長音・連続する同じ文字を落とす（例:「ｼ　ﾈ★」→「しね」）。
+ */
+function normalize(text: string): string {
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u30a1-\u30f6]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60))
+    .replace(/[\s\p{P}\p{S}\u30fc\u309b\u309c]/gu, '')
+    .replace(/(.)\1{2,}/gu, '$1');
+}
+
 /** 端末内だけで完結する規則ベースの判定。 */
 export function moderateLocally(text: string, extraWords: readonly string[] = []): ModerationVerdict {
-  const categories = RULES.filter((rule) => rule.pattern.test(text));
-  const hitWords = extraWords.filter((word) => word.trim() !== '' && text.includes(word.trim()));
+  const normalized = normalize(text);
+  const categories = RULES.filter((rule) => rule.pattern.test(normalized));
+  const spamRule = RULES.find((rule) => rule.category === 'spam');
+  if (spamRule && !categories.includes(spamRule) && (text.match(URL_PATTERN) ?? []).length >= 3) {
+    categories.push(spamRule);
+  }
+  const hitWords = extraWords.filter((word) => word.trim() !== '' && normalized.includes(normalize(word)));
   if (categories.length === 0 && hitWords.length === 0) return ALLOWED;
   const labels = [...categories.map((rule) => rule.label), ...(hitWords.length > 0 ? ['NGワード'] : [])];
   return {
