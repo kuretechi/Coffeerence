@@ -302,7 +302,7 @@ export function RecipeScreen() {
         ) : (
           <div className="stack">
             {recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <div key={recipe.id} className="todo-item recipe-item">
                 <button
                   className="log-summary"
                   type="button"
