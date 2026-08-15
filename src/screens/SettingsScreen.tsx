@@ -4,6 +4,7 @@ import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings
 import { deleteGear, saveGear, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
+import { useAuth } from '../ui/auth';
 import type { GearKind, RecipeDefaults, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
@@ -170,7 +171,25 @@ export function SettingsScreen() {
           </ul>
         )}
       </Card>
+
+      <SignOutCard />
     </>
+  );
+}
+
+/** ログイン中だけ出すログアウト。 */
+function SignOutCard() {
+  const auth = useAuth();
+  if (!auth.user) return null;
+
+  return (
+    <Card title="ログアウト" hint={auth.user.email}>
+      <div className="row">
+        <button type="button" onClick={() => void auth.signOut()}>
+          ログアウトする
+        </button>
+      </div>
+    </Card>
   );
 }
 

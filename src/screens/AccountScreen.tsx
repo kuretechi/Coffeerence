@@ -254,13 +254,6 @@ function SignedIn() {
     <>
       <ProfileCard name={auth.user?.displayName ?? ANONYMOUS_NAME} email={auth.user?.email ?? ''} canEditName />
       <MyActivity />
-      <Card title="ログアウト">
-        <div className="row">
-          <button type="button" onClick={() => void auth.signOut()}>
-            ログアウトする
-          </button>
-        </div>
-      </Card>
     </>
   );
 }
