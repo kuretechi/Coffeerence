@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
 import {
   useAudit,
@@ -28,6 +28,7 @@ import {
   REVERB_PRESETS,
   REVERB_SECONDS_RANGE,
   SAME_AS_CHIME_ID,
+  SONG_TRANSPOSE_RANGE,
   SOUND_EFFECTS,
   canDecodeChime,
   chime,
@@ -41,7 +42,7 @@ import {
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
-import { MAX_NOTES, parseMidi, type MidiSong } from '../lib/midi';
+import { MAX_NOTES, centerSemitone, parseMidi, type MidiSong, type MidiTrack } from '../lib/midi';
 import type {
   GearKind,
   RecipeDefaults,
@@ -69,6 +70,8 @@ export function SettingsScreen() {
   const loaded = useLoadedSettings();
   // 保存の往復を待たず入力を反映させるため、入力中の値は手元で持つ。
   const [defaults, setDefaults] = useState<RecipeDefaults>(settings.recipeDefaults);
+  // 音の設定は項目が多いので、合図音と抽出終了の音は切り替えて片方だけ出す。
+  const [soundTab, setSoundTab] = useState<'chime' | 'finish'>('chime');
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -172,6 +175,13 @@ export function SettingsScreen() {
           checked={settings.soundEnabled}
           onChange={(soundEnabled) => void saveSettings({ ...settings, soundEnabled })}
         />
+        <Field label="編集する音">
+          <select value={soundTab} onChange={(event) => setSoundTab(event.target.value === 'finish' ? 'finish' : 'chime')}>
+            <option value="chime">合図音</option>
+            <option value="finish">抽出終了の音</option>
+          </select>
+        </Field>
+        {soundTab === 'chime' ? (
         <SoundPicker
           label="合図音"
           slot={CUSTOM_SOUND_ID}
@@ -185,6 +195,7 @@ export function SettingsScreen() {
           onEffect={(soundEffect, soundReverb) => void saveSettings({ ...settings, soundEffect, soundReverb })}
           onReverb={(soundReverb) => void saveSettings({ ...settings, soundReverb })}
         />
+        ) : (
         <SoundPicker
           label="抽出終了の音"
           hint="抽出終了で鳴らす音だけを別にできます。"
@@ -202,6 +213,7 @@ export function SettingsScreen() {
           }
           onReverb={(finishSoundReverb) => void saveSettings({ ...settings, finishSoundReverb })}
         />
+        )}
       </Card>
 
       <MidiCard
@@ -280,21 +292,48 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
   const customFinish = useCustomSound(CUSTOM_FINISH_SOUND_ID);
   const input = useRef<HTMLInputElement>(null);
   const [soundId, setSoundId] = useState(CHIME_SOUNDS[0].id);
+  const [transpose, setTranspose] = useState(0);
   const [playingId, setPlayingId] = useState<string | undefined>();
   const [message, setMessage] = useState<string | undefined>();
-  // 同じ MIDI を何度も鳴らせるよう、読み取った音の並びは取っておく。
-  const parsed = useRef(new Map<string, MidiSong>());
-  const stop = useRef<(() => void) | undefined>(undefined);
+  // 読み取った曲。トラック一覧を出したいので状態として持つ。
+  const [songs, setSongs] = useState<Record<string, MidiSong>>({});
+  // トラックごとの音。キーは `MIDI の id:トラック番号`。
+  const [trackSounds, setTrackSounds] = useState<Record<string, string>>({});
+  const parsing = useRef(new Set<string>());
+  const stops = useRef<(() => void)[]>([]);
   const endTimer = useRef<number | undefined>(undefined);
 
   // 画面を離れたときに鳴り続けないようにする。
   useEffect(
     () => () => {
-      stop.current?.();
+      for (const stop of stops.current) stop();
       window.clearTimeout(endTimer.current);
     },
     [],
   );
+
+  // 一覧に出ている MIDI は先に読んでおく（トラックの音を選べるように）。
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      for (const midi of midis) {
+        if (parsing.current.has(midi.id)) continue;
+        parsing.current.add(midi.id);
+        try {
+          const song = parseMidi(await midi.blob.arrayBuffer());
+          if (!alive) return;
+          setSongs((prev) => ({ ...prev, [midi.id]: song }));
+          if (song.truncated) setMessage(`音が多いので、先頭から ${MAX_NOTES} 音だけ鳴らします。`);
+        } catch (error) {
+          if (!alive) return;
+          setMessage(`${midi.name} は読めませんでした: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [midis]);
 
   const sounds = [
     ...CHIME_SOUNDS.map((sound) => ({ id: sound.id, label: sound.label })),
@@ -303,40 +342,51 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
   ];
 
   function stopPlaying() {
-    stop.current?.();
-    stop.current = undefined;
+    for (const stop of stops.current) stop();
+    stops.current = [];
     window.clearTimeout(endTimer.current);
     setPlayingId(undefined);
   }
 
-  async function songOf(id: string, blob: Blob): Promise<MidiSong> {
-    const cached = parsed.current.get(id);
-    if (cached) return cached;
-    const song = parseMidi(await blob.arrayBuffer());
-    parsed.current.set(id, song);
-    if (song.truncated) setMessage(`音が多いので、先頭から ${MAX_NOTES} 音だけ鳴らします。`);
-    return song;
+  function soundOf(midiId: string, track: number): string {
+    return trackSounds[`${midiId}:${track}`] ?? soundId;
   }
 
-  async function play(midi: { id: string; name: string; blob: Blob }) {
+  function play(midi: { id: string; name: string }) {
     stopPlaying();
-    try {
-      const song = await songOf(midi.id, midi.blob);
-      primeAudio(true, soundId);
-      stop.current = playSong(song.notes, soundId, 0, effect, reverb);
-      setPlayingId(midi.id);
-      // 最後の音を鳴らし終えたら「再生」に戻す（余韻ぶん少し待つ）。
-      endTimer.current = window.setTimeout(() => setPlayingId(undefined), (song.seconds + 3) * 1000);
-    } catch (error) {
-      setMessage(`${midi.name} を鳴らせませんでした: ${error instanceof Error ? error.message : String(error)}`);
+    const song = songs[midi.id];
+    if (!song) {
+      setMessage(`${midi.name} はまだ読めていません。`);
+      return;
     }
+
+    // 合図音は音源ごとに元の高さが違うので、曲の中心を音源そのままの高さに寄せる。
+    // トラックごとに寄せると伴奏と主旋律の高さがずれるので、寄せ幅は曲全体で共通にする。
+    const shift = transpose - centerSemitone(song.notes);
+    for (const track of song.tracks) {
+      const trackSoundId = soundOf(midi.id, track.index);
+      primeAudio(true, trackSoundId);
+      stops.current.push(
+        playSong(
+          song.notes.filter((note) => note.track === track.index),
+          trackSoundId,
+          shift,
+          effect,
+          reverb,
+        ),
+      );
+    }
+    setPlayingId(midi.id);
+    // 最後の音を鳴らし終えたら「再生」に戻す（余韻ぶん少し待つ）。
+    endTimer.current = window.setTimeout(() => {
+      stops.current = [];
+      setPlayingId(undefined);
+    }, (song.seconds + 3) * 1000);
   }
 
   async function upload(file: File) {
     try {
       const midi = await saveMidi(file);
-      // 保存してから鳴らせないと分からないのを避け、この場で読めるか確かめる。
-      await songOf(midi.id, midi.blob);
       setMessage(`${midi.name} を読み込みました。`);
     } catch (error) {
       setMessage(`${file.name} は読めませんでした: ${error instanceof Error ? error.message : String(error)}`);
@@ -348,7 +398,7 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
       title="MIDI で鳴らす"
       hint="アップロードした MIDI を、選んだ音（内蔵音・アップロードした音）で鳴らします。効果と残響は合図音の設定を使います。"
     >
-      <Field label="鳴らす音">
+      <Field label="鳴らす音（トラックで選んでいない分）">
         <div className="segmented">
           {sounds.map((sound) => (
             <button
@@ -362,36 +412,60 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
           ))}
         </div>
       </Field>
+      <Field label={`高さ（${transpose > 0 ? '+' : ''}${transpose} 半音）`}>
+        <input
+          className="slider"
+          type="range"
+          min={-SONG_TRANSPOSE_RANGE}
+          max={SONG_TRANSPOSE_RANGE}
+          step={1}
+          value={transpose}
+          onChange={(event) => setTranspose(Number(event.target.value))}
+        />
+      </Field>
       {message ? <Banner>{message}</Banner> : null}
       {midis.length === 0 ? (
         <p className="muted">MIDI はまだありません。</p>
       ) : (
         <ul className="list-plain">
           {midis.map((midi) => (
-            <li key={midi.id} className="row between">
-              <span>{midi.name}</span>
-              <span className="row">
-                {playingId === midi.id ? (
-                  <button type="button" onClick={stopPlaying}>
-                    停止
+            <li key={midi.id}>
+              <div className="row between">
+                <span>{midi.name}</span>
+                <span className="row">
+                  {playingId === midi.id ? (
+                    <button type="button" onClick={stopPlaying}>
+                      停止
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => play(midi)}>
+                      再生
+                    </button>
+                  )}
+                  <button
+                    className="danger"
+                    type="button"
+                    onClick={() => {
+                      if (playingId === midi.id) stopPlaying();
+                      parsing.current.delete(midi.id);
+                      setSongs((prev) => {
+                        const next = { ...prev };
+                        delete next[midi.id];
+                        return next;
+                      });
+                      void deleteMidi(midi.id);
+                    }}
+                  >
+                    削除
                   </button>
-                ) : (
-                  <button type="button" onClick={() => void play(midi)}>
-                    再生
-                  </button>
-                )}
-                <button
-                  className="danger"
-                  type="button"
-                  onClick={() => {
-                    if (playingId === midi.id) stopPlaying();
-                    parsed.current.delete(midi.id);
-                    void deleteMidi(midi.id);
-                  }}
-                >
-                  削除
-                </button>
-              </span>
+                </span>
+              </div>
+              <TrackSounds
+                tracks={songs[midi.id]?.tracks ?? []}
+                sounds={sounds}
+                soundOf={(track) => soundOf(midi.id, track)}
+                onSelect={(track, id) => setTrackSounds((prev) => ({ ...prev, [`${midi.id}:${track}`]: id }))}
+              />
             </li>
           ))}
         </ul>
@@ -411,6 +485,37 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
         }}
       />
     </Card>
+  );
+}
+
+/** トラックが複数ある MIDI だけ、トラックごとに鳴らす音を選べるようにする。 */
+function TrackSounds({
+  tracks,
+  sounds,
+  soundOf,
+  onSelect,
+}: {
+  tracks: MidiTrack[];
+  sounds: { id: string; label: string }[];
+  soundOf: (track: number) => string;
+  onSelect: (track: number, soundId: string) => void;
+}) {
+  if (tracks.length < 2) return null;
+
+  return (
+    <>
+      {tracks.map((track) => (
+        <Field key={track.index} label={`${track.name}（${track.notes} 音）`}>
+          <select value={soundOf(track.index)} onChange={(event) => onSelect(track.index, event.target.value)}>
+            {sounds.map((sound) => (
+              <option key={sound.id} value={sound.id}>
+                {sound.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      ))}
+    </>
   );
 }
 
@@ -515,28 +620,35 @@ function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
 
 const { whites: WHITE_KEYS, blacks: BLACK_KEYS } = buildKeys();
 
-/** 白鍵の高さ（px）。オクターブを増やしても鍵の大きさは変えない。 */
+/** 白鍵の高さ（px）。画面に収まらない分はスクロールする。 */
 const KEY_HEIGHT = 40;
 
-/**
- * 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。
- * 3オクターブを鍵の大きさのまま入れるため、低い音を下にした縦型に並べる。
- */
-function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
+/** 鍵盤の並び。fill を渡すと高さいっぱいに全鍵を詰める（全画面表示用）。 */
+function Keys({ onPlay, fill }: { onPlay: (semitone: number) => void; fill?: boolean }) {
   const scroll = useRef<HTMLDivElement>(null);
 
   // 基準のド（ピッチそのまま）が見える位置から始める。
   useEffect(() => {
     const box = scroll.current;
-    if (!box) return;
+    if (!box || fill) return;
     const fromBottom = WHITE_KEYS.findIndex((key) => key.semitone === 0);
-    const baseTop = WHITE_KEYS.length * KEY_HEIGHT - (fromBottom + 1) * KEY_HEIGHT;
+    const baseTop = (WHITE_KEYS.length - fromBottom - 1) * KEY_HEIGHT;
     box.scrollTop = Math.max(baseTop - box.clientHeight / 2, 0);
-  }, []);
+  }, [fill]);
+
+  // 全画面では鍵の高さを画面に合わせるので、黒鍵も割合で置く。
+  const blackHeight = fill ? `${(60 / WHITE_KEYS.length).toFixed(3)}%` : undefined;
 
   return (
-    <div className="keyboard-scroll" ref={scroll}>
-      <div className="keyboard" style={{ height: `${WHITE_KEYS.length * KEY_HEIGHT}px` }}>
+    <div className={fill ? 'keyboard-scroll fill' : 'keyboard-scroll'} ref={scroll}>
+      <div
+        className="keyboard"
+        style={
+          fill
+            ? { height: '100%' }
+            : ({ height: `${WHITE_KEYS.length * KEY_HEIGHT}px`, '--key-height': `${KEY_HEIGHT}px` } as CSSProperties)
+        }
+      >
         {WHITE_KEYS.map((key) => (
           <button
             key={`white-${key.semitone}`}
@@ -552,13 +664,55 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
             key={`black-${key.semitone}`}
             type="button"
             className="keyboard-key black"
-            style={{ bottom: `${((key.after + 1) * 100) / WHITE_KEYS.length}%` }}
+            style={{ bottom: `${((key.after + 1) * 100) / WHITE_KEYS.length}%`, height: blackHeight }}
             onPointerDown={() => onPlay(key.semitone)}
             aria-label={`${key.semitone} 半音上`}
           />
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。
+ * 3オクターブを鍵の大きさのまま入れるため、低い音を下にした縦型に並べる。
+ * 「全画面で開く」を押すと、3オクターブ全部が一度に見える表示に切り替わる。
+ */
+function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
+  const [full, setFull] = useState(false);
+  const closedAt = useRef(0);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          if (Date.now() - closedAt.current > 400) setFull(true);
+        }}
+      >
+        全画面で開く
+      </button>
+      <Keys onPlay={onPlay} />
+      {full ? (
+        <div className="keyboard-full">
+          <div className="keyboard-full-bar">
+            <span className="muted">3オクターブ</span>
+            <button
+              type="button"
+              onClick={() => {
+                // 閉じた直後は同じ操作が下の「全画面で開く」に届くので、少しの間は開き直さない。
+                closedAt.current = Date.now();
+                setFull(false);
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+          <Keys onPlay={onPlay} fill />
+        </div>
+      ) : null}
+    </>
   );
 }
 

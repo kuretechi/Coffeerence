@@ -7,12 +7,27 @@ export interface MidiNote {
   semitone: number;
   /** 曲の頭からの秒数。 */
   startSec: number;
+  /** 鳴らし続ける秒数（note off まで）。 */
+  holdSec: number;
   /** 強さ（0〜1）。 */
   velocity: number;
+  /** 入っていたトラック番号（0 始まり）。 */
+  track: number;
+}
+
+/** 音が入っているトラック。 */
+export interface MidiTrack {
+  index: number;
+  /** トラック名（無ければ「トラック N」）。 */
+  name: string;
+  /** 鳴る音の数。 */
+  notes: number;
 }
 
 export interface MidiSong {
   notes: MidiNote[];
+  /** 音が入っていたトラック（発音順でなくトラック番号順）。 */
+  tracks: MidiTrack[];
   /** 曲の長さ（秒）。 */
   seconds: number;
   /** 多すぎて切り落としたか。 */
@@ -31,6 +46,12 @@ const TRACK_CHUNK = 0x4d54726b; // 'MTrk'
 /** テンポ指定が無い MIDI の既定（120 BPM）。 */
 const DEFAULT_US_PER_QUARTER = 500_000;
 
+/** 打楽器のチャンネル（0 始まりの 10ch）。音の高さではないので鳴らさない。 */
+const DRUM_CHANNEL = 9;
+
+/** note off が無い音の鳴らし続ける長さ（秒）。 */
+const DEFAULT_HOLD_SEC = 0.5;
+
 interface Cursor {
   view: DataView;
   pos: number;
@@ -38,6 +59,9 @@ interface Cursor {
 
 interface RawNote {
   tick: number;
+  track: number;
+  /** note off の位置。見つからないままなら undefined。 */
+  endTick?: number;
   note: number;
   velocity: number;
 }
@@ -88,10 +112,11 @@ export function parseMidi(data: ArrayBuffer): MidiSong {
 
   const raw: RawNote[] = [];
   const tempos: Tempo[] = [];
+  const names = new Map<number, string>();
   for (let track = 0; track < trackCount && cursor.pos + 8 <= data.byteLength; track += 1) {
     const kind = u32(cursor);
     const end = Math.min(cursor.pos + 4 + u32(cursor), data.byteLength);
-    if (kind === TRACK_CHUNK) readTrack(cursor, end, raw, tempos);
+    if (kind === TRACK_CHUNK) readTrack(cursor, end, track, raw, tempos, names);
     cursor.pos = end;
   }
 
@@ -99,19 +124,57 @@ export function parseMidi(data: ArrayBuffer): MidiSong {
   const truncated = raw.length > MAX_NOTES;
   const kept = truncated ? raw.slice(0, MAX_NOTES) : raw;
   const seconds = tickToSeconds(division, tempos);
-  const notes = kept.map((note) => ({
-    semitone: note.note - MIDDLE_C,
-    startSec: seconds(note.tick),
-    velocity: note.velocity / 127,
-  }));
+  const notes = kept.map((note) => {
+    const startSec = seconds(note.tick);
+    return {
+      semitone: note.note - MIDDLE_C,
+      startSec,
+      holdSec: note.endTick === undefined ? DEFAULT_HOLD_SEC : Math.max(0.05, seconds(note.endTick) - startSec),
+      velocity: note.velocity / 127,
+      track: note.track,
+    };
+  });
   if (notes.length === 0) throw new Error('鳴らせる音が入っていません。');
-  return { notes, seconds: notes[notes.length - 1].startSec, truncated };
+  const last = notes.reduce((max, note) => Math.max(max, note.startSec + note.holdSec), 0);
+  return { notes, tracks: trackList(notes, names), seconds: last, truncated };
+}
+
+/**
+ * 曲の音域の中心（半音）。合図音は音源ごとに元の高さが違うため、
+ * ここを基準にずらすと曲全体が音源そのままの高さの周りで鳴る。
+ */
+export function centerSemitone(notes: MidiNote[]): number {
+  if (notes.length === 0) return 0;
+  const sorted = [...notes].map((note) => note.semitone).sort((a, b) => a - b);
+  return Math.round(sorted[Math.floor(sorted.length / 2)]);
+}
+
+/** 音が残っているトラックを、トラック番号順に並べる。 */
+function trackList(notes: MidiNote[], names: Map<number, string>): MidiTrack[] {
+  const counts = new Map<number, number>();
+  for (const note of notes) counts.set(note.track, (counts.get(note.track) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([index, count]) => ({
+      index,
+      name: names.get(index)?.trim() || `トラック ${index + 1}`,
+      notes: count,
+    }));
 }
 
 /** 1トラック分のイベントを読み、音とテンポだけ拾う。 */
-function readTrack(cursor: Cursor, end: number, notes: RawNote[], tempos: Tempo[]): void {
+function readTrack(
+  cursor: Cursor,
+  end: number,
+  track: number,
+  notes: RawNote[],
+  tempos: Tempo[],
+  names: Map<number, string>,
+): void {
   let tick = 0;
   let status = 0;
+  // 鳴っている音（チャンネルと音の番号で引く）。note off が来たら長さを確定させる。
+  const sounding = new Map<number, RawNote>();
   while (cursor.pos < end) {
     tick += varint(cursor);
     if (cursor.pos >= end) break;
@@ -125,6 +188,10 @@ function readTrack(cursor: Cursor, end: number, notes: RawNote[], tempos: Tempo[
       const length = varint(cursor);
       if (meta === 0x51 && length === 3) {
         tempos.push({ tick, usPerQuarter: (u8(cursor) << 16) | (u8(cursor) << 8) | u8(cursor) });
+      } else if (meta === 0x03 && length > 0) {
+        const bytes = new Uint8Array(length);
+        for (let i = 0; i < length; i += 1) bytes[i] = u8(cursor);
+        if (!names.has(track)) names.set(track, new TextDecoder().decode(bytes));
       } else {
         cursor.pos += length;
       }
@@ -135,18 +202,35 @@ function readTrack(cursor: Cursor, end: number, notes: RawNote[], tempos: Tempo[
       continue;
     }
     const kind = status & 0xf0;
-    if (kind === 0x90) {
+    const channel = status & 0x0f;
+    if (kind === 0x90 || kind === 0x80) {
       const note = u8(cursor);
       const velocity = u8(cursor);
-      // 強さ 0 の note on は note off と同じ意味なので鳴らさない。
-      if (velocity > 0) notes.push({ tick, note, velocity });
+      // 強さ 0 の note on は note off と同じ意味。
+      const on = kind === 0x90 && velocity > 0;
+      const key = channel * 128 + note;
+      if (on) {
+        if (channel === DRUM_CHANNEL) continue;
+        // 同じ音が鳴り直したら、前の音はそこで終わったものとして扱う。
+        const previous = sounding.get(key);
+        if (previous) previous.endTick = tick;
+        const raw: RawNote = { tick, track, note, velocity };
+        sounding.set(key, raw);
+        notes.push(raw);
+      } else {
+        const raw = sounding.get(key);
+        if (raw) {
+          raw.endTick = tick;
+          sounding.delete(key);
+        }
+      }
       continue;
     }
     if (kind === 0xc0 || kind === 0xd0) {
       cursor.pos += 1;
       continue;
     }
-    if (kind === 0x80 || kind === 0xa0 || kind === 0xb0 || kind === 0xe0) {
+    if (kind === 0xa0 || kind === 0xb0 || kind === 0xe0) {
       cursor.pos += 2;
       continue;
     }
