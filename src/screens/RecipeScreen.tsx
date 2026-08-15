@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -24,6 +24,62 @@ interface Draft {
 }
 
 const PRESET_INTERVAL_SEC = 45;
+
+/** 投カードの高さ（px）。時間軸の縮尺を決めるのに使うので CSS 側と揃える。 */
+const CARD_H = 132;
+const CARD_GAP = 8;
+const MIN_PX_PER_SEC = 1.1;
+const MAX_PX_PER_SEC = 4;
+/** ドラッグでの開始秒のスナップ幅。 */
+const DRAG_SNAP_SEC = 5;
+const TICK_STEPS_SEC = [15, 30, 60, 120, 300];
+
+interface Scale {
+  /** 1秒あたりの表示px。 */
+  pxPerSec: number;
+  /** 軸の終端（秒）。 */
+  endSec: number;
+  /** 目盛りの間隔（秒）。 */
+  tickSec: number;
+  /** 各投の「実時間の位置」（秒）。未入力なら直前から推定する。 */
+  atSecs: number[];
+  /** 各投カードの実際の表示位置（px）。重なるときだけ下にずらす。 */
+  tops: number[];
+  height: number;
+}
+
+/**
+ * 投の開始秒から時間軸の縮尺とカード位置を決める。
+ * 投が詰まっていてカードが重なる場合だけ、カードを下へ逃がす（軸のドットは実時間のまま）。
+ */
+function scaleOf(pours: DraftPour[], finishSec: number | undefined): Scale {
+  const atSecs: number[] = [];
+  pours.forEach((pour, index) => {
+    const previous = index === 0 ? 0 : atSecs[index - 1];
+    atSecs.push(pour.atSec ?? previous + PRESET_INTERVAL_SEC);
+  });
+  const lastSec = atSecs[atSecs.length - 1] ?? 0;
+  const endSec = Math.max(finishSec ?? 0, lastSec + 30, 60);
+
+  let needed = MIN_PX_PER_SEC;
+  atSecs.forEach((sec, index) => {
+    if (index === 0) return;
+    const gap = sec - atSecs[index - 1];
+    if (gap > 0) needed = Math.max(needed, (CARD_H + CARD_GAP) / gap);
+  });
+  const pxPerSec = Math.min(MAX_PX_PER_SEC, needed);
+
+  const tops: number[] = [];
+  atSecs.forEach((sec, index) => {
+    const ideal = sec * pxPerSec;
+    const floor = index === 0 ? 0 : tops[index - 1] + CARD_H + CARD_GAP;
+    tops.push(Math.max(ideal, floor));
+  });
+
+  const tickSec = TICK_STEPS_SEC.find((step) => step * pxPerSec >= 44) ?? TICK_STEPS_SEC[TICK_STEPS_SEC.length - 1];
+  const lastBottom = (tops[tops.length - 1] ?? 0) + CARD_H;
+  return { pxPerSec, endSec, tickSec, atSecs, tops, height: Math.max(endSec * pxPerSec, lastBottom) + 16 };
+}
 
 /** 総湯量と粉量から「蒸らし→中間→全量」の3投を作る。 */
 function presetPours(defaults: RecipeDefaults): DraftPour[] {
@@ -99,6 +155,9 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  const [drag, setDrag] = useState<{ index: number; startY: number; startSec: number; pxPerSec: number } | undefined>(
+    undefined,
+  );
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -112,6 +171,10 @@ export function RecipeScreen() {
       pour.targetG !== undefined && pour.atSec !== undefined,
   );
   const totalWaterG = filledPours[filledPours.length - 1]?.targetG ?? 0;
+  const scale = scaleOf(draft.pours, draft.finishSec);
+  const lastPourSec = scale.atSecs[scale.atSecs.length - 1] ?? 0;
+  const ticks: number[] = [];
+  for (let sec = 0; sec <= scale.endSec; sec += scale.tickSec) ticks.push(sec);
   const canSave = draft.name.trim() !== '' && draft.doseG !== undefined && filledPours.length > 0;
 
   function setPour(index: number, patch: Partial<DraftPour>) {
@@ -156,6 +219,19 @@ export function RecipeScreen() {
 
   function removePour(index: number) {
     setDraft({ ...draft, pours: draft.pours.filter((_, i) => i !== index) });
+  }
+
+  /** 軸上のドラッグ量を秒に換算して開始秒を動かす。縮尺はドラッグ中固定して手元が跳ねないようにする。 */
+  function dragTo(clientY: number) {
+    if (drag === undefined) return;
+    const moved = (clientY - drag.startY) / drag.pxPerSec;
+    const sec = Math.max(0, Math.round((drag.startSec + moved) / DRAG_SNAP_SEC) * DRAG_SNAP_SEC);
+    setPour(drag.index, { atSec: sec });
+  }
+
+  function nudgePour(index: number, deltaSec: number) {
+    const current = draft.pours[index]?.atSec ?? scale.atSecs[index];
+    setPour(index, { atSec: Math.max(0, current + deltaSec) });
   }
 
   function startEdit(recipe: Recipe) {
@@ -241,78 +317,153 @@ export function RecipeScreen() {
               <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
             </Field>
           </div>
-          <fieldset className="pour-timeline">
-            <legend>注湯（上から下へ時間が流れます）</legend>
-            <ol className="pour-timeline-list">
-              {draft.pours.map((pour, index) => (
-                <li className="pour-node" key={index}>
-                  <div className="pour-node-axis">
-                    <span className="pour-node-badge">{index + 1}</span>
-                    <span className="pour-node-time mono">
-                      {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+          <fieldset className="pour-scale">
+            <legend>注湯（左の目盛りは実際の経過時間）</legend>
+            <p className="pour-scale-hint">カード左の握りを上下にドラッグ、または ± で開始時刻を動かせます。</p>
+            <div
+              className={drag === undefined ? 'pour-scale-track' : 'pour-scale-track dragging'}
+              style={{ height: `${Math.round(scale.height)}px` }}
+              onPointerMove={(event) => dragTo(event.clientY)}
+              onPointerUp={() => setDrag(undefined)}
+              onPointerCancel={() => setDrag(undefined)}
+            >
+              <div className="pour-scale-ruler" aria-hidden="true">
+                {ticks.map((sec) => (
+                  <span className="pour-scale-tick mono" key={sec} style={{ top: `${sec * scale.pxPerSec}px` }}>
+                    {formatSeconds(sec)}
+                  </span>
+                ))}
+              </div>
+              {draft.finishSec === undefined || draft.finishSec <= lastPourSec ? null : (
+                <div
+                  className="pour-scale-drawdown"
+                  aria-hidden="true"
+                  style={{
+                    top: `${lastPourSec * scale.pxPerSec}px`,
+                    height: `${(draft.finishSec - lastPourSec) * scale.pxPerSec}px`,
+                  }}
+                >
+                  <span>落ち切り待ち</span>
+                </div>
+              )}
+              {draft.finishSec === undefined ? null : (
+                <div className="pour-scale-finish" style={{ top: `${draft.finishSec * scale.pxPerSec}px` }}>
+                  <span className="mono">落ち切り {formatSeconds(draft.finishSec)}</span>
+                </div>
+              )}
+              {draft.pours.map((pour, index) => {
+                const atSec = scale.atSecs[index];
+                const dotTop = atSec * scale.pxPerSec;
+                const top = scale.tops[index];
+                const shifted = top - dotTop > 1;
+                return (
+                  <Fragment key={index}>
+                    <span className="pour-scale-dot" style={{ top: `${dotTop}px` }}>
+                      {index + 1}
                     </span>
-                  </div>
-                  <div className="pour-node-card">
-                    <button
-                      className="pour-node-remove"
-                      type="button"
-                      aria-label={`${index + 1}投目を削除`}
-                      disabled={draft.pours.length <= 1}
-                      onClick={() => removePour(index)}
-                    >
-                      ×
-                    </button>
-                    <label className="pour-node-total">
-                      <span className="pour-node-total-label">累計湯量</span>
-                      <span className="pour-node-total-input">
-                        <input
-                          type="number"
-                          inputMode="decimal"
+                    {shifted ? (
+                      <span
+                        className="pour-scale-leader"
+                        aria-hidden="true"
+                        style={{ top: `${dotTop}px`, height: `${top - dotTop}px` }}
+                      />
+                    ) : null}
+                    <div className="pour-scale-card" style={{ top: `${top}px` }}>
+                      <button
+                        className="pour-scale-grip"
+                        type="button"
+                        aria-label={`${index + 1}投目の開始時刻をドラッグで変える（現在 ${formatSeconds(atSec)}）`}
+                        onPointerDown={(event) => {
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          setDrag({ index, startY: event.clientY, startSec: atSec, pxPerSec: scale.pxPerSec });
+                        }}
+                        onPointerMove={(event) => dragTo(event.clientY)}
+                        onPointerUp={() => setDrag(undefined)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'ArrowUp') nudgePour(index, -DRAG_SNAP_SEC);
+                          if (event.key === 'ArrowDown') nudgePour(index, DRAG_SNAP_SEC);
+                        }}
+                      />
+                      <button
+                        className="pour-scale-remove"
+                        type="button"
+                        aria-label={`${index + 1}投目を削除`}
+                        disabled={draft.pours.length <= 1}
+                        onClick={() => removePour(index)}
+                      >
+                        ×
+                      </button>
+                      <div className="pour-scale-head">
+                        <label className="pour-scale-total">
+                          <span className="pour-scale-label">累計湯量</span>
+                          <span className="pour-scale-total-input">
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step={1}
+                              min={0}
+                              value={pour.targetG ?? ''}
+                              onChange={(event) => {
+                                const raw = event.target.value;
+                                setPour(index, { targetG: raw === '' ? undefined : Number(raw) });
+                              }}
+                            />
+                            <span className="pour-scale-unit">g</span>
+                          </span>
+                        </label>
+                        <NumberField
+                          label="湯温"
+                          suffix="℃"
                           step={1}
                           min={0}
-                          value={pour.targetG ?? ''}
-                          onChange={(event) => {
-                            const raw = event.target.value;
-                            setPour(index, { targetG: raw === '' ? undefined : Number(raw) });
-                          }}
+                          value={pour.waterTempC}
+                          onChange={(waterTempC) => setPour(index, { waterTempC })}
                         />
-                        <span className="pour-node-unit">g</span>
-                      </span>
-                    </label>
-                    <p className="pour-node-delta mono">
-                      この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
-                    </p>
-                    <div className="pour-node-sub">
-                      <NumberField
-                        label="開始"
-                        suffix="秒"
-                        step={5}
-                        min={0}
-                        value={pour.atSec}
-                        onChange={(atSec) => setPour(index, { atSec })}
-                      />
-                      <NumberField
-                        label="湯温"
-                        suffix="℃"
-                        step={1}
-                        min={0}
-                        value={pour.waterTempC}
-                        onChange={(waterTempC) => setPour(index, { waterTempC })}
-                      />
+                      </div>
+                      <div className="pour-scale-time">
+                        <button
+                          className="pour-scale-nudge"
+                          type="button"
+                          aria-label={`${index + 1}投目を5秒早める`}
+                          onClick={() => nudgePour(index, -DRAG_SNAP_SEC)}
+                        >
+                          −
+                        </button>
+                        <label className="pour-scale-sec">
+                          <span className="pour-scale-label">開始</span>
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            step={5}
+                            min={0}
+                            value={pour.atSec ?? ''}
+                            onChange={(event) => {
+                              const raw = event.target.value;
+                              setPour(index, { atSec: raw === '' ? undefined : Number(raw) });
+                            }}
+                          />
+                        </label>
+                        <button
+                          className="pour-scale-nudge"
+                          type="button"
+                          aria-label={`${index + 1}投目を5秒遅らせる`}
+                          onClick={() => nudgePour(index, DRAG_SNAP_SEC)}
+                        >
+                          ＋
+                        </button>
+                        <span className="pour-scale-delta mono">
+                          {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
-              <li className="pour-node pour-node-last">
-                <div className="pour-node-axis">
-                  <span className="pour-node-badge ghost">＋</span>
-                </div>
-                <button className="pour-node-add" type="button" onClick={addPour}>
-                  ＋ この投を追加
-                </button>
-              </li>
-            </ol>
-            <p className="pour-timeline-total">
+                  </Fragment>
+                );
+              })}
+            </div>
+            <button className="pour-scale-add" type="button" onClick={addPour}>
+              ＋ この投を追加
+            </button>
+            <p className="pour-scale-total-row">
               <span className="muted">総湯量</span>
               <strong className="mono">{totalWaterG}g</strong>
             </p>

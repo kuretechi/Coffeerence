@@ -498,8 +498,8 @@ th {
   opacity: 1;
 }
 
-/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
-.pour-timeline {
+/* 注湯エディタ（M案）: 左の軸を実時間の目盛りにして、投カードを開始秒の位置に置く。 */
+.pour-scale {
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   padding: 4px 10px 12px;
@@ -507,114 +507,191 @@ th {
   min-width: 0;
 }
 
-.pour-timeline legend {
+.pour-scale legend {
   font-size: 12px;
   color: var(--muted);
   padding: 0 4px;
 }
 
-.pour-timeline-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.pour-scale-hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--muted);
 }
 
-.pour-node {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 10px;
+.pour-scale-track {
+  position: relative;
+  /* 軸の縦線。目盛り列の右端に沿わせる。 */
+  background:
+    linear-gradient(var(--line), var(--line)) 43px 0 / 2px 100% no-repeat;
+  touch-action: pan-y;
 }
 
-.pour-node-axis {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding-top: 6px;
+.pour-scale-track.dragging {
+  touch-action: none;
+  user-select: none;
 }
 
-/* カード間をつなぐ縦線。最後の追加カードの下では消す。 */
-.pour-node-axis::after {
+.pour-scale-ruler {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 44px;
+}
+
+.pour-scale-tick {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 目盛りの短い横線。 */
+.pour-scale-tick::after {
   content: '';
-  flex: 1;
-  width: 2px;
-  min-height: 12px;
+  position: absolute;
+  top: 50%;
+  right: -6px;
+  width: 6px;
+  height: 1px;
   background: var(--line);
 }
 
-.pour-node-last .pour-node-axis::after {
-  display: none;
+/* 最後の投から落ち切りまでの「待つだけの時間」。軸の空白が何なのかを示す。 */
+.pour-scale-drawdown {
+  position: absolute;
+  left: 44px;
+  right: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--line) 60%, transparent) 6px 7px
+  );
+  border-radius: 0 var(--radius-m) var(--radius-m) 0;
 }
 
-.pour-node-badge {
+.pour-scale-drawdown span {
+  position: absolute;
+  bottom: 4px;
+  left: 8px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.pour-scale-finish {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--accent);
+  pointer-events: none;
+}
+
+.pour-scale-finish span {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.pour-scale-dot {
+  position: absolute;
+  left: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
+  margin-top: -14px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 700;
+  z-index: 1;
 }
 
-.pour-node-badge.ghost {
-  background: transparent;
-  border: 1px dashed var(--line);
-  color: var(--muted);
-  font-weight: 400;
+/* 詰まってカードを下にずらしたとき、実時間の位置とカードを結ぶ引き出し線。 */
+.pour-scale-leader {
+  position: absolute;
+  left: 43px;
+  width: 13px;
+  border-left: 1px dashed var(--accent);
+  border-bottom: 1px dashed var(--accent);
 }
 
-.pour-node-time {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.pour-node-card {
-  position: relative;
+.pour-scale-card {
+  position: absolute;
+  left: 56px;
+  right: 0;
+  height: 132px;
+  padding: 8px 8px 8px 22px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  padding: 10px 12px 12px;
-  margin-bottom: 12px;
 }
 
-.pour-node-remove {
+/* 左端の握り。ここを上下にドラッグして開始時刻を変える。 */
+.pour-scale-grip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-l) 0 0 var(--radius-l);
+  background:
+    radial-gradient(circle, var(--muted) 1.5px, transparent 1.6px) 50% 50% / 8px 8px repeat-y;
+  cursor: grab;
+  touch-action: none;
+}
+
+.pour-scale-remove {
   position: absolute;
   top: 0;
   right: 0;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
   padding: 0;
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
 }
 
-.pour-node-total {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.pour-scale-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  gap: 8px;
+  padding-right: 34px;
 }
 
-.pour-node-total-label {
-  font-size: 12px;
+.pour-scale-label {
+  font-size: 11px;
   color: var(--muted);
 }
 
-.pour-node-total-input {
+.pour-scale-total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pour-scale-total-input {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  padding-right: 40px;
 }
 
-.pour-node-total-input input {
+.pour-scale-total-input input {
+  min-width: 0;
   min-height: 44px;
   padding: 0;
   border: none;
@@ -622,46 +699,86 @@ th {
   border-radius: 0;
   background: none;
   font-family: var(--font-mono);
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
 }
 
-.pour-node-unit {
-  font-size: 14px;
+.pour-scale-unit {
+  font-size: 13px;
   color: var(--muted);
 }
 
-.pour-node-delta {
-  margin: 2px 0 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.pour-node-sub {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-}
-
-.pour-node-sub .field span {
+.pour-scale-head .field span {
   font-size: 11px;
 }
 
-.pour-node-add {
+.pour-scale-head .field input {
+  min-height: 44px;
+  padding: 0 6px;
+  font-size: 15px;
+}
+
+.pour-scale-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pour-scale-nudge {
+  width: 38px;
+  min-width: 38px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pour-scale-sec {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pour-scale-sec .pour-scale-label {
+  white-space: nowrap;
+}
+
+.pour-scale-sec input {
+  width: 52px;
+  min-height: 44px;
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.pour-scale-delta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pour-scale-add {
   width: 100%;
-  margin-bottom: 4px;
+  margin-top: 4px;
   border: 1px dashed var(--line);
   background: none;
   color: var(--accent);
 }
 
-.pour-timeline-total {
+.pour-scale-total-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin: 4px 0 0;
+  margin: 8px 0 0;
   padding-top: 8px;
   border-top: 1px solid var(--line);
   font-size: 13px;
