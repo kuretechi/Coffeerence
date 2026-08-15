@@ -401,29 +401,31 @@ export interface Settings {
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
-// ─── 音重ね（ループを重ねて演奏する）───────
-/** アップロードしたループ素材。音源は Blob のまま端末内に置く。 */
+// ─── ビート（タイルを叩いて組む）───────
+/** アップロードした音素材。音源は Blob のまま端末内に置く。 */
 export interface LoopSound {
   id: string;
   name: string;
   blob: Blob;
-  /** 読み込み時に測った長さ（秒）。表示とループ長の自動決定に使う。 */
+  /** 読み込み時に測った長さ（秒）。表示と BPM 合わせに使う。 */
   durationSec: number;
   createdAt: string;
 }
 
-/** 1枠の状態。素材が入っていない枠は soundId を持たない。 */
-export interface MixerSlot {
+/** 1トラックの状態。素材が入っていないトラックは soundId を持たない。 */
+export interface BeatTrack {
   soundId?: string;
+  /** タイルの入り切り。長さは 16 × 小節数。 */
+  steps: boolean[];
   muted: boolean;
 }
 
-/** 音重ねの盤面。端末内に1つだけ持つ。 */
-export interface MixerBoard {
-  id: 'board';
+/** ビートの盤面。端末内に1つだけ持つ。 */
+export interface BeatPattern {
+  id: 'pattern';
   bpm: number;
   bars: number;
-  slots: MixerSlot[];
+  tracks: BeatTrack[];
   /** 全体音量（0〜1）。 */
   volume: number;
 }
