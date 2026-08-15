@@ -62,43 +62,49 @@ function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
   );
 }
 
-/** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
-export function FriendsScreen() {
-  const posts = usePosts();
+/** 投稿フォーム。タイムラインの「投稿する」から開く。 */
+function PostDialog({ onClose }: { onClose: () => void }) {
   const recipes = useRecipes();
   const [author, setAuthor] = useState('');
   const [recipeId, setRecipeId] = useState('');
   const [body, setBody] = useState('');
-  const [notice, setNotice] = useState<{ tone: 'ok' | 'danger'; text: string } | undefined>(undefined);
+  const [notice, setNotice] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const empty = body.trim() === '' && recipeId === '';
 
   async function post() {
-    if (busy || (body.trim() === '' && recipeId === '')) return;
+    if (busy || empty) return;
     setBusy(true);
     try {
       const attached = recipes.find((recipe) => recipe.id === recipeId);
-      const verdict = await submitPost(
-        author,
-        body.trim(),
-        attached ? toSharedRecipe(attached) : undefined,
-      );
+      const verdict = await submitPost(author, body.trim(), attached ? toSharedRecipe(attached) : undefined);
       if (verdict.allowed) {
-        setBody('');
-        setRecipeId('');
-        setNotice({ tone: 'ok', text: '投稿しました。' });
-      } else {
-        setNotice({ tone: 'danger', text: `投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}` });
+        onClose();
+        return;
       }
+      setNotice(`投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}`);
     } catch {
-      setNotice({ tone: 'danger', text: '投稿に失敗しました。もう一度お試しください。' });
+      setNotice('投稿に失敗しました。もう一度お試しください。');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <>
-      <Card title="豆友" hint="いまは端末内にだけ保存されます。投稿は自動判定を通ったものだけが残ります。">
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="投稿"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="row between">
+          <strong>投稿</strong>
+          <button className="feed-delete" type="button" aria-label="閉じる" onClick={onClose}>
+            ×
+          </button>
+        </div>
         <div className="stack">
           <Field label="名前">
             <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
@@ -123,17 +129,31 @@ export function FriendsScreen() {
             </select>
           </Field>
           {recipes.length === 0 ? <p className="muted">レシピタブで登録すると添付できます。</p> : null}
-          {notice ? <Banner tone={notice.tone}>{notice.text}</Banner> : null}
+          {notice ? <Banner tone="danger">{notice}</Banner> : null}
           <div className="row">
-            <button className="primary" type="button" disabled={busy || (body.trim() === '' && recipeId === '')} onClick={() => void post()}>
+            <button className="primary" type="button" disabled={busy || empty} onClick={() => void post()}>
               投稿する
             </button>
           </div>
-          <p className="muted">投稿は必ず自動判定を通ります（利用者側での設定はありません）。</p>
         </div>
-      </Card>
+      </div>
+    </div>
+  );
+}
 
+/** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
+export function FriendsScreen() {
+  const posts = usePosts();
+  const [composing, setComposing] = useState(false);
+
+  return (
+    <>
       <Card title="タイムライン">
+        <div className="row feed-actions">
+          <button className="primary" type="button" onClick={() => setComposing(true)}>
+            投稿する
+          </button>
+        </div>
         {posts.length === 0 ? (
           <Banner>まだ投稿がありません。</Banner>
         ) : (
@@ -168,6 +188,8 @@ export function FriendsScreen() {
           </div>
         )}
       </Card>
+
+      {composing ? <PostDialog onClose={() => setComposing(false)} /> : null}
     </>
   );
 }
