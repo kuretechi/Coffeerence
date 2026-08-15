@@ -1844,106 +1844,150 @@ table button {
   flex: 1;
 }
 
-.mixer-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  margin: 0 0 12px;
+/* タイルのグリッド。小節を増やすと横に伸びるので、行の頭だけ固定して横スクロールする。 */
+.beat-sheet {
+  margin: 0 0 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-.mixer-slot {
+.beat-rows {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 4px;
+  min-width: max-content;
+}
+
+.beat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.beat-row.muted {
+  opacity: 0.45;
+}
+
+.beat-head {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  width: 84px;
+  background: var(--bg);
+}
+
+.beat-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 2px 5px;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: var(--surface);
-  min-width: 0;
-}
-
-.mixer-slot.sounding {
-  border-color: var(--accent);
-  background: var(--surface-2);
-}
-
-.mixer-slot-label {
-  color: var(--muted);
-  font-size: 10px;
-  text-align: center;
-}
-
-.mixer-slot-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  min-height: 62px;
-  padding: 4px 2px;
-  border: none;
-  border-radius: var(--radius-m);
-  background: var(--surface-2);
   color: var(--text);
+  text-align: left;
 }
 
-.mixer-slot.sounding .mixer-slot-main {
-  background: var(--accent);
-  color: var(--on-accent);
-  animation: mixer-bounce 0.6s ease-in-out infinite alternate;
-}
-
-.mixer-slot-main.empty {
-  background: none;
-  border: 1px dashed var(--line);
+.beat-track-label {
   color: var(--muted);
+  font-size: 9px;
 }
 
-.mixer-slot-name {
+.beat-sound {
   overflow: hidden;
   font-size: 11px;
-  line-height: 1.25;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mixer-slot-state {
-  font-size: 10px;
-  opacity: 0.85;
+.beat-sound.empty {
+  color: var(--muted);
 }
 
-.mixer-slot-plus {
-  font-size: 18px;
-}
-
-.mixer-slot-actions {
-  display: flex;
-  gap: 3px;
-}
-
-.mixer-slot-actions button {
-  flex: 1;
-  min-height: 28px;
+.beat-mute {
+  flex: none;
+  width: 26px;
+  min-height: 34px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   background: none;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
 }
 
-@keyframes mixer-bounce {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-3px);
-  }
+.beat-mute.on {
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mixer-slot.sounding .mixer-slot-main {
-    animation: none;
-  }
+.beat-tiles {
+  display: flex;
+  gap: 2px;
+}
+
+.beat-tile {
+  flex: none;
+  width: 15px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+/* 拍・小節の頭を濃くして、数えなくても位置がわかるようにする。 */
+.beat-tile.beat {
+  background: var(--surface-2);
+}
+
+.beat-tile.bar {
+  border-color: var(--muted);
+  background: var(--surface-2);
+}
+
+.beat-tile.on {
+  border-color: var(--accent-strong);
+  background: var(--accent);
+}
+
+.beat-tile.now {
+  box-shadow: inset 0 0 0 2px var(--accent-strong);
+}
+
+.beat-tools {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.beat-tools button {
+  flex: 1;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.beat-picker-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.beat-picker-tools button {
+  flex: 1;
+  font-size: 12px;
 }
 
 .mixer-add {

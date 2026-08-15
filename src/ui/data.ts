@@ -3,15 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
 import { THEME_NAMES } from '../domain/types';
-import { DEFAULT_BOARD, normalizeBoard } from '../lib/loopMixer';
+import { DEFAULT_PATTERN, normalizePattern } from '../lib/beatGrid';
 import type {
   Bean,
+  BeatPattern,
   BrewRecord,
   Competition,
   Gear,
   GearKind,
   LoopSound,
-  MixerBoard,
   Post,
   Recipe,
   Session,
@@ -76,16 +76,16 @@ export function useCustomSound(slot: SoundSlot = 'custom'): StoredSound | undefi
   return useLiveQuery(() => db.sounds.get(slot), [slot], undefined);
 }
 
-/** 音重ねタブに登録したループ素材。 */
+/** ビートタブに登録した音素材。 */
 export function useLoopSounds(): LoopSound[] {
   return useLiveQuery(() => db.loopSounds.orderBy('createdAt').toArray(), [], []) ?? [];
 }
 
-/** 音重ねの盤面。未保存なら既定の盤面。 */
-export function useMixerBoard(): MixerBoard {
-  const stored = useLiveQuery(() => db.mixerBoards.get('board'), [], undefined);
-  // 再生中の装置は盤面の同一性で差分を見るので、内容が変わらない限り同じ参照を返す。
-  return useMemo(() => (stored ? normalizeBoard({ ...DEFAULT_BOARD, ...stored }) : DEFAULT_BOARD), [stored]);
+/** ビートの盤面。未保存なら既定の盤面。 */
+export function useBeatPattern(): BeatPattern {
+  const stored = useLiveQuery(() => db.beatPatterns.get('pattern'), [], undefined);
+  // 内容が変わらない限り同じ参照を返し、再生中の不要な組み直しを防ぐ。
+  return useMemo(() => (stored ? normalizePattern({ ...DEFAULT_PATTERN, ...stored }) : DEFAULT_PATTERN), [stored]);
 }
 
 export function useBeans(): Bean[] {

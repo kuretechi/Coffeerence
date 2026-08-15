@@ -1,9 +1,9 @@
 import { db } from './db';
-import type { LoopSound, MixerBoard } from '../domain/types';
-import { DEFAULT_BOARD, detachSound, normalizeBoard } from '../lib/loopMixer';
+import type { BeatPattern, LoopSound } from '../domain/types';
+import { DEFAULT_PATTERN, detachSound, normalizePattern } from '../lib/beatGrid';
 import { uid } from '../lib/random';
 
-/** 音重ねタブで開ける形式。iOS の m4a も含める。 */
+/** ビートタブで開ける形式。iOS の m4a も含める。 */
 export const LOOP_ACCEPT = 'audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac';
 
 /** 端末を埋めないための上限（1素材）。 */
@@ -42,18 +42,18 @@ export async function renameLoopSound(id: string, name: string): Promise<void> {
   await db.loopSounds.put({ ...sound, name: trimmed });
 }
 
-/** 素材を消し、その素材を指していた枠も空にする。 */
+/** 素材を消し、その素材を指していたトラックからも外す。 */
 export async function deleteLoopSound(id: string): Promise<void> {
   await db.loopSounds.delete(id);
-  const board = await getMixerBoard();
-  await saveMixerBoard({ ...board, slots: detachSound(board.slots, id) });
+  const pattern = await getBeatPattern();
+  await saveBeatPattern({ ...pattern, tracks: detachSound(pattern.tracks, id) });
 }
 
-export async function getMixerBoard(): Promise<MixerBoard> {
-  const stored = await db.mixerBoards.get('board');
-  return stored ? normalizeBoard({ ...DEFAULT_BOARD, ...stored }) : DEFAULT_BOARD;
+export async function getBeatPattern(): Promise<BeatPattern> {
+  const stored = await db.beatPatterns.get('pattern');
+  return stored ? normalizePattern({ ...DEFAULT_PATTERN, ...stored }) : DEFAULT_PATTERN;
 }
 
-export async function saveMixerBoard(board: MixerBoard): Promise<void> {
-  await db.mixerBoards.put(normalizeBoard(board));
+export async function saveBeatPattern(pattern: BeatPattern): Promise<void> {
+  await db.beatPatterns.put(normalizePattern(pattern));
 }

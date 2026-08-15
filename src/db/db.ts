@@ -2,13 +2,13 @@ import Dexie, { type Table } from 'dexie';
 import type {
   AuditEntry,
   Bean,
+  BeatPattern,
   BrewRecord,
   Competition,
   ExternalLabel,
   FlavorDescriptorSet,
   Gear,
   LoopSound,
-  MixerBoard,
   Post,
   Recipe,
   RehearsalRecord,
@@ -35,7 +35,7 @@ export class CoffeerenceDb extends Dexie {
   posts!: Table<Post, string>;
   sounds!: Table<StoredSound, string>;
   loopSounds!: Table<LoopSound, string>;
-  mixerBoards!: Table<MixerBoard, string>;
+  beatPatterns!: Table<BeatPattern, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -85,10 +85,15 @@ export class CoffeerenceDb extends Dexie {
             settings.finishSoundId ??= 'tururu';
           }),
       );
-    // 音重ねタブのループ素材と盤面。
+    // ビートタブの音素材と盤面。
     this.version(8).stores({
       loopSounds: 'id, createdAt',
       mixerBoards: 'id',
+    });
+    // 枠に素材を入れる方式からタイルのグリッドへ。旧盤面は捨てて作り直す。
+    this.version(9).stores({
+      mixerBoards: null,
+      beatPatterns: 'id',
     });
   }
 }
