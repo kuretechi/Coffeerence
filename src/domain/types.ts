@@ -410,6 +410,8 @@ export interface Settings {
   soundPitch?: number;
   /** 合図音にかける効果（未設定なら 'none'）。 */
   soundEffect?: SoundEffect;
+  /** 合図音の残響量（未設定なら効果ごとの既定値）。 */
+  soundReverb?: ReverbAmount;
   /** 抽出終了（2回鳴らし）だけに使う音。'same' なら合図音と同じ。 */
   finishSoundId?: string;
   /** 終了用にアップロードした音のファイル名（表示用）。 */
@@ -418,6 +420,8 @@ export interface Settings {
   finishSoundPitch?: number;
   /** 抽出終了の音にかける効果（未設定なら 'none'）。 */
   finishSoundEffect?: SoundEffect;
+  /** 抽出終了の音の残響量（未設定なら効果ごとの既定値）。 */
+  finishSoundReverb?: ReverbAmount;
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
@@ -455,6 +459,14 @@ export type SoundSlot = 'custom' | 'custom-finish';
 
 /** 合図音にかける効果。 */
 export type SoundEffect = 'none' | 'room' | 'hall' | 'echo' | 'muffled' | 'radio';
+
+/** 残響（room / hall）の程度。原音に混ぜる割合と残響の長さで指定する。 */
+export interface ReverbAmount {
+  /** 原音に混ぜる残響の割合（%）。 */
+  mix: number;
+  /** 残響が消えるまでの長さ（秒）。 */
+  seconds: number;
+}
 
 /** アップロードした合図音。音源は Blob のまま端末内に置く。 */
 export interface StoredSound {

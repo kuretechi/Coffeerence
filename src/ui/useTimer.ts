@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import type { SoundEffect, SoundSlot } from '../domain/types';
+import type { ReverbAmount, SoundEffect, SoundSlot } from '../domain/types';
 
 interface WakeLockSentinelLike {
   release: () => Promise<void>;
@@ -126,18 +126,48 @@ export const SOUND_EFFECTS: { id: SoundEffect; label: string }[] = [
   { id: 'radio', label: '電話ごし' },
 ];
 
-/** 残響の長さ（秒）。 */
-const REVERB_SECONDS: Record<'room' | 'hall', number> = { room: 0.8, hall: 2.6 };
+/** 残響の既定値。数値を設定していないときに使う。 */
+export const REVERB_PRESETS: Record<'room' | 'hall', ReverbAmount> = {
+  room: { mix: 60, seconds: 0.8 },
+  hall: { mix: 90, seconds: 2.6 },
+};
+
+/** 残響量の指定できる範囲。 */
+export const REVERB_MIX_RANGE = { min: 0, max: 100, step: 5 };
+export const REVERB_SECONDS_RANGE = { min: 0.2, max: 6, step: 0.1 };
+
+/** 残響がかかる効果か。 */
+export function hasReverb(effect: SoundEffect): effect is 'room' | 'hall' {
+  return effect === 'room' || effect === 'hall';
+}
+
+/** 設定値と既定値を合わせて、実際に使う残響量にする。 */
+export function reverbAmount(effect: SoundEffect, amount?: Partial<ReverbAmount>): ReverbAmount {
+  const preset = hasReverb(effect) ? REVERB_PRESETS[effect] : REVERB_PRESETS.room;
+  const mix = amount?.mix ?? preset.mix;
+  const seconds = amount?.seconds ?? preset.seconds;
+  return {
+    mix: clamp(mix, REVERB_MIX_RANGE.min, REVERB_MIX_RANGE.max),
+    seconds: clamp(seconds, REVERB_SECONDS_RANGE.min, REVERB_SECONDS_RANGE.max),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
 const impulses = new Map<string, AudioBuffer>();
 
 /**
  * 残響用のインパルス応答。音源を同梱せずに済むよう、指数的に減衰する
  * ノイズから作る（部屋の反射が一様に散っていく様子の近似）。
  */
-function impulse(ctx: AudioContext, kind: 'room' | 'hall'): AudioBuffer {
-  const cached = impulses.get(kind);
+function impulse(ctx: AudioContext, seconds: number): AudioBuffer {
+  const key = seconds.toFixed(2);
+  const cached = impulses.get(key);
   if (cached) return cached;
-  const length = Math.floor(ctx.sampleRate * REVERB_SECONDS[kind]);
+  const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
   const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
   for (let channel = 0; channel < 2; channel += 1) {
     const samples = buffer.getChannelData(channel);
@@ -145,7 +175,7 @@ function impulse(ctx: AudioContext, kind: 'room' | 'hall'): AudioBuffer {
       samples[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2.5;
     }
   }
-  impulses.set(kind, buffer);
+  impulses.set(key, buffer);
   return buffer;
 }
 
@@ -153,14 +183,19 @@ function impulse(ctx: AudioContext, kind: 'room' | 'hall'): AudioBuffer {
  * 効果の配線を組み、音源をつなぐ先を返す。出口側は destination まで
  * つないだ状態で返るので、呼ぶ側は返り値に音源を connect するだけでよい。
  */
-function effectInput(ctx: AudioContext, effect: SoundEffect = 'none'): AudioNode {
-  if (effect === 'room' || effect === 'hall') {
+function effectInput(
+  ctx: AudioContext,
+  effect: SoundEffect = 'none',
+  reverb?: Partial<ReverbAmount>,
+): AudioNode {
+  if (hasReverb(effect)) {
+    const amount = reverbAmount(effect, reverb);
     // 原音と残響を混ぜる。混ぜないと遠くで鳴っているようにしか聞こえない。
     const input = ctx.createGain();
     const wet = ctx.createGain();
-    wet.gain.value = effect === 'hall' ? 0.9 : 0.6;
+    wet.gain.value = amount.mix / 100;
     const convolver = ctx.createConvolver();
-    convolver.buffer = impulse(ctx, effect);
+    convolver.buffer = impulse(ctx, amount.seconds);
     input.connect(ctx.destination);
     input.connect(convolver);
     convolver.connect(wet);
@@ -465,6 +500,7 @@ export function chime(
   soundId = CHIME_SOUNDS[0].id,
   pitch = 0,
   effect: SoundEffect = 'none',
+  reverb?: Partial<ReverbAmount>,
 ): void {
   if (!enabled) return;
   try {
@@ -476,7 +512,7 @@ export function chime(
         source && !elementOnly.has(source.key) ? load(ctx, source) : Promise.resolve<AudioBuffer | undefined>(undefined);
       void ready.then((buffer) => {
         const rate = pitchRate(pitch);
-        const out = effectInput(ctx, effect);
+        const out = effectInput(ctx, effect, reverb);
         if (!buffer) {
           // decode できないアップロード音（動画）は media 要素で鳴らす。
           const blob = isCustom(soundId) ? customSounds.get(soundId)?.blob : undefined;
