@@ -59,6 +59,17 @@ export class CoffeerenceDb extends Dexie {
     this.version(5).stores({
       sounds: 'id',
     });
+    // 既定音を「卓上ベル」に変える。自分で選んでいない端末（旧既定のベルのまま）だけ移す。
+    this.version(6)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<Settings>('settings')
+          .toCollection()
+          .modify((settings) => {
+            if (settings.soundId === undefined || settings.soundId === 'bell') settings.soundId = 'desk';
+          }),
+      );
   }
 }
 
