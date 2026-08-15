@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, NumberField } from '../ui/components';
+import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -61,12 +61,44 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
+/** レシピ名をタップしたときに開く抽出条件の内訳。 */
+function RecipeDetail({ recipe }: { recipe: Recipe }) {
+  return (
+    <dl className="brew-detail">
+      <dt>粉量 / 総湯量</dt>
+      <dd className="mono">
+        {recipe.doseG}g / {recipe.totalWaterG}g
+      </dd>
+      <dt>挽き目 / ドリッパー</dt>
+      <dd>
+        {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
+      </dd>
+      <dt>初期湯温</dt>
+      <dd className="mono">{recipe.waterTempC}℃</dd>
+      <dt>注湯</dt>
+      <dd className="mono">
+        {recipe.pours.length === 0
+          ? '—'
+          : recipe.pours
+              .map(
+                (pour) =>
+                  `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
+              )
+              .join(' / ')}
+      </dd>
+      <dt>抽出終了</dt>
+      <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
+    </dl>
+  );
+}
+
 export function RecipeScreen() {
   const recipes = useRecipes();
   const beans = useBeans();
   const defaults = useSettings().recipeDefaults;
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const [openId, setOpenId] = useState<string | undefined>(undefined);
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -264,22 +296,25 @@ export function RecipeScreen() {
         </div>
       </Card>
 
-      <Card title="登録済みレシピ">
+      <Card title="登録済みレシピ" hint="レシピ名をタップすると詳細が見られます。">
         {recipes.length === 0 ? (
           <Banner>まだレシピがありません。</Banner>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>名前</th>
-                <th aria-label="操作" />
-              </tr>
-            </thead>
-            <tbody>
-              {recipes.map((recipe) => (
-                <tr key={recipe.id}>
-                  <td>{recipe.name}</td>
-                  <td>
+          <div className="stack">
+            {recipes.map((recipe) => (
+              <div key={recipe.id} className="todo-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                <button
+                  className="log-summary"
+                  type="button"
+                  aria-expanded={openId === recipe.id}
+                  onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
+                >
+                  <strong>{recipe.name}</strong>
+                </button>
+
+                {openId === recipe.id ? (
+                  <>
+                    <RecipeDetail recipe={recipe} />
                     <div className="row">
                       <button type="button" onClick={() => startEdit(recipe)}>
                         編集
@@ -295,11 +330,11 @@ export function RecipeScreen() {
                         削除
                       </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
         )}
       </Card>
     </>
