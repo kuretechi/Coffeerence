@@ -1053,3 +1053,46 @@ table button {
   border-radius: var(--radius-l);
   background: var(--surface);
 }
+
+/* 抽出終了のお祝い。横からヌッと出てくるだけで操作は邪魔しない。 */
+.finish-character {
+  position: fixed;
+  right: 0;
+  bottom: 68px;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.finish-character img {
+  display: block;
+  width: min(46vw, 210px);
+  height: auto;
+  filter: drop-shadow(-4px 0 10px rgba(0, 0, 0, 0.35));
+  animation: character-peek 3.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* 勢いよく出て、少し居座ってから引っ込む。 */
+@keyframes character-peek {
+  0% {
+    transform: translateX(100%) rotate(6deg);
+  }
+  18% {
+    transform: translateX(-4%) rotate(-3deg);
+  }
+  26% {
+    transform: translateX(4%) rotate(1deg);
+  }
+  34%,
+  78% {
+    transform: translateX(0) rotate(0deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finish-character {
+    display: none;
+  }
+}

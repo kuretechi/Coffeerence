@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Banner, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
+import { FinishCharacter } from '../ui/FinishCharacter';
 import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
@@ -15,6 +16,9 @@ export function TimerScreen() {
   const navigate = useNavigate();
   const stopwatch = useStopwatch();
   const [recipeId, setRecipeId] = useState('');
+  // 抽出終了ごとに増やし、キャラを出し直す。
+  const [cheerRun, setCheerRun] = useState(0);
+  const hideCheer = useCallback(() => setCheerRun(0), []);
 
   const selectedId = recipeId || recipes[0]?.id || '';
   const recipe = recipes.find((item) => item.id === selectedId);
@@ -24,6 +28,8 @@ export function TimerScreen() {
   const announcedIndex = useRef(0);
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
+  /** 終了の2回鳴らしだけ別の音にできる。未設定なら合図音と同じ。 */
+  const finishSoundId = settings.finishSoundId ?? settings.soundId;
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
   function tempOf(pour: Pour | undefined): number {
@@ -34,22 +40,24 @@ export function TimerScreen() {
   useEffect(() => {
     const index = progress.current?.index ?? 0;
     if (index === announcedIndex.current) return;
-    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled);
+    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled, settings.soundId);
     announcedIndex.current = index;
-  }, [progress.current?.index, stopwatch.running, settings.soundEnabled]);
+  }, [progress.current?.index, stopwatch.running, settings.soundEnabled, settings.soundId]);
 
   // 抽出終了時間に達したら計測を止めて知らせる。
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    doubleChime(settings.soundEnabled);
-  }, [finished, stopwatch, settings.soundEnabled]);
+    doubleChime(settings.soundEnabled, finishSoundId);
+    setCheerRun((run) => run + 1);
+  }, [finished, stopwatch, settings.soundEnabled, finishSoundId]);
 
   function start() {
-    primeAudio(settings.soundEnabled);
+    primeAudio(settings.soundEnabled, settings.soundId);
+    primeAudio(settings.soundEnabled, finishSoundId);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
-    chime(settings.soundEnabled);
+    chime(settings.soundEnabled, settings.soundId);
     stopwatch.start();
   }
 
@@ -181,6 +189,7 @@ export function TimerScreen() {
         </div>
       )}
       {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
+      {cheerRun === 0 ? null : <FinishCharacter key={cheerRun} onDone={hideCheer} />}
     </div>
   );
 }
