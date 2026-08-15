@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
-import { doubleBeep, primeAudio, useStopwatch } from '../ui/useTimer';
+import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
@@ -35,7 +35,7 @@ export function TimerScreen() {
   useEffect(() => {
     const index = progress.current?.index ?? 0;
     if (index === announcedIndex.current) return;
-    if (index > announcedIndex.current && stopwatch.running) doubleBeep(settings.soundEnabled);
+    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled);
     announcedIndex.current = index;
   }, [progress.current?.index, stopwatch.running, settings.soundEnabled]);
 
@@ -43,14 +43,14 @@ export function TimerScreen() {
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    doubleBeep(settings.soundEnabled, 660, 220);
+    doubleChime(settings.soundEnabled);
   }, [finished, stopwatch, settings.soundEnabled]);
 
   function start() {
     primeAudio(settings.soundEnabled);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
-    doubleBeep(settings.soundEnabled);
+    chime(settings.soundEnabled);
     stopwatch.start();
   }
 

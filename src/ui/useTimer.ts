@@ -101,28 +101,43 @@ export function primeAudio(enabled: boolean): void {
   }
 }
 
-/** 短い通知音（音声ファイル不要）。 */
-export function beep(enabled: boolean, frequency = 880, durationMs = 160): void {
+/** 鈴の倍音比。基音とこの比の部分音を重ねると「チーン」に近い響きになる。 */
+const BELL_PARTIALS = [
+  { ratio: 1, level: 1 },
+  { ratio: 2.76, level: 0.5 },
+  { ratio: 5.4, level: 0.25 },
+];
+
+/** 「チーン」と一度鳴らす合図（音声ファイル不要）。 */
+export function chime(enabled: boolean, frequency = 1046.5, durationMs = 1200): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
     if (!ctx) return;
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    oscillator.frequency.value = frequency;
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + durationMs / 1000);
+    const now = ctx.currentTime;
+    const end = now + durationMs / 1000;
+    for (const partial of BELL_PARTIALS) {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency * partial.ratio;
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      // 立ち上がりは鋭く、その後は指数的に減衰させて余韻を残す。
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.18 * partial.level, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      oscillator.start(now);
+      oscillator.stop(end);
+    }
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
 }
 
-/** 「ピピッ」と2回鳴らす合図。 */
-export function doubleBeep(enabled: boolean, frequency = 880, durationMs = 120): void {
-  beep(enabled, frequency, durationMs);
-  window.setTimeout(() => beep(enabled, frequency, durationMs), durationMs + 90);
+/** 「チーン、チーン」と2回鳴らす合図。 */
+export function doubleChime(enabled: boolean, frequency = 1046.5, durationMs = 1200): void {
+  chime(enabled, frequency, durationMs);
+  window.setTimeout(() => chime(enabled, frequency, durationMs), 550);
 }
