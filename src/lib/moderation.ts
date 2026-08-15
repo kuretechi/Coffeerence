@@ -30,7 +30,7 @@ const RULES: Rule[] = [
     category: 'harassment',
     label: '侮辱・嫌がらせ',
     pattern:
-      /(くず(?!れ|こ|もち|ゆ)|クズ|かす野郎|かすやろう|ばか(?!り)|馬鹿|あほ|阿呆|まぬけ|間抜け|むのう|無能|きもい|ぶす(?!う)|でぶ|うざい|うっとうしい|きちがい|いじめ|嫌がらせ|いやがらせ|fuck|shit|bitch|asshole|idiot|moron|stupid|loser)/,
+      /(くず(?!れ|こ|もち|ゆ)|クズ|かす野郎|かすやろう|ばか(?!り)|馬鹿|あほ|阿呆|まぬけ|間抜け|むのう|無能|きもい|ぶす(?!う)|でぶ|うざい|うっとうしい|きちがい|いじめ|嫌がらせ|いやがらせ|fuck|fck|fuk|fvck|shit|bitch|asshole|idiot|moron|stupid|loser)/,
   },
   {
     category: 'sexual',
@@ -46,6 +46,11 @@ const RULES: Rule[] = [
     category: 'self_harm',
     label: '自傷',
     pattern: /(自殺|じさつ|首を吊|くびをつ|くびつり|りすとかっと|おばどず|suicide|killmyself)/,
+  },
+  {
+    category: 'vulgar',
+    label: '下品な表現',
+    pattern: /(うんち|うんこ|うんk|くそったれ|クソ野郎|くそやろう|ちんちん|しょんべん|げろ|おなら|poop|crap|piss)/,
   },
   {
     category: 'spam',
