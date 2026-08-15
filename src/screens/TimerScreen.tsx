@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Banner, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { FinishCharacter } from '../ui/FinishCharacter';
@@ -30,7 +30,9 @@ export function TimerScreen() {
   const settings = useSettings();
   const navigate = useNavigate();
   const stopwatch = useStopwatch();
-  const [recipeId, setRecipeId] = useState('');
+  // レシピ閲覧画面から ?recipe=<id> で開くと、そのレシピが選ばれた状態で始まる。
+  const [params] = useSearchParams();
+  const [recipeId, setRecipeId] = useState(() => params.get('recipe') ?? '');
   // 抽出終了ごとに増やし、キャラを出し直す。
   const [cheerRun, setCheerRun] = useState(0);
   const hideCheer = useCallback(() => setCheerRun(0), []);

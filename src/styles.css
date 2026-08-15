@@ -1226,16 +1226,105 @@ table button {
   color: var(--text);
 }
 
-/* レシピ一覧はレシピ名だけなので、行を詰める。 */
-.recipe-item {
+/* レシピ一覧: 行タップで閲覧画面へ、右端で削除。末尾は同じ幅の追加行。 */
+.recipe-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: 8px;
 }
 
-.recipe-item .log-summary {
-  min-height: 0;
+.recipe-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  padding: 6px 8px 6px 12px;
+}
+
+.recipe-row-open {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  justify-content: center;
+}
+
+.recipe-row-open strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-row-delete {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--danger);
+  background: none;
+  border: 1px solid var(--danger);
+}
+
+/* 追加行は通常行と同じ幅・形にして、点線枠だけで区別する。 */
+.recipe-row-add {
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.recipe-row-add button {
+  width: 100%;
+  min-height: 48px;
+  border: 1px dashed var(--line);
+  background: none;
+  color: var(--accent);
+  border-radius: var(--radius-l);
+}
+
+/* レシピ閲覧画面: 戻る・編集の並びと、演習開始の主ボタン。 */
+.recipe-view-bar {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.recipe-view-bar button {
+  min-height: 44px;
+}
+
+.recipe-view-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.recipe-view-grid dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.recipe-view-grid dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.recipe-view-start {
+  min-height: 48px;
 }
 
 /* 記録一覧の行。タップで詳細を開く。 */
