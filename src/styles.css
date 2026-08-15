@@ -416,6 +416,14 @@ textarea {
   font-size: 26px;
 }
 
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

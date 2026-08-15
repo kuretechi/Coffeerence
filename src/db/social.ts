@@ -29,7 +29,14 @@ function client() {
 }
 
 function toProfile(row: ProfileRow): Profile {
-  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url ?? undefined };
+  return {
+    id: row.id,
+    displayName: row.display_name,
+    avatarUrl: row.avatar_url ?? undefined,
+    bio: row.bio ?? undefined,
+    age: row.age ?? undefined,
+    gender: row.gender ?? undefined,
+  };
 }
 
 export function toPost(row: PostRow): Post {
@@ -119,6 +126,13 @@ export async function fetchProfiles(userIds: string[]): Promise<Profile[]> {
 export async function upsertProfile(profile: Profile): Promise<void> {
   const { error } = await client()
     .from('profiles')
-    .upsert({ id: profile.id, display_name: profile.displayName, avatar_url: profile.avatarUrl ?? null });
+    .upsert({
+      id: profile.id,
+      display_name: profile.displayName,
+      avatar_url: profile.avatarUrl ?? null,
+      bio: profile.bio ?? null,
+      age: profile.age ?? null,
+      gender: profile.gender ?? null,
+    });
   if (error) throw new Error(error.message);
 }

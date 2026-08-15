@@ -346,12 +346,18 @@ export interface Post {
   userId?: string;
 }
 
-/** Supabase の profiles テーブル。表示名とプロフィール画像を持つ。 */
+/** 性別。未回答は undefined で表す。 */
+export type Gender = 'male' | 'female' | 'other';
+
+/** Supabase の profiles テーブル。表示名・画像・自己紹介などを持つ。 */
 export interface Profile {
   id: string;
   displayName: string;
   /** プロフィール画像（128px 角の JPEG data URL）。未設定なら頭文字を表示する。 */
   avatarUrl?: string;
+  bio?: string;
+  age?: number;
+  gender?: Gender;
 }
 
 /** 不適切判定の結果。`allowed` が false の投稿は保存せず削除する。 */
@@ -370,8 +376,11 @@ export interface Settings {
   weights: ScoreWeights;
   detectableEffect: number; // δ（既定 0.5点）
   prepChecklist: string[];
-  /** 端末内のプロフィール画像（Supabase 未設定でも使う）。 */
+  /** 端末内のプロフィール（Supabase 未設定でも使う）。 */
   avatarUrl?: string;
+  bio?: string;
+  age?: number;
+  gender?: Gender;
   soundEnabled: boolean;
   targetLine: number; // F-13 目標ライン（合計点）
 }
