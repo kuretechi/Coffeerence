@@ -45,7 +45,7 @@ export function FriendsScreen() {
       <Card title="豆友" hint="いまは端末内にだけ保存されます。投稿は自動判定を通ったものだけが残ります。">
         <div className="stack">
           <Field label="名前">
-            <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="名無し" />
+            <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
           </Field>
           <Field label={`本文（${body.length}/${MAX_BODY}）`}>
             <textarea
