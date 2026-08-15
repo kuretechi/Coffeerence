@@ -18,6 +18,12 @@ describe('moderateLocally', () => {
     expect(moderateLocally('シネェェェ').allowed).toBe(false);
   });
 
+  it('下品な語と伏せ字の罵倒も拒否する', () => {
+    expect(moderateLocally('うんち').allowed).toBe(false);
+    expect(moderateLocally('f*ck').allowed).toBe(false);
+    expect(moderateLocally('ＦＵＣＫ').allowed).toBe(false);
+  });
+
   it('通常のコーヒー用語は誤判定しない', () => {
     expect(moderateLocally('浅煎りばかり飲んでいる').allowed).toBe(true);
     expect(moderateLocally('湿気で粉が崩れる').allowed).toBe(true);
