@@ -8,8 +8,8 @@ import { RecipeScreen } from './screens/RecipeScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
-import { ComingSoonScreen } from './screens/ComingSoonScreen';
 import { FriendsScreen } from './screens/FriendsScreen';
+import { AccountScreen } from './screens/AccountScreen';
 
 const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
@@ -22,8 +22,8 @@ const TABS: { to: string; label: string; icon: TabIconName }[] = [
 
 export function App() {
   const settings = useSettings();
-  // タイマー画面は数字と注湯案内を一画面に収めたいので、ロゴを小さくする。
-  const compactHeader = useLocation().pathname === '/timer';
+  // レシピ画面以外は本文を広く使いたいので、ロゴを小さくする。
+  const compactHeader = useLocation().pathname !== '/';
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -44,10 +44,7 @@ export function App() {
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
         <Route path="/friends" element={<FriendsScreen />} />
-        <Route
-          path="/account"
-          element={<ComingSoonScreen title="アカウント" description="アカウント登録とログインの画面です。" />}
-        />
+        <Route path="/account" element={<AccountScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

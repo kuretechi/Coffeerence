@@ -15,6 +15,7 @@ import type {
   Score,
   Session,
   Settings,
+  SharedRecipe,
   TriangleTrial,
 } from '../domain/types';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS, TARGET_BEVERAGE_G } from '../domain/defaults';
@@ -212,7 +213,11 @@ export async function consumeBeans(beanId: string, grams: number): Promise<void>
  * 判定を通った投稿だけを保存する。不適切と判定された場合は保存せず、
  * 判定結果を監査ログに残して呼び出し側に返す。
  */
-export async function submitPost(author: string, body: string): Promise<ModerationVerdict> {
+export async function submitPost(
+  author: string,
+  body: string,
+  recipe?: SharedRecipe,
+): Promise<ModerationVerdict> {
   const verdict = await moderate(body);
   if (!verdict.allowed) {
     await recordAudit({
@@ -227,34 +232,48 @@ export async function submitPost(author: string, body: string): Promise<Moderati
     author: author.trim() === '' ? '豆挽けば名無し' : author.trim(),
     body,
     createdAt: new Date().toISOString(),
+    recipe,
     moderation: verdict,
   };
   await db.posts.put(post);
   return verdict;
 }
 
-/**
- * 保存済みの投稿をまとめて再判定し、不適切なものを削除する。
- * 判定器を差し替えた（APIキーを設定した）あとの遡り適用に使う。
- */
-export async function remoderatePosts(): Promise<number> {
-  const posts = await db.posts.toArray();
-  let removed = 0;
-  for (const post of posts) {
-    const verdict = await moderate(post.body);
-    if (verdict.allowed) {
-      await db.posts.put({ ...post, moderation: verdict });
-      continue;
-    }
-    await db.posts.delete(post.id);
-    removed += 1;
-    await recordAudit({
-      kind: 'moderation',
-      subject: post.id,
-      detail: `再判定で削除（${verdict.provider}: ${verdict.categories.join(', ') || '不適切'}）`,
-    });
-  }
-  return removed;
+/** レシピを共有用の写しに変換する。 */
+export function toSharedRecipe(recipe: Recipe): SharedRecipe {
+  return {
+    name: recipe.name,
+    doseG: recipe.doseG,
+    totalWaterG: recipe.totalWaterG,
+    grindSetting: recipe.grindSetting,
+    brewer: recipe.brewer,
+    waterTempC: recipe.waterTempC,
+    pours: recipe.pours,
+    finishSec: recipe.finishSec,
+  };
+}
+
+/** 投稿に添付されたレシピを自分のレシピとして取り込む。 */
+export async function importSharedRecipe(shared: SharedRecipe): Promise<Recipe> {
+  const bean = await db.beans.toCollection().first();
+  const recipe: Recipe = {
+    id: uid('recipe'),
+    name: shared.name,
+    beanId: bean?.id ?? '',
+    doseG: shared.doseG,
+    grindSetting: shared.grindSetting,
+    waterTempC: shared.waterTempC,
+    waterId: '',
+    totalWaterG: shared.totalWaterG,
+    targetBeverageG: TARGET_BEVERAGE_G,
+    brewer: shared.brewer,
+    filter: '',
+    pours: shared.pours,
+    finishSec: shared.finishSec,
+    createdAt: new Date().toISOString(),
+  };
+  await db.recipes.put(recipe);
+  return recipe;
 }
 
 /** R-2: 削除は記録に残す。 */
