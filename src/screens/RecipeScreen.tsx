@@ -61,6 +61,129 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
+/** 1投を丸めて表示する。未入力なら「—」。 */
+const showG = (value: number | undefined) => (value === undefined ? '—' : `${value}g`);
+
+/** 直前の投との差分＝その投で実際に注ぐ量。 */
+function pourDeltaG(pours: DraftPour[], index: number): number | undefined {
+  const current = pours[index]?.targetG;
+  if (current === undefined) return undefined;
+  const previous = pours
+    .slice(0, index)
+    .map((pour) => pour.targetG)
+    .filter((value): value is number => value !== undefined)
+    .pop();
+  return Math.max(0, current - (previous ?? 0));
+}
+
+/** 総湯量に対する各投の比率を示す横バー。 */
+function PourBar({ pours, totalWaterG }: { pours: DraftPour[]; totalWaterG: number }) {
+  const segments = pours.map((_, index) => pourDeltaG(pours, index) ?? 0);
+  const sum = segments.reduce((acc, value) => acc + value, 0);
+  const label =
+    sum === 0
+      ? '注湯の配分はまだありません'
+      : `総湯量${totalWaterG}gの配分: ${segments.map((value, index) => `${index + 1}投目${value}g`).join('、')}`;
+  return (
+    <div className="pour-bar" role="img" aria-label={label}>
+      {sum === 0 ? (
+        <span className="pour-bar-empty" />
+      ) : (
+        segments.map((value, index) => (
+          <span
+            key={index}
+            className="pour-bar-seg"
+            style={{ flexGrow: value, opacity: 1 - Math.min(index, 4) * 0.15 }}
+          />
+        ))
+      )}
+    </div>
+  );
+}
+
+/** 1投の詳細をまとめて編集するボトムシート。 */
+function PourSheet({
+  index,
+  pour,
+  deltaG,
+  canRemove,
+  onChange,
+  onRemove,
+  onClose,
+}: {
+  index: number;
+  pour: DraftPour;
+  deltaG: number | undefined;
+  canRemove: boolean;
+  onChange: (patch: Partial<DraftPour>) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="pour-sheet-backdrop" onClick={onClose}>
+      <div
+        className="pour-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${index + 1}投目の設定`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="row between">
+          <strong>{index + 1}投目</strong>
+          <button className="pour-sheet-close" type="button" aria-label="閉じる" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="muted pour-sheet-note">
+          この投で注ぐ量 <span className="mono">{showG(deltaG)}</span>（累計から自動計算）
+        </p>
+        <div className="stack">
+          <NumberField
+            label="累計"
+            suffix="g"
+            step={1}
+            min={0}
+            value={pour.targetG}
+            onChange={(targetG) => onChange({ targetG })}
+          />
+          <NumberField
+            label="開始"
+            suffix="秒"
+            step={5}
+            min={0}
+            value={pour.atSec}
+            onChange={(atSec) => onChange({ atSec })}
+          />
+          <NumberField
+            label="湯温"
+            suffix="℃"
+            step={1}
+            min={0}
+            value={pour.waterTempC}
+            onChange={(waterTempC) => onChange({ waterTempC })}
+          />
+        </div>
+        <div className="row pour-sheet-actions">
+          <button className="primary" type="button" onClick={onClose}>
+            完了
+          </button>
+          <button className="danger" type="button" disabled={!canRemove} onClick={onRemove}>
+            この投を削除
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** レシピ名をタップしたときに開く抽出条件の内訳。 */
 function RecipeDetail({ recipe }: { recipe: Recipe }) {
   return (
@@ -99,6 +222,7 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  const [sheetIndex, setSheetIndex] = useState<number | undefined>(undefined);
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -147,16 +271,25 @@ export function RecipeScreen() {
 
   function removePour(index: number) {
     setDraft({ ...draft, pours: draft.pours.filter((_, i) => i !== index) });
+    setSheetIndex(undefined);
+  }
+
+  /** 追加した投はそのままシートで詳細を詰められるようにする。 */
+  function addPourAndEdit() {
+    addPour();
+    setSheetIndex(draft.pours.length);
   }
 
   function startEdit(recipe: Recipe) {
     setEditingId(recipe.id);
+    setSheetIndex(undefined);
     setDraft(draftOf(recipe));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function cancelEdit() {
     setEditingId(undefined);
+    setSheetIndex(undefined);
     setDraft(emptyDraft(defaults));
   }
 
@@ -185,6 +318,7 @@ export function RecipeScreen() {
     };
     await saveRecipe(recipe);
     setEditingId(undefined);
+    setSheetIndex(undefined);
     setDraft(emptyDraft(defaults));
   }
 
@@ -233,42 +367,43 @@ export function RecipeScreen() {
             </Field>
           </div>
           <fieldset className="pour-editor">
-            <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
+            <legend>注湯（タップして1投ずつ編集）</legend>
             <div className="stack">
-              {draft.pours.map((pour, index) => (
-                <div className="row pour-row" key={index}>
-                  <span className="pour-index">{index + 1}投目</span>
-                  <NumberField
-                    label="累計"
-                    suffix="g"
-                    step={1}
-                    min={0}
-                    value={pour.targetG}
-                    onChange={(targetG) => setPour(index, { targetG })}
-                  />
-                  <NumberField
-                    label="開始"
-                    suffix="秒"
-                    step={5}
-                    min={0}
-                    value={pour.atSec}
-                    onChange={(atSec) => setPour(index, { atSec })}
-                  />
-                  <NumberField
-                    label="湯温"
-                    suffix="℃"
-                    step={1}
-                    min={0}
-                    value={pour.waterTempC}
-                    onChange={(waterTempC) => setPour(index, { waterTempC })}
-                  />
-                  <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
-                    削除
-                  </button>
-                </div>
-              ))}
+              <PourBar pours={draft.pours} totalWaterG={totalWaterG} />
+              <ul className="pour-list">
+                {draft.pours.map((pour, index) => (
+                  <li className="pour-card" key={index}>
+                    <button
+                      className="pour-card-open"
+                      type="button"
+                      aria-haspopup="dialog"
+                      onClick={() => setSheetIndex(index)}
+                    >
+                      <span className="pour-card-no">{index + 1}</span>
+                      <span className="pour-card-time mono">
+                        {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+                      </span>
+                      <span className="pour-card-delta mono">
+                        {pourDeltaG(draft.pours, index) === undefined ? '—' : `+${pourDeltaG(draft.pours, index)}g`}
+                      </span>
+                      <span className="pour-card-meta mono">
+                        累計 {showG(pour.targetG)} / {pour.waterTempC ?? '—'}℃
+                      </span>
+                    </button>
+                    <button
+                      className="pour-card-remove"
+                      type="button"
+                      aria-label={`${index + 1}投目を削除`}
+                      disabled={draft.pours.length <= 1}
+                      onClick={() => removePour(index)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
               <div className="row between">
-                <button type="button" onClick={addPour}>
+                <button type="button" onClick={addPourAndEdit}>
                   投を追加
                 </button>
                 <span className="muted mono">総湯量 {totalWaterG}g</span>
@@ -337,6 +472,18 @@ export function RecipeScreen() {
           </div>
         )}
       </Card>
+
+      {sheetIndex !== undefined && draft.pours[sheetIndex] ? (
+        <PourSheet
+          index={sheetIndex}
+          pour={draft.pours[sheetIndex]}
+          deltaG={pourDeltaG(draft.pours, sheetIndex)}
+          canRemove={draft.pours.length > 1}
+          onChange={(patch) => setPour(sheetIndex, patch)}
+          onRemove={() => removePour(sheetIndex)}
+          onClose={() => setSheetIndex(undefined)}
+        />
+      ) : null}
     </>
   );
 }
