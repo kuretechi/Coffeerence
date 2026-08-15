@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import type { MidiNote } from '../lib/midi';
 import type { ReverbAmount, SoundEffect, SoundSlot } from '../domain/types';
 
 interface WakeLockSentinelLike {
@@ -492,6 +493,64 @@ function synthChime(ctx: AudioContext, frequency = 1244, out: AudioNode = ctx.de
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
+}
+
+/** MIDI を鳴らすときのピッチ幅（半音）。曲は鍵盤より広い音域を使う。 */
+const SONG_PITCH_RANGE = 48;
+
+/** 半音差を再生速度に直す（MIDI 用に鍵盤より広く許す）。 */
+function songRate(semitones: number): number {
+  const clamped = Math.min(SONG_PITCH_RANGE, Math.max(-SONG_PITCH_RANGE, semitones));
+  return 2 ** (clamped / 12);
+}
+
+/**
+ * MIDI の音の並びを、選んである音源（内蔵音・アップロード音）で鳴らす。
+ * 一音ごとに音源を鳴らし、半音差ぶん再生速度を変える。返り値を呼ぶと止まる。
+ */
+export function playSong(
+  notes: MidiNote[],
+  soundId = CHIME_SOUNDS[0].id,
+  pitch = 0,
+  effect: SoundEffect = 'none',
+  reverb?: Partial<ReverbAmount>,
+): () => void {
+  const playing: AudioBufferSourceNode[] = [];
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+    for (const node of playing) {
+      try {
+        node.stop();
+      } catch {
+        /* すでに終わっている音は放っておく */
+      }
+    }
+    playing.length = 0;
+  };
+
+  const ctx = audioContext();
+  const source = ctx ? chimeSource(soundId) : undefined;
+  if (!ctx || !source) return stop;
+  void load(ctx, source).then((buffer) => {
+    // decode できない音源（動画）は一音ずつ鳴らせないので、MIDI 再生からは外す。
+    if (!buffer || stopped) return;
+    const out = effectInput(ctx, effect, reverb);
+    // 先頭の音が読み込み待ちで欠けないよう、少しだけ後ろから始める。
+    const start = ctx.currentTime + 0.1;
+    for (const note of notes) {
+      const node = ctx.createBufferSource();
+      node.buffer = buffer;
+      node.playbackRate.value = songRate(pitch + note.semitone);
+      const gain = ctx.createGain();
+      gain.gain.value = note.velocity;
+      node.connect(gain);
+      gain.connect(out);
+      node.start(start + note.startSec);
+      playing.push(node);
+    }
+  });
+  return stop;
 }
 
 /** 選んである合図音を一度鳴らす。pitch は半音単位。 */

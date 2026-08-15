@@ -475,6 +475,14 @@ export interface StoredSound {
   blob: Blob;
 }
 
+/** アップロードした MIDI。中身は端末内にそのまま持つ。 */
+export interface StoredMidi {
+  id: string;
+  name: string;
+  createdAt: string;
+  blob: Blob;
+}
+
 // ─── 監査ログ（NF-07 / R-2）───────────────
 export interface AuditEntry {
   id: string;

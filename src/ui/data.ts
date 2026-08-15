@@ -17,6 +17,7 @@ import type {
   Session,
   Settings,
   SoundSlot,
+  StoredMidi,
   StoredSound,
 } from '../domain/types';
 
@@ -74,6 +75,11 @@ export function usePosts(): Post[] {
 /** アップロードした合図音（未設定なら undefined）。 */
 export function useCustomSound(slot: SoundSlot = 'custom'): StoredSound | undefined {
   return useLiveQuery(() => db.sounds.get(slot), [slot], undefined);
+}
+
+/** アップロードした MIDI（新しいものから）。 */
+export function useMidis(): StoredMidi[] {
+  return useLiveQuery(() => db.midis.orderBy('createdAt').reverse().toArray(), [], []) ?? [];
 }
 
 /** ビートタブに登録した音素材。 */
