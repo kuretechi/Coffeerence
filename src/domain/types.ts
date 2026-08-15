@@ -360,6 +360,26 @@ export interface Profile {
   gender?: Gender;
 }
 
+/** ユーザー同士の DM 1通。Supabase の messages テーブルに対応する。 */
+export interface DirectMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  body: string;
+  createdAt: string;
+  /** 受け取った側が開いた時刻。未読なら undefined。 */
+  readAt?: string;
+}
+
+/** DM の相手ごとのまとめ。一覧画面に出す。 */
+export interface DmThread {
+  /** 相手のユーザー ID。 */
+  userId: string;
+  latest: DirectMessage;
+  /** 自分宛の未読の数。 */
+  unread: number;
+}
+
 /** 不適切判定の結果。`allowed` が false の投稿は保存せず削除する。 */
 export interface ModerationVerdict {
   allowed: boolean;

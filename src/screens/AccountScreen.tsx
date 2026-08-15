@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Avatar, Banner, Card, Field, Segmented, formatSeconds } from '../ui/components';
 import { ANONYMOUS_NAME, useAuth } from '../ui/auth';
 import { useBrews, useRecipes, useSettings } from '../ui/data';
+import { useInbox } from '../ui/messages';
 import { saveSettings } from '../db/repo';
 import { toAvatarDataUrl } from '../lib/avatar';
 import { GENDERS, genderLabel } from '../lib/profile';
@@ -236,6 +237,20 @@ function MyActivity() {
   );
 }
 
+/** DM の入口。未読があれば件数を出す。 */
+function MessagesCard() {
+  const inbox = useInbox();
+
+  return (
+    <Card title="DM" hint={inbox.unread > 0 ? `未読 ${inbox.unread} 件` : `やりとり ${inbox.threads.length} 人`}>
+      <p>
+        <Link to="/dm">DM を見る</Link>
+      </p>
+      <p className="muted">新しい相手には、豆友のアイコンから相手のプロフィールを開いて送れます。</p>
+    </Card>
+  );
+}
+
 /** ログイン済みのアカウント。 */
 function SignedIn() {
   const auth = useAuth();
@@ -243,6 +258,7 @@ function SignedIn() {
   return (
     <>
       <ProfileCard name={auth.user?.displayName ?? ANONYMOUS_NAME} email={auth.user?.email ?? ''} canEditName />
+      <MessagesCard />
       <MyActivity />
     </>
   );

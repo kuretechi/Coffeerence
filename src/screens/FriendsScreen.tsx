@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Avatar, Banner, Field, formatSeconds } from '../ui/components';
+import { Avatar, Banner, Field, formatSeconds, relativeTime } from '../ui/components';
 import { useRecipes } from '../ui/data';
 import { useAvatars, useTimeline } from '../ui/social';
 import { useAuth } from '../ui/auth';
@@ -9,15 +9,6 @@ import { SignInRequiredError } from '../db/social';
 import type { Post, SharedRecipe } from '../domain/types';
 
 const MAX_BODY = 500;
-
-/** 「3分」「2時間」のような相対表記。24時間を超えたら日付にする。 */
-function relativeTime(iso: string): string {
-  const diffSec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (diffSec < 60) return `${Math.floor(diffSec)}秒`;
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}分`;
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}時間`;
-  return new Date(iso).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
-}
 
 /** 投稿者のプロフィールへの行き先。端末内の投稿は自分なので /account。 */
 function profilePath(post: Post): string {
