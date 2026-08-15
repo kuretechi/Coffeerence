@@ -118,6 +118,7 @@ export const DEFAULT_SETTINGS: Settings = {
     'タイマーとスケールをゼロにする',
   ],
   soundEnabled: true,
+  soundId: 'desk',
   targetLine: 168,
 };
 
