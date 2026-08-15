@@ -76,14 +76,37 @@ export function useStopwatch(): Stopwatch {
   return { elapsed, running, start, pause, reset };
 }
 
+let sharedContext: AudioContext | undefined;
+
+/**
+ * 音を出す AudioContext を使い回す。iOS はユーザー操作以外で作った
+ * AudioContext を鳴らさないため、開始ボタンで一度だけ作って以後は resume する。
+ */
+function audioContext(): AudioContext | undefined {
+  const Ctor =
+    window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctor) return undefined;
+  sharedContext ??= new Ctor();
+  if (sharedContext.state === 'suspended') void sharedContext.resume();
+  return sharedContext;
+}
+
+/** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
+export function primeAudio(enabled: boolean): void {
+  if (!enabled) return;
+  try {
+    audioContext();
+  } catch {
+    /* 音が出せない環境では黙って続行する */
+  }
+}
+
 /** 短い通知音（音声ファイル不要）。 */
 export function beep(enabled: boolean, frequency = 880, durationMs = 160): void {
   if (!enabled) return;
   try {
-    const Ctor =
-      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const ctx = new Ctor();
+    const ctx = audioContext();
+    if (!ctx) return;
     const oscillator = ctx.createOscillator();
     const gain = ctx.createGain();
     oscillator.frequency.value = frequency;
@@ -91,10 +114,7 @@ export function beep(enabled: boolean, frequency = 880, durationMs = 160): void 
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0.15, ctx.currentTime);
     oscillator.start();
-    window.setTimeout(() => {
-      oscillator.stop();
-      void ctx.close();
-    }, durationMs);
+    oscillator.stop(ctx.currentTime + durationMs / 1000);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
