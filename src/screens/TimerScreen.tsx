@@ -10,8 +10,6 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-const RING_R = 132;
-const RING_C = 2 * Math.PI * RING_R;
 /** デッキで背面に覗かせる枚数。これより奥のカードは描かない。 */
 const DECK_PEEK = 2;
 /** スワイプと見なす横移動量(px)。 */
@@ -51,7 +49,7 @@ export function TimerScreen() {
   const pitch = settings.soundPitch ?? 0;
   const finishPitch = chosenFinishId === SAME_AS_CHIME_ID ? pitch : settings.finishSoundPitch ?? 0;
 
-  // リングは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
+  // 進度バーは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
   const segmentStart = progress.current?.startSec ?? 0;
   const segmentEnd = progress.next?.startSec ?? finishSec ?? segmentStart;
   const segmentLength = Math.max(segmentEnd - segmentStart, 1);
@@ -164,23 +162,12 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-stage-ring timer-deck-ring">
-        <svg viewBox="0 0 300 300" aria-hidden="true">
-          <circle className="ring-track" cx="150" cy="150" r={RING_R} />
-          <circle
-            className="ring-value"
-            cx="150"
-            cy="150"
-            r={RING_R}
-            strokeDasharray={RING_C}
-            strokeDashoffset={RING_C * (1 - ratio)}
-            transform="rotate(-90 150 150)"
-          />
-        </svg>
-        <div className="timer-stage-center">
-          <SevenSegment className="timer-stage-elapsed" value={formatSeconds(stopwatch.elapsed)} />
-          <span className="timer-stage-headline">{headline}</span>
+      <div className="timer-stage-head">
+        <SevenSegment className="timer-stage-elapsed" value={formatSeconds(stopwatch.elapsed)} />
+        <div className="timer-bar" aria-hidden="true">
+          <span className="timer-bar-value" style={{ transform: `scaleX(${ratio})` }} />
         </div>
+        <span className="timer-stage-headline">{headline}</span>
       </div>
 
       {recipe && pours.length === 0 ? (
