@@ -95,8 +95,8 @@ function audioContext(): AudioContext | undefined {
 
 /** 選べる既定の合図音。オフラインでも鳴るよう同梱の静的アセットを指す。 */
 export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
-  { id: 'bell', label: 'ベル', file: 'bell.mp3' },
   { id: 'desk', label: '卓上ベル', file: 'chime-desk.mp3' },
+  { id: 'bell', label: 'ベル', file: 'bell.mp3' },
   { id: 'high', label: '高い鈴', file: 'chime-high.mp3' },
   { id: 'low', label: '低い鐘', file: 'chime-low.mp3' },
   { id: 'beep', label: '電子音', file: 'chime-beep.mp3' },
