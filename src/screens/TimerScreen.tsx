@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
-import { CatRain } from '../ui/CatRain';
+import { FinishCharacter } from '../ui/FinishCharacter';
 import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
@@ -16,9 +16,9 @@ export function TimerScreen() {
   const navigate = useNavigate();
   const stopwatch = useStopwatch();
   const [recipeId, setRecipeId] = useState('');
-  // 抽出終了ごとに増やし、猫を降らせ直す。
-  const [catRun, setCatRun] = useState(0);
-  const hideCats = useCallback(() => setCatRun(0), []);
+  // 抽出終了ごとに増やし、キャラを出し直す。
+  const [cheerRun, setCheerRun] = useState(0);
+  const hideCheer = useCallback(() => setCheerRun(0), []);
 
   const selectedId = recipeId || recipes[0]?.id || '';
   const recipe = recipes.find((item) => item.id === selectedId);
@@ -47,7 +47,7 @@ export function TimerScreen() {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
     doubleChime(settings.soundEnabled, settings.soundId);
-    setCatRun((run) => run + 1);
+    setCheerRun((run) => run + 1);
   }, [finished, stopwatch, settings.soundEnabled, settings.soundId]);
 
   function start() {
@@ -173,7 +173,7 @@ export function TimerScreen() {
         )}
         {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
       </Card>
-      {catRun === 0 ? null : <CatRain key={catRun} onDone={hideCats} />}
+      {cheerRun === 0 ? null : <FinishCharacter key={cheerRun} onDone={hideCheer} />}
     </>
   );
 }

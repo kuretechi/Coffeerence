@@ -901,37 +901,45 @@ table button {
   background: var(--surface);
 }
 
-/* 抽出終了のお祝い。降ってくるだけで操作は邪魔しない。 */
-.cat-rain {
+/* 抽出終了のお祝い。横からヌッと出てくるだけで操作は邪魔しない。 */
+.finish-character {
   position: fixed;
-  inset: 0;
+  right: 0;
+  bottom: 68px;
   z-index: 30;
-  overflow: hidden;
   pointer-events: none;
 }
 
-.cat-rain span {
-  position: absolute;
-  top: -14vh;
-  line-height: 1;
-  animation-name: cat-fall;
-  animation-timing-function: linear;
-  animation-fill-mode: forwards;
+.finish-character img {
+  display: block;
+  width: min(46vw, 210px);
+  height: auto;
+  filter: drop-shadow(-4px 0 10px rgba(0, 0, 0, 0.35));
+  animation: character-peek 3.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-@keyframes cat-fall {
-  from {
-    transform: translateY(0) rotate(0deg);
-    opacity: 1;
+/* 勢いよく出て、少し居座ってから引っ込む。 */
+@keyframes character-peek {
+  0% {
+    transform: translateX(100%) rotate(6deg);
   }
-  to {
-    transform: translateY(120vh) rotate(var(--cat-spin, 360deg));
-    opacity: 0.9;
+  18% {
+    transform: translateX(-4%) rotate(-3deg);
+  }
+  26% {
+    transform: translateX(4%) rotate(1deg);
+  }
+  34%,
+  78% {
+    transform: translateX(0) rotate(0deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(6deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cat-rain {
+  .finish-character {
     display: none;
   }
 }
