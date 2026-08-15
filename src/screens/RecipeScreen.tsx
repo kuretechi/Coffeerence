@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { useNavigate } from 'react-router-dom';
+import { Card, Field, formatSeconds } from '../ui/components';
 import { StepSlider } from './StepSlider';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -127,55 +128,25 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
-/** レシピ名をタップしたときに開く抽出条件の内訳。 */
-function RecipeDetail({ recipe }: { recipe: Recipe }) {
-  return (
-    <dl className="brew-detail">
-      <dt>粉量 / 総湯量</dt>
-      <dd className="mono">
-        {recipe.doseG}g / {recipe.totalWaterG}g
-      </dd>
-      <dt>挽き目 / ドリッパー</dt>
-      <dd>
-        {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
-      </dd>
-      <dt>初期湯温</dt>
-      <dd className="mono">{recipe.waterTempC}℃</dd>
-      <dt>注湯</dt>
-      <dd className="mono">
-        {recipe.pours.length === 0
-          ? '—'
-          : recipe.pours
-              .map(
-                (pour) =>
-                  `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
-              )
-              .join(' / ')}
-      </dd>
-      <dt>抽出終了</dt>
-      <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
-    </dl>
-  );
-}
-
-export function RecipeScreen() {
-  const recipes = useRecipes();
+/**
+ * レシピ作成・編集の全画面シート（段階ウィザード）。
+ * 一覧からも閲覧画面からも開ける。閉じるときは呼び出し側でアンマウントする。
+ */
+export function RecipeWizard({ recipe, onClose }: { recipe?: Recipe; onClose: () => void }) {
   const beans = useBeans();
   const defaults = useSettings().recipeDefaults;
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
-  const [editingId, setEditingId] = useState<string | undefined>(undefined);
-  const [openId, setOpenId] = useState<string | undefined>(undefined);
-  // ウィザードを開いているときだけ 0〜2 のステップを持つ。
-  const [step, setStep] = useState<number | undefined>(undefined);
+  const [draft, setDraft] = useState<Draft>(() =>
+    recipe ? draftOf(recipe) : emptyDraft(DEFAULT_SETTINGS.recipeDefaults),
+  );
+  const [step, setStep] = useState(0);
   // カードをまたいで 1 つだけ拡大しているフィールド。
   const [focus, setFocus] = useState<{ index: number; field: PourFieldKey }>({ index: 0, field: 'targetG' });
-  const editing = recipes.find((recipe) => recipe.id === editingId);
-  const open = step !== undefined;
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
   useEffect(() => {
+    if (recipe) return;
     setDraft((current) => (current.name.trim() === '' ? emptyDraft(defaults) : current));
-  }, [defaults.doseG, defaults.waterTempC, defaults.totalWaterG, defaults.grindSetting, defaults.brewer]);
+  }, [recipe, defaults.doseG, defaults.waterTempC, defaults.totalWaterG, defaults.grindSetting, defaults.brewer]);
 
   const beanId = beans[0]?.id ?? 'bean_default';
   const filledPours = draft.pours.filter(
@@ -235,31 +206,10 @@ export function RecipeScreen() {
     }));
   }
 
-  function openCreate() {
-    setEditingId(undefined);
-    setDraft(emptyDraft(defaults));
-    setFocus({ index: 0, field: 'targetG' });
-    setStep(0);
-  }
-
-  function openEdit(recipe: Recipe) {
-    setEditingId(recipe.id);
-    setDraft(draftOf(recipe));
-    setFocus({ index: 0, field: 'targetG' });
-    setStep(0);
-  }
-
-  function close() {
-    setStep(undefined);
-    setEditingId(undefined);
-    setDraft(emptyDraft(defaults));
-    setFocus({ index: 0, field: 'targetG' });
-  }
-
   async function save() {
     if (!canSave) return;
-    const recipe: Recipe = {
-      id: editingId ?? uid('recipe'),
+    const saved: Recipe = {
+      id: recipe?.id ?? uid('recipe'),
       name: draft.name.trim(),
       beanId,
       doseG: draft.doseG ?? 0,
@@ -277,272 +227,278 @@ export function RecipeScreen() {
         waterTempC: pour.waterTempC ?? draft.waterTempC,
       })),
       finishSec: draft.finishSec,
-      createdAt: editing?.createdAt ?? new Date().toISOString(),
+      createdAt: recipe?.createdAt ?? new Date().toISOString(),
     };
-    await saveRecipe(recipe);
-    close();
+    await saveRecipe(saved);
+    onClose();
   }
 
   const nextDisabled = step === 0 && !baseReady;
 
   return (
-    <>
-      <Card title="レシピ">
-        <div className="stack">
-          <button className="primary" type="button" onClick={openCreate}>
-            ＋ 追加
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal recipe-wizard"
+        role="dialog"
+        aria-modal="true"
+        aria-label={recipe ? 'レシピ編集' : 'レシピ追加'}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="wizard-head">
+          <strong>{recipe ? `編集: ${recipe.name}` : 'レシピ追加'}</strong>
+          <button className="wizard-close" type="button" aria-label="閉じる" onClick={onClose}>
+            ×
           </button>
-          {recipes.length === 0 ? (
-            <Banner>まだレシピがありません。</Banner>
-          ) : (
-            recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item recipe-item">
-                <button
-                  className="log-summary"
-                  type="button"
-                  aria-expanded={openId === recipe.id}
-                  onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
-                >
-                  <strong>{recipe.name}</strong>
-                  <span className="mono muted">
-                    {recipe.doseG}g / {recipe.totalWaterG}g / {recipe.waterTempC}℃
-                  </span>
-                </button>
+        </div>
 
-                {openId === recipe.id ? (
-                  <>
-                    <RecipeDetail recipe={recipe} />
-                    <div className="row">
-                      <button type="button" onClick={() => openEdit(recipe)}>
-                        編集
-                      </button>
-                      <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
-                        削除
-                      </button>
-                    </div>
-                  </>
-                ) : null}
+        <ol className="wizard-steps">
+          {STEPS.map((label, index) => (
+            <li
+              key={label}
+              className={index === step ? 'wizard-step current' : index < step ? 'wizard-step done' : 'wizard-step'}
+              aria-current={index === step ? 'step' : undefined}
+            >
+              <span className="wizard-step-num mono">{index + 1}</span>
+              <span className="wizard-step-label">{label}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="wizard-body">
+          {step === 0 ? (
+            <div className="stack">
+              <Field label="レシピ名">
+                <input
+                  value={draft.name}
+                  placeholder="例: 中細 92℃ 1:16"
+                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                />
+              </Field>
+              <StepSlider
+                label="粉量"
+                unit="g"
+                value={draft.doseG}
+                min={0}
+                max={60}
+                step={1}
+                inputStep={0.1}
+                onChange={(doseG) => setDraft({ ...draft, doseG })}
+              />
+              <StepSlider
+                label="初期湯温"
+                unit="℃"
+                value={draft.waterTempC}
+                min={60}
+                max={100}
+                step={1}
+                onChange={setInitialTemp}
+              />
+              <div className="row">
+                <Field label="挽き目">
+                  <input
+                    value={draft.grindSetting}
+                    placeholder="中細 / 18"
+                    onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
+                  />
+                </Field>
+                <Field label="ドリッパー">
+                  <input
+                    value={draft.brewer}
+                    onChange={(event) => setDraft({ ...draft, brewer: event.target.value })}
+                  />
+                </Field>
               </div>
-            ))
+            </div>
+          ) : null}
+
+          {step === 1 ? (
+            <div className="stack">
+              <ol className="pour-timeline-list">
+                {draft.pours.map((pour, index) => (
+                  <li className="pour-node" key={index}>
+                    <div className="pour-node-axis">
+                      <span className="pour-node-badge">{index + 1}</span>
+                      <span className="pour-node-time mono">
+                        {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+                      </span>
+                    </div>
+                    <div className={focus.index === index ? 'pour-node-card focused' : 'pour-node-card'}>
+                      <button
+                        className="pour-node-remove"
+                        type="button"
+                        aria-label={`${index + 1}投目を削除`}
+                        disabled={draft.pours.length <= 1}
+                        onClick={() => removePour(index)}
+                      >
+                        ×
+                      </button>
+                      <div className="pour-dial-stack">
+                        {POUR_FIELDS.map((key) => (
+                          <PourDial
+                            key={key}
+                            spec={DIALS[key]}
+                            value={pour[key]}
+                            active={focus.index === index && focus.field === key}
+                            onActivate={() => setFocus({ index, field: key })}
+                            onChange={(value) => setPour(index, { [key]: value })}
+                          />
+                        ))}
+                      </div>
+                      <p className="pour-node-delta mono">
+                        この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+                <li className="pour-node pour-node-last">
+                  <div className="pour-node-axis">
+                    <span className="pour-node-badge ghost">＋</span>
+                  </div>
+                  <button className="pour-node-add" type="button" onClick={addPour}>
+                    ＋ 投を追加
+                  </button>
+                </li>
+              </ol>
+              <p className="pour-timeline-total">
+                <span className="muted">総湯量</span>
+                <strong className="mono">{totalWaterG}g</strong>
+              </p>
+              <StepSlider
+                label="抽出終了"
+                unit="秒"
+                value={draft.finishSec}
+                min={0}
+                max={900}
+                step={1}
+                format={formatSeconds}
+                onChange={(finishSec) => setDraft({ ...draft, finishSec })}
+              />
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div className="stack">
+              <dl className="wizard-review">
+                <dt>名前</dt>
+                <dd>{draft.name.trim() || '—'}</dd>
+                <dt>粉量 / 総湯量</dt>
+                <dd className="mono">
+                  {draft.doseG ?? '—'}g / {totalWaterG}g
+                </dd>
+                <dt>比率</dt>
+                <dd className="mono">
+                  {draft.doseG === undefined || draft.doseG === 0
+                    ? '—'
+                    : `1:${(totalWaterG / draft.doseG).toFixed(1)}`}
+                </dd>
+                <dt>湯温</dt>
+                <dd className="mono">{draft.waterTempC ?? '—'}℃</dd>
+                <dt>挽き目 / ドリッパー</dt>
+                <dd>
+                  {draft.grindSetting || '—'} / {draft.brewer || '—'}
+                </dd>
+                <dt>抽出終了</dt>
+                <dd className="mono">{draft.finishSec === undefined ? '—' : formatSeconds(draft.finishSec)}</dd>
+              </dl>
+              <table className="wizard-review-table">
+                <thead>
+                  <tr>
+                    <th>投</th>
+                    <th>時間</th>
+                    <th>累計g</th>
+                    <th>差分g</th>
+                    <th>℃</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {draft.pours.map((pour, index) => (
+                    <tr key={index}>
+                      <td className="mono">{index + 1}</td>
+                      <td className="mono">{pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}</td>
+                      <td className="mono">{pour.targetG ?? '—'}</td>
+                      <td className="mono">{deltaOf(index) ?? '—'}</td>
+                      <td className="mono">{pour.waterTempC ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="wizard-foot">
+          <button type="button" disabled={step === 0} onClick={() => setStep((current) => current - 1)}>
+            戻る
+          </button>
+          {step === STEPS.length - 1 ? (
+            <button className="primary" type="button" disabled={!canSave} onClick={() => void save()}>
+              {recipe ? '更新' : '保存'}
+            </button>
+          ) : (
+            <button
+              className="primary"
+              type="button"
+              disabled={nextDisabled}
+              onClick={() => setStep((current) => current + 1)}
+            >
+              次へ
+            </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function RecipeScreen() {
+  const recipes = useRecipes();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+
+  async function remove(recipe: Recipe) {
+    if (!window.confirm(`「${recipe.name}」を削除しますか？`)) return;
+    await deleteRecipe(recipe.id);
+  }
+
+  return (
+    <>
+      <Card title="レシピ">
+        <ul className="recipe-list">
+          {recipes.map((recipe) => (
+            <li key={recipe.id} className="recipe-row">
+              <button
+                className="recipe-row-open"
+                type="button"
+                onClick={() => navigate(`/recipes/${recipe.id}`)}
+              >
+                <strong>{recipe.name}</strong>
+                <span className="mono muted">
+                  {recipe.doseG}g / {recipe.totalWaterG}g / {recipe.waterTempC}℃
+                </span>
+              </button>
+              <button
+                className="recipe-row-delete"
+                type="button"
+                aria-label={`${recipe.name}を削除`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void remove(recipe);
+                }}
+              >
+                削除
+              </button>
+            </li>
+          ))}
+          {/* 追加＝リストへの行の追記。末尾に同じ幅の点線行として置く。 */}
+          <li className="recipe-row recipe-row-add">
+            <button type="button" onClick={() => setCreating(true)}>
+              ＋ 追加
+            </button>
+          </li>
+        </ul>
       </Card>
 
-      {open ? (
-        <div className="modal-backdrop" onClick={close}>
-          <div
-            className="modal recipe-wizard"
-            role="dialog"
-            aria-modal="true"
-            aria-label={editing ? 'レシピ編集' : 'レシピ追加'}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="wizard-head">
-              <strong>{editing ? `編集: ${editing.name}` : 'レシピ追加'}</strong>
-              <button className="wizard-close" type="button" aria-label="閉じる" onClick={close}>
-                ×
-              </button>
-            </div>
-
-            <ol className="wizard-steps">
-              {STEPS.map((label, index) => (
-                <li
-                  key={label}
-                  className={index === step ? 'wizard-step current' : index < (step ?? 0) ? 'wizard-step done' : 'wizard-step'}
-                  aria-current={index === step ? 'step' : undefined}
-                >
-                  <span className="wizard-step-num mono">{index + 1}</span>
-                  <span className="wizard-step-label">{label}</span>
-                </li>
-              ))}
-            </ol>
-
-            <div className="wizard-body">
-              {step === 0 ? (
-                <div className="stack">
-                  <Field label="レシピ名">
-                    <input
-                      value={draft.name}
-                      placeholder="例: 中細 92℃ 1:16"
-                      onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                    />
-                  </Field>
-                  <StepSlider
-                    label="粉量"
-                    unit="g"
-                    value={draft.doseG}
-                    min={0}
-                    max={60}
-                    step={1}
-                    inputStep={0.1}
-                    onChange={(doseG) => setDraft({ ...draft, doseG })}
-                  />
-                  <StepSlider
-                    label="初期湯温"
-                    unit="℃"
-                    value={draft.waterTempC}
-                    min={60}
-                    max={100}
-                    step={1}
-                    onChange={setInitialTemp}
-                  />
-                  <div className="row">
-                    <Field label="挽き目">
-                      <input
-                        value={draft.grindSetting}
-                        placeholder="中細 / 18"
-                        onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
-                      />
-                    </Field>
-                    <Field label="ドリッパー">
-                      <input
-                        value={draft.brewer}
-                        onChange={(event) => setDraft({ ...draft, brewer: event.target.value })}
-                      />
-                    </Field>
-                  </div>
-                </div>
-              ) : null}
-
-              {step === 1 ? (
-                <div className="stack">
-                  <ol className="pour-timeline-list">
-                    {draft.pours.map((pour, index) => (
-                      <li className="pour-node" key={index}>
-                        <div className="pour-node-axis">
-                          <span className="pour-node-badge">{index + 1}</span>
-                          <span className="pour-node-time mono">
-                            {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
-                          </span>
-                        </div>
-                        <div className={focus.index === index ? 'pour-node-card focused' : 'pour-node-card'}>
-                          <button
-                            className="pour-node-remove"
-                            type="button"
-                            aria-label={`${index + 1}投目を削除`}
-                            disabled={draft.pours.length <= 1}
-                            onClick={() => removePour(index)}
-                          >
-                            ×
-                          </button>
-                          <div className="pour-dial-stack">
-                            {POUR_FIELDS.map((key) => (
-                              <PourDial
-                                key={key}
-                                spec={DIALS[key]}
-                                value={pour[key]}
-                                active={focus.index === index && focus.field === key}
-                                onActivate={() => setFocus({ index, field: key })}
-                                onChange={(value) => setPour(index, { [key]: value })}
-                              />
-                            ))}
-                          </div>
-                          <p className="pour-node-delta mono">
-                            この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                    <li className="pour-node pour-node-last">
-                      <div className="pour-node-axis">
-                        <span className="pour-node-badge ghost">＋</span>
-                      </div>
-                      <button className="pour-node-add" type="button" onClick={addPour}>
-                        ＋ 投を追加
-                      </button>
-                    </li>
-                  </ol>
-                  <p className="pour-timeline-total">
-                    <span className="muted">総湯量</span>
-                    <strong className="mono">{totalWaterG}g</strong>
-                  </p>
-                  <StepSlider
-                    label="抽出終了"
-                    unit="秒"
-                    value={draft.finishSec}
-                    min={0}
-                    max={900}
-                    step={1}
-                    format={formatSeconds}
-                    onChange={(finishSec) => setDraft({ ...draft, finishSec })}
-                  />
-                </div>
-              ) : null}
-
-              {step === 2 ? (
-                <div className="stack">
-                  <dl className="wizard-review">
-                    <dt>名前</dt>
-                    <dd>{draft.name.trim() || '—'}</dd>
-                    <dt>粉量 / 総湯量</dt>
-                    <dd className="mono">
-                      {draft.doseG ?? '—'}g / {totalWaterG}g
-                    </dd>
-                    <dt>比率</dt>
-                    <dd className="mono">
-                      {draft.doseG === undefined || draft.doseG === 0
-                        ? '—'
-                        : `1:${(totalWaterG / draft.doseG).toFixed(1)}`}
-                    </dd>
-                    <dt>湯温</dt>
-                    <dd className="mono">{draft.waterTempC ?? '—'}℃</dd>
-                    <dt>挽き目 / ドリッパー</dt>
-                    <dd>
-                      {draft.grindSetting || '—'} / {draft.brewer || '—'}
-                    </dd>
-                    <dt>抽出終了</dt>
-                    <dd className="mono">
-                      {draft.finishSec === undefined ? '—' : formatSeconds(draft.finishSec)}
-                    </dd>
-                  </dl>
-                  <table className="wizard-review-table">
-                    <thead>
-                      <tr>
-                        <th>投</th>
-                        <th>時間</th>
-                        <th>累計g</th>
-                        <th>差分g</th>
-                        <th>℃</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draft.pours.map((pour, index) => (
-                        <tr key={index}>
-                          <td className="mono">{index + 1}</td>
-                          <td className="mono">{pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}</td>
-                          <td className="mono">{pour.targetG ?? '—'}</td>
-                          <td className="mono">{deltaOf(index) ?? '—'}</td>
-                          <td className="mono">{pour.waterTempC ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="wizard-foot">
-              <button type="button" disabled={step === 0} onClick={() => setStep((current) => (current ?? 0) - 1)}>
-                戻る
-              </button>
-              {step === STEPS.length - 1 ? (
-                <button className="primary" type="button" disabled={!canSave} onClick={() => void save()}>
-                  {editing ? '更新' : '保存'}
-                </button>
-              ) : (
-                <button
-                  className="primary"
-                  type="button"
-                  disabled={nextDisabled}
-                  onClick={() => setStep((current) => (current ?? 0) + 1)}
-                >
-                  次へ
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {creating ? <RecipeWizard onClose={() => setCreating(false)} /> : null}
     </>
   );
 }

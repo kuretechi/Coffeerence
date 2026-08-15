@@ -54,6 +54,11 @@ export function useRecipes(): Recipe[] {
   return useLiveQuery(() => db.recipes.toArray(), [], []) ?? [];
 }
 
+/** 読み込み中は undefined、そのIDが無ければ null。 */
+export function useRecipe(id: string | undefined): Recipe | null | undefined {
+  return useLiveQuery(async () => (id === undefined ? null : (await db.recipes.get(id)) ?? null), [id], undefined);
+}
+
 export function useBrews(): BrewRecord[] {
   return useLiveQuery(() => db.brews.orderBy('date').reverse().toArray(), [], []) ?? [];
 }
