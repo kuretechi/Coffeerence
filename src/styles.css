@@ -507,12 +507,24 @@ th {
   opacity: 1;
 }
 
-/* レシピ作成の段階ウィザード。中央のモーダル内でステップを進める。 */
+/* レシピ作成の段階ウィザード。全画面シート内でステップを進める。 */
 .recipe-wizard {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  max-height: 88vh;
+  width: auto;
+  max-width: 720px;
+  max-height: none;
+  margin: 0 auto;
   overflow: hidden;
-  padding: 12px 12px 10px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  padding: 12px 12px calc(10px + env(safe-area-inset-bottom));
 }
 
 .wizard-head {

@@ -1,6 +1,73 @@
+import { useEffect, useRef } from 'react';
+
+/** 長押しの連続増減が始まるまでの待ち時間と、その後の間隔（ms）。 */
+const HOLD_DELAY_MS = 380;
+const HOLD_INTERVAL_MS = 70;
+
+/** −/＋ を押しっぱなしにしたら連続で刻む。 */
+function useHold(step: () => void) {
+  const latest = useRef(step);
+  latest.current = step;
+  const timers = useRef<{ delay?: number; repeat?: number }>({});
+
+  const stop = () => {
+    if (timers.current.delay !== undefined) window.clearTimeout(timers.current.delay);
+    if (timers.current.repeat !== undefined) window.clearInterval(timers.current.repeat);
+    timers.current = {};
+  };
+
+  useEffect(() => stop, []);
+
+  const start = () => {
+    stop();
+    latest.current();
+    timers.current.delay = window.setTimeout(() => {
+      timers.current.repeat = window.setInterval(() => latest.current(), HOLD_INTERVAL_MS);
+    }, HOLD_DELAY_MS);
+  };
+
+  return { start, stop };
+}
+
+function StepButton({
+  label,
+  glyph,
+  disabled,
+  onStep,
+}: {
+  label: string;
+  glyph: string;
+  disabled: boolean;
+  onStep: () => void;
+}) {
+  const hold = useHold(onStep);
+  return (
+    <button
+      className="step-slider-step"
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        hold.start();
+      }}
+      onPointerUp={hold.stop}
+      onPointerLeave={hold.stop}
+      onPointerCancel={hold.stop}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        onStep();
+      }}
+    >
+      {glyph}
+    </button>
+  );
+}
+
 /**
- * 1刻みで数値を詰めるスライダー。
- * 大きな現在値の左右に −/＋ を置き、直接入力も残す。
+ * 1刻みで数値を詰める行。
+ * 大きな現在値の左右に −/＋（長押しで連続）を置き、スライダーと直接入力も残す。
  */
 export function StepSlider({
   label,
@@ -48,15 +115,12 @@ export function StepSlider({
         />
       </div>
       <div className="step-slider-row">
-        <button
-          className="step-slider-step"
-          type="button"
-          aria-label={`${label}を1${unit}減らす`}
+        <StepButton
+          label={`${label}を${step}${unit}減らす`}
+          glyph="−"
           disabled={shown <= min}
-          onClick={() => onChange(clamp(shown - step))}
-        >
-          −
-        </button>
+          onStep={() => onChange(clamp(shown - step))}
+        />
         <div className="step-slider-main">
           <p className="step-slider-value mono">
             {value === undefined ? '—' : show(value)}
@@ -73,15 +137,12 @@ export function StepSlider({
             onChange={(event) => onChange(Number(event.target.value))}
           />
         </div>
-        <button
-          className="step-slider-step"
-          type="button"
-          aria-label={`${label}を1${unit}増やす`}
+        <StepButton
+          label={`${label}を${step}${unit}増やす`}
+          glyph="＋"
           disabled={shown >= max}
-          onClick={() => onChange(clamp(shown + step))}
-        >
-          ＋
-        </button>
+          onStep={() => onChange(clamp(shown + step))}
+        />
       </div>
     </div>
   );
