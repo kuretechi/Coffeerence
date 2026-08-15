@@ -9,3 +9,7 @@ export type { BradleyTerryResult, ComparisonResult, LatentScore, PairwiseCompari
 export { RESULT_WIN_SHARE_A, fitBradleyTerry } from './bradleyTerry';
 export type { EffectResult, Observation } from './effect';
 export { estimateEffect } from './effect';
+export type { PowerResult } from './power';
+export { requiredSampleSize } from './power';
+export type { StaircaseState, ThresholdResult } from './staircase';
+export { estimateThreshold, initStaircase, updateStaircase } from './staircase';
