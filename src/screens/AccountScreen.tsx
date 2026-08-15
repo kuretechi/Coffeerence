@@ -5,24 +5,14 @@ import { ANONYMOUS_NAME, useAuth } from '../ui/auth';
 import { useBrews, useRecipes, useSettings } from '../ui/data';
 import { saveSettings } from '../db/repo';
 import { toAvatarDataUrl } from '../lib/avatar';
+import { GENDERS, genderLabel } from '../lib/profile';
 import type { Gender } from '../domain/types';
 
 type Mode = 'login' | 'signup';
 
-const GENDERS: { value: Gender | 'unset'; label: string }[] = [
-  { value: 'unset', label: '未回答' },
-  { value: 'male', label: '男性' },
-  { value: 'female', label: '女性' },
-  { value: 'other', label: 'その他' },
-];
-
 const MAX_BIO = 200;
 /** アカウント画面に出す自分のレシピ・記録の件数。 */
 const PREVIEW_COUNT = 5;
-
-function genderLabel(gender: Gender | undefined): string {
-  return GENDERS.find((item) => item.value === gender)?.label ?? '未回答';
-}
 
 /**
  * プロフィールの表示と編集。端末内（settings）に必ず保存し、

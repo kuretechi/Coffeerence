@@ -19,6 +19,11 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
 }
 
+/** 投稿者のプロフィールへの行き先。端末内の投稿は自分なので /account。 */
+function profilePath(post: Post): string {
+  return post.userId === undefined ? '/account' : `/users/${post.userId}`;
+}
+
 /** 投稿に添付されたレシピ。取り込むと自分のレシピ一覧に追加される。 */
 function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
   const [imported, setImported] = useState(false);
@@ -201,10 +206,14 @@ export function FriendsScreen() {
           <div className="feed">
             {timeline.posts.map((post) => (
               <article key={post.id} className="feed-item">
-                <Avatar name={post.author} url={avatarOf(post)} className="feed-avatar" />
+                <Link to={profilePath(post)} aria-label={`${post.author} のプロフィール`}>
+                  <Avatar name={post.author} url={avatarOf(post)} className="feed-avatar" />
+                </Link>
                 <div className="feed-body">
                   <div className="feed-head">
-                    <strong>{post.author}</strong>
+                    <Link className="feed-author" to={profilePath(post)}>
+                      {post.author}
+                    </Link>
                     <span className="muted">
                       <time dateTime={post.createdAt} title={new Date(post.createdAt).toLocaleString('ja-JP')}>
                         {relativeTime(post.createdAt)}
