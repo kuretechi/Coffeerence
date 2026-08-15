@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { Banner, Card, Field, NumberField } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -272,10 +272,6 @@ export function RecipeScreen() {
             <thead>
               <tr>
                 <th>名前</th>
-                <th>粉量</th>
-                <th>湯量</th>
-                <th>注湯</th>
-                <th>終了</th>
                 <th aria-label="操作" />
               </tr>
             </thead>
@@ -283,19 +279,6 @@ export function RecipeScreen() {
               {recipes.map((recipe) => (
                 <tr key={recipe.id}>
                   <td>{recipe.name}</td>
-                  <td className="mono">{recipe.doseG}g</td>
-                  <td className="mono">{recipe.totalWaterG}g</td>
-                  <td className="mono">
-                    {recipe.pours.length === 0
-                      ? '—'
-                      : recipe.pours
-                          .map(
-                            (pour) =>
-                              `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
-                          )
-                          .join(' / ')}
-                  </td>
-                  <td className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</td>
                   <td>
                     <div className="row">
                       <button type="button" onClick={() => startEdit(recipe)}>
