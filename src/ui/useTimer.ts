@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
+import type { SoundSlot } from '../domain/types';
 
 interface WakeLockSentinelLike {
   release: () => Promise<void>;
@@ -91,11 +94,120 @@ function audioContext(): AudioContext | undefined {
   return sharedContext;
 }
 
+/** 選べる既定の合図音。オフラインでも鳴るよう同梱の静的アセットを指す。 */
+export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
+  { id: 'desk', label: '卓上ベル', file: 'chime-desk.mp3' },
+  { id: 'bell', label: 'ベル', file: 'bell.mp3' },
+  { id: 'high', label: '高い鈴', file: 'chime-high.mp3' },
+  { id: 'low', label: '低い鐘', file: 'chime-low.mp3' },
+  { id: 'beep', label: '電子音', file: 'chime-beep.mp3' },
+  { id: 'tururu', label: 'トゥルル', file: 'chime-tururu.mp3' },
+];
+
+/** 抽出終了の音を合図音に揃えるときの選択値。 */
+export const SAME_AS_CHIME_ID = 'same';
+
+/** ピッチの調整幅（半音）。 */
+export const PITCH_RANGE = 12;
+
+/** 半音単位のピッチを再生速度に直す。 */
+function pitchRate(semitones: number): number {
+  const clamped = Math.min(PITCH_RANGE, Math.max(-PITCH_RANGE, semitones));
+  return 2 ** (clamped / 12);
+}
+
+/** アップロードした音を指すID（= 置き場の ID）。 */
+export const CUSTOM_SOUND_ID: SoundSlot = 'custom';
+/** 抽出終了用にアップロードした音を指すID。 */
+export const CUSTOM_FINISH_SOUND_ID: SoundSlot = 'custom-finish';
+const SOUND_SLOTS: SoundSlot[] = [CUSTOM_SOUND_ID, CUSTOM_FINISH_SOUND_ID];
+
+function isCustom(soundId: string): soundId is SoundSlot {
+  return (SOUND_SLOTS as string[]).includes(soundId);
+}
+
+/** 鳴らす音源。key でデコード結果を使い回す。 */
+interface ChimeSource {
+  key: string;
+  data: () => Promise<ArrayBuffer>;
+}
+
+const buffers = new Map<string, AudioBuffer>();
+const loads = new Map<string, Promise<AudioBuffer | undefined>>();
+const customSounds = new Map<SoundSlot, { key: string; blob: Blob }>();
+
+/**
+ * アップロードした音源を登録する。Blob URL を介さず Blob から直接
+ * デコードするので、URL の失効で鳴らなくなることがない。
+ */
+export function setCustomChime(slot: SoundSlot, blob: Blob | undefined, key = ''): void {
+  if (blob) customSounds.set(slot, { key, blob });
+  else customSounds.delete(slot);
+}
+
+function chimeSource(soundId: string): ChimeSource | undefined {
+  if (isCustom(soundId)) {
+    const current = customSounds.get(soundId);
+    if (!current) return undefined;
+    return { key: `${soundId}:${current.key}`, data: () => current.blob.arrayBuffer() };
+  }
+  const sound = CHIME_SOUNDS.find((item) => item.id === soundId) ?? CHIME_SOUNDS[0];
+  const url = `${import.meta.env.BASE_URL}${sound.file}`;
+  return { key: url, data: () => fetch(url).then((response) => response.arrayBuffer()) };
+}
+
+/** 音源を一度だけデコードして使い回す。 */
+function load(ctx: AudioContext, source: ChimeSource): Promise<AudioBuffer | undefined> {
+  const cached = loads.get(source.key);
+  if (cached) return cached;
+  const pending = source
+    .data()
+    .then((data) => ctx.decodeAudioData(data))
+    .then((buffer) => {
+      buffers.set(source.key, buffer);
+      return buffer;
+    })
+    .catch(() => {
+      // 失敗を覚えたままにせず、次回また読めるようにする。
+      loads.delete(source.key);
+      return undefined;
+    });
+  loads.set(source.key, pending);
+  return pending;
+}
+
+/** アップロードされた合図音を鳴らせるよう登録しておく。 */
+export function useCustomChime(): void {
+  const stored = useLiveQuery(() => db.sounds.toArray(), [], undefined);
+
+  useEffect(() => {
+    if (!stored) return;
+    for (const slot of SOUND_SLOTS) {
+      const sound = stored.find((item) => item.id === slot);
+      setCustomChime(slot, sound?.blob, sound ? `${sound.name}:${sound.blob.size}` : '');
+    }
+  }, [stored]);
+}
+
+/** 鳴らせる音源かを調べる（アップロード直後の検査用）。 */
+export async function canDecodeChime(blob: Blob): Promise<boolean> {
+  const ctx = audioContext();
+  if (!ctx) return false;
+  try {
+    await ctx.decodeAudioData(await blob.arrayBuffer());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
-export function primeAudio(enabled: boolean): void {
+export function primeAudio(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
   if (!enabled) return;
   try {
-    audioContext();
+    const ctx = audioContext();
+    const source = chimeSource(soundId);
+    if (ctx && source) void load(ctx, source);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
@@ -136,12 +248,9 @@ function strike(ctx: AudioContext, destination: AudioNode, frequency: number, no
   source.stop(now + 0.02);
 }
 
-/** 「チーン」と一度鳴らす合図（音声ファイル不要）。 */
-export function chime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
-  if (!enabled) return;
+/** ベル音が読み込めない環境向けの合成音。 */
+function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): void {
   try {
-    const ctx = audioContext();
-    if (!ctx) return;
     const now = ctx.currentTime;
     const seconds = durationMs / 1000;
     // 高域の刺さりを抑えて、器を叩いたような丸い響きにする。
@@ -172,11 +281,42 @@ export function chime(enabled: boolean, frequency = 1244, durationMs = 2200): vo
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
+}
+
+/** 選んである合図音を一度鳴らす。pitch は半音単位。 */
+export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
+  if (!enabled) return;
+  try {
+    const ctx = audioContext();
+    if (ctx) {
+      const source = chimeSource(soundId);
+      // 読み込み前に呼ばれても取りこぼさないよう、完了を待ってから鳴らす。
+      const ready = source ? load(ctx, source) : Promise.resolve(undefined);
+      void ready.then((buffer) => {
+        const rate = pitchRate(pitch);
+        if (!buffer) {
+          synthChime(ctx, 1244 * rate);
+          return;
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.playbackRate.value = rate;
+        source.connect(ctx.destination);
+        source.start();
+      });
+    }
+  } catch {
+    /* 音が出せない環境では黙って続行する */
+  }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
 }
 
-/** 「チーン、チーン」と2回鳴らす合図。 */
-export function doubleChime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
-  chime(enabled, frequency, durationMs);
-  window.setTimeout(() => chime(enabled, frequency, durationMs), 420);
+/** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
+export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
+  chime(enabled, soundId, pitch);
+  const source = chimeSource(soundId);
+  const loaded = source ? buffers.get(source.key) : undefined;
+  const played = loaded ? loaded.duration / pitchRate(pitch) : undefined;
+  const gap = played ? Math.min(played, 1.2) * 1000 : 420;
+  window.setTimeout(() => chime(enabled, soundId, pitch), gap);
 }

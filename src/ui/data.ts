@@ -12,6 +12,8 @@ import type {
   Recipe,
   Session,
   Settings,
+  SoundSlot,
+  StoredSound,
 } from '../domain/types';
 
 /** 廃止したテーマ（HUD）が保存されたままの端末を既定へ戻す。 */
@@ -58,6 +60,11 @@ export function useBrews(): BrewRecord[] {
 
 export function usePosts(): Post[] {
   return useLiveQuery(() => db.posts.orderBy('createdAt').reverse().toArray(), [], []) ?? [];
+}
+
+/** アップロードした合図音（未設定なら undefined）。 */
+export function useCustomSound(slot: SoundSlot = 'custom'): StoredSound | undefined {
+  return useLiveQuery(() => db.sounds.get(slot), [slot], undefined);
 }
 
 export function useBeans(): Bean[] {

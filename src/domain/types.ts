@@ -382,7 +382,29 @@ export interface Settings {
   age?: number;
   gender?: Gender;
   soundEnabled: boolean;
+  /** 合図音の種類。既定音の ID か、アップロードした音を指す 'custom'。 */
+  soundId: string;
+  /** アップロードした音のファイル名（表示用）。 */
+  customSoundName?: string;
+  /** 合図音のピッチ（半音、未設定なら 0）。 */
+  soundPitch?: number;
+  /** 抽出終了（2回鳴らし）だけに使う音。'same' なら合図音と同じ。 */
+  finishSoundId?: string;
+  /** 終了用にアップロードした音のファイル名（表示用）。 */
+  finishCustomSoundName?: string;
+  /** 抽出終了の音のピッチ（半音、未設定なら 0）。 */
+  finishSoundPitch?: number;
   targetLine: number; // F-13 目標ライン（合計点）
+}
+
+/** アップロード音の置き場。合図音と終了音で別のファイルを持てる。 */
+export type SoundSlot = 'custom' | 'custom-finish';
+
+/** アップロードした合図音。音源は Blob のまま端末内に置く。 */
+export interface StoredSound {
+  id: SoundSlot;
+  name: string;
+  blob: Blob;
 }
 
 // ─── 監査ログ（NF-07 / R-2）───────────────
