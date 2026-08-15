@@ -38,7 +38,7 @@ export function FriendsScreen() {
 
   return (
     <>
-      <Card title="豆友" hint="いまは端末内にだけ保存されます。投稿は自動判定を通ったものだけが残ります。">
+      <Card title="豆友" hint="いまは端末内にだけ保存されます。">
         <div className="stack">
           <Field label="名前">
             <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
@@ -58,7 +58,6 @@ export function FriendsScreen() {
               投稿する
             </button>
           </div>
-          <p className="muted">投稿は必ず自動判定を通ります（利用者側での設定はありません）。</p>
         </div>
       </Card>
 
