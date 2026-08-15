@@ -601,7 +601,7 @@ table button {
   font-weight: 700;
 }
 
-/* カードをやめ、進捗リング一枚に集中させるタイマー画面。 */
+/* カードをやめ、二重の進捗リングに集中させるタイマー画面。 */
 .timer-stage {
   display: flex;
   flex-direction: column;
@@ -647,6 +647,28 @@ table button {
   transition: stroke-dashoffset 0.2s linear;
 }
 
+/* 内周は現在の投の区間進捗。外周より細くして主従を付ける。 */
+.ring-track.inner,
+.ring-value.inner {
+  stroke-width: 6;
+}
+
+.ring-value.inner {
+  stroke: var(--accent-strong);
+  opacity: 0.85;
+}
+
+.ring-tick {
+  stroke: var(--line);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.ring-tick.current {
+  stroke: var(--accent-strong);
+  stroke-width: 4;
+}
+
 .timer-stage-center {
   position: absolute;
   inset: 0;
@@ -666,62 +688,59 @@ table button {
   color: var(--accent-strong);
 }
 
-.timer-stage-headline {
-  font-size: 17px;
-  font-weight: 700;
-}
-
 .timer-stage-remain {
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.timer-stage-chips {
+/* 投の一覧は縦並び。現在の投だけを強め、済んだ投は淡くする。 */
+.timer-stage-steps {
   list-style: none;
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 4px;
-  width: 100%;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-}
-
-.timer-stage-chips li {
-  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  scroll-snap-align: center;
-  opacity: 0.6;
-  text-align: center;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
-.timer-stage-chips li.current {
-  opacity: 1;
-  background: var(--accent);
-  color: var(--on-accent);
+.timer-stage-steps li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-left: 3px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
 }
 
-.timer-stage-chips li.current .chip-sub,
-.timer-stage-chips li.current .chip-time {
-  color: var(--on-accent);
+.timer-stage-steps li.done {
+  opacity: 0.45;
 }
 
-.chip-time {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.chip-main {
-  font-size: 14px;
+.timer-stage-steps li.current {
+  border-left-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   font-weight: 700;
 }
 
-.chip-sub {
-  font-size: 11px;
+.step-time {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.timer-stage-steps li.current .step-time {
+  color: var(--accent-strong);
+}
+
+.step-main {
+  font-size: 15px;
+}
+
+.step-sub {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .timer-stage-actions {
