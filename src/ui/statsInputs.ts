@@ -9,8 +9,8 @@ import type {
 } from '../stats';
 import { estimateThreshold, initStaircase, updateStaircase } from '../stats';
 
-/** 差の梯子（段数）。細かいほど識別が難しい。 */
-export const DELTA_LEVELS = [2, 1, 0.5, 0.25];
+/** 差の梯子。昇順（小さいほど差が細かく、識別が難しい）。 */
+export const DELTA_LEVELS = [0.25, 0.5, 1, 2];
 
 /** 味評価5項目の平均。1〜5点の自己採点スケールに揃える。 */
 export function overallScore(taste: TasteRating): number {
