@@ -12,6 +12,7 @@ import type {
   RehearsalRecord,
   Session,
   Settings,
+  StoredSound,
   TriangleTrial,
 } from '../domain/types';
 
@@ -30,6 +31,7 @@ export class CoffeerenceDb extends Dexie {
   settings!: Table<Settings, string>;
   audit!: Table<AuditEntry, string>;
   posts!: Table<Post, string>;
+  sounds!: Table<StoredSound, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -54,6 +56,20 @@ export class CoffeerenceDb extends Dexie {
     this.version(4).stores({
       posts: 'id, createdAt',
     });
+    this.version(5).stores({
+      sounds: 'id',
+    });
+    // 既定音を「卓上ベル」に変える。自分で選んでいない端末（旧既定のベルのまま）だけ移す。
+    this.version(6)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<Settings>('settings')
+          .toCollection()
+          .modify((settings) => {
+            if (settings.soundId === undefined || settings.soundId === 'bell') settings.soundId = 'desk';
+          }),
+      );
   }
 }
 
