@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -60,6 +60,214 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   pours: presetPours(defaults),
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
+
+/** カード内の1項目。大きな数値と −/＋、まとめて動かすプリセットを並べる。 */
+function PourMetric({
+  label,
+  suffix,
+  value,
+  step,
+  presets,
+  hint,
+  onChange,
+}: {
+  label: string;
+  suffix: string;
+  value: number | undefined;
+  step: number;
+  /** ラベルと、押したときの値（相対なら delta、絶対なら to）。 */
+  presets: { label: string; delta?: number; to?: number }[];
+  hint?: string;
+  onChange: (value: number | undefined) => void;
+}) {
+  const bump = (delta: number) => onChange(Math.max(0, Math.round(((value ?? 0) + delta) * 10) / 10));
+  return (
+    <div className="pour-metric">
+      <div className="pour-metric-head">
+        <span className="pour-metric-label">{label}</span>
+        {hint === undefined ? null : <span className="pour-metric-hint mono">{hint}</span>}
+      </div>
+      <div className="pour-stepper">
+        <button type="button" aria-label={`${label}を${step}${suffix}減らす`} onClick={() => bump(-step)}>
+          −
+        </button>
+        <label className="pour-value">
+          <span className="visually-hidden">
+            {label}（{suffix}）
+          </span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step={step}
+            min={0}
+            value={value ?? ''}
+            onChange={(event) => onChange(event.target.value === '' ? undefined : Number(event.target.value))}
+          />
+          <span className="pour-value-suffix" aria-hidden="true">
+            {suffix}
+          </span>
+        </label>
+        <button type="button" aria-label={`${label}を${step}${suffix}増やす`} onClick={() => bump(step)}>
+          ＋
+        </button>
+      </div>
+      <div className="pour-presets">
+        {presets.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => (preset.to === undefined ? bump(preset.delta ?? 0) : onChange(preset.to))}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** 1投=1カードの横スワイプ式エディタ。画面には基本1枚だけ映す。 */
+function PourDeck({
+  pours,
+  totalWaterG,
+  onPatch,
+  onAdd,
+  onRemove,
+}: {
+  pours: DraftPour[];
+  totalWaterG: number;
+  onPatch: (index: number, patch: Partial<DraftPour>) => void;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const countRef = useRef(pours.length);
+
+  function scrollToCard(index: number) {
+    const track = trackRef.current;
+    const card = track?.children[index];
+    if (!track || !(card instanceof HTMLElement)) return;
+    const left = track.scrollLeft + card.getBoundingClientRect().left - track.getBoundingClientRect().left;
+    if (typeof track.scrollTo === 'function') track.scrollTo({ left, behavior: 'smooth' });
+    else track.scrollLeft = left;
+  }
+
+  // 投が増えたら追加した1枚へ、減ったら残った範囲へ寄せる。
+  useEffect(() => {
+    if (pours.length > countRef.current) scrollToCard(pours.length - 1);
+    countRef.current = pours.length;
+    setActive((current) => Math.min(current, Math.max(pours.length - 1, 0)));
+  }, [pours.length]);
+
+  /** スクロール位置に一番近いカードを現在位置として扱う。 */
+  function syncActive() {
+    const track = trackRef.current;
+    if (!track) return;
+    const center = track.scrollLeft + track.clientWidth / 2;
+    let nearest = 0;
+    let best = Number.POSITIVE_INFINITY;
+    Array.from(track.children).forEach((child, index) => {
+      if (!(child instanceof HTMLElement)) return;
+      const cardCenter = child.offsetLeft + child.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - center);
+      if (distance < best) {
+        best = distance;
+        nearest = index;
+      }
+    });
+    setActive(nearest);
+  }
+
+  return (
+    <fieldset className="pour-deck">
+      <legend>注湯（1投ずつ横にスワイプ）</legend>
+      <div className="pour-deck-track" ref={trackRef} onScroll={syncActive}>
+        {pours.map((pour, index) => {
+          const previousG = index === 0 ? 0 : pours[index - 1]?.targetG;
+          const addedG =
+            pour.targetG === undefined || previousG === undefined ? undefined : pour.targetG - previousG;
+          return (
+            <article className={`pour-card${index === active ? ' active' : ''}`} key={index}>
+              <header className="pour-card-head">
+                <span className="pour-card-no">
+                  {index + 1}
+                  <span className="pour-card-of mono">/{pours.length}</span> 投目
+                </span>
+                <button
+                  className="pour-card-remove danger"
+                  type="button"
+                  disabled={pours.length <= 1}
+                  onClick={() => onRemove(index)}
+                >
+                  削除
+                </button>
+              </header>
+              <PourMetric
+                label="累計湯量"
+                suffix="g"
+                step={10}
+                value={pour.targetG}
+                hint={addedG === undefined ? undefined : `この投 ${addedG >= 0 ? '+' : '−'}${Math.abs(addedG)}g`}
+                presets={[
+                  { label: '+25g', delta: 25 },
+                  { label: '+50g', delta: 50 },
+                ]}
+                onChange={(targetG) => onPatch(index, { targetG })}
+              />
+              <PourMetric
+                label="開始"
+                suffix="秒"
+                step={5}
+                value={pour.atSec}
+                hint={pour.atSec === undefined ? undefined : formatSeconds(pour.atSec)}
+                presets={[
+                  { label: '+15秒', delta: 15 },
+                  { label: '+30秒', delta: 30 },
+                ]}
+                onChange={(atSec) => onPatch(index, { atSec })}
+              />
+              <PourMetric
+                label="湯温"
+                suffix="℃"
+                step={1}
+                value={pour.waterTempC}
+                presets={[
+                  { label: '88℃', to: 88 },
+                  { label: '92℃', to: 92 },
+                  { label: '96℃', to: 96 },
+                ]}
+                onChange={(waterTempC) => onPatch(index, { waterTempC })}
+              />
+            </article>
+          );
+        })}
+      </div>
+      <div className="pour-dots" aria-hidden="true">
+        {pours.map((_, index) => (
+          <button
+            key={index}
+            className={index === active ? 'active' : ''}
+            type="button"
+            tabIndex={-1}
+            onClick={() => scrollToCard(index)}
+          >
+            <span className="visually-hidden">{index + 1}投目へ</span>
+          </button>
+        ))}
+      </div>
+      <div className="pour-deck-footer">
+        <span className="pour-deck-position mono">
+          {Math.min(active + 1, pours.length)} / {pours.length} 投
+        </span>
+        <span className="pour-deck-total mono">総湯量 {totalWaterG}g</span>
+        <button className="pour-deck-add" type="button" onClick={onAdd}>
+          投を追加
+        </button>
+      </div>
+    </fieldset>
+  );
+}
 
 /** レシピ名をタップしたときに開く抽出条件の内訳。 */
 function RecipeDetail({ recipe }: { recipe: Recipe }) {
@@ -232,49 +440,13 @@ export function RecipeScreen() {
               <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
             </Field>
           </div>
-          <fieldset className="pour-editor">
-            <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
-            <div className="stack">
-              {draft.pours.map((pour, index) => (
-                <div className="row pour-row" key={index}>
-                  <span className="pour-index">{index + 1}投目</span>
-                  <NumberField
-                    label="累計"
-                    suffix="g"
-                    step={1}
-                    min={0}
-                    value={pour.targetG}
-                    onChange={(targetG) => setPour(index, { targetG })}
-                  />
-                  <NumberField
-                    label="開始"
-                    suffix="秒"
-                    step={5}
-                    min={0}
-                    value={pour.atSec}
-                    onChange={(atSec) => setPour(index, { atSec })}
-                  />
-                  <NumberField
-                    label="湯温"
-                    suffix="℃"
-                    step={1}
-                    min={0}
-                    value={pour.waterTempC}
-                    onChange={(waterTempC) => setPour(index, { waterTempC })}
-                  />
-                  <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
-                    削除
-                  </button>
-                </div>
-              ))}
-              <div className="row between">
-                <button type="button" onClick={addPour}>
-                  投を追加
-                </button>
-                <span className="muted mono">総湯量 {totalWaterG}g</span>
-              </div>
-            </div>
-          </fieldset>
+          <PourDeck
+            pours={draft.pours}
+            totalWaterG={totalWaterG}
+            onPatch={setPour}
+            onAdd={addPour}
+            onRemove={removePour}
+          />
           <NumberField
             label="抽出終了（落ち切り）"
             suffix="秒"

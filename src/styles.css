@@ -498,43 +498,221 @@ th {
   opacity: 1;
 }
 
-.pour-editor {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  padding: 8px 10px 12px;
+/* 注湯エディタ: 1投=1カードを横スワイプで送る。 */
+.pour-deck {
+  border: 0;
+  padding: 0;
   margin: 0;
-}
-
-.pour-editor legend {
-  font-size: 12px;
-  color: var(--muted);
-  padding: 0 4px;
-}
-
-.pour-row {
-  display: grid;
-  grid-template-columns: auto 1fr 1fr 1fr auto;
-  gap: 6px;
-  align-items: end;
-}
-
-.pour-row .field {
   min-width: 0;
 }
 
-.pour-row .field span {
-  font-size: 11px;
+.pour-deck legend {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 0;
+  margin-bottom: 8px;
 }
 
-.pour-row button {
-  padding: 0 10px;
+.pour-deck-track {
+  display: flex;
+  gap: 10px;
+  /* カードの影と輪郭を切らないための余白。 */
+  padding: 2px 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.pour-index {
+.pour-deck-track::-webkit-scrollbar {
+  display: none;
+}
+
+.pour-card {
+  flex: 0 0 84%;
+  scroll-snap-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 12px;
+  /* 隣のカードは覗くだけで、編集中の1枚に視線が向くようにする。 */
+  opacity: 0.55;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.pour-card.active {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.pour-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pour-card-no {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.pour-card-of {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.pour-card-remove {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 13px;
+  background: transparent;
+}
+
+.pour-metric-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pour-metric-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-metric-hint {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.pour-stepper {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.pour-stepper > button {
+  min-height: 48px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  background: var(--surface);
+}
+
+.pour-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pour-value input {
+  min-height: 48px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  /* 数字だけで幅を取り、単位を隣に置く。 */
+  width: auto;
+  min-width: 0;
+  flex: 1 1 auto;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.pour-value input::-webkit-outer-spin-button,
+.pour-value input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pour-value-suffix {
+  font-size: 14px;
+  color: var(--muted);
+  flex: none;
+}
+
+.pour-presets {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pour-presets button {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 8px 4px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.pour-dots {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  margin: 4px 0;
+}
+
+/* 見た目は小さな点、タップ領域は44px を確保する。 */
+.pour-dots button {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  width: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.pour-dots button::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.pour-dots button.active::after {
+  background: var(--accent);
+  transform: scale(1.4);
+}
+
+.pour-deck-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pour-deck-position {
   font-size: 13px;
   color: var(--muted);
-  white-space: nowrap;
-  padding-bottom: 12px;
+}
+
+.pour-deck-total {
+  font-size: 13px;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.pour-deck-add {
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 13px;
 }
 
 table button {
