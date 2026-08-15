@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { useEffect, useState } from 'react';
+import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { StepSlider } from './StepSlider';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -25,9 +26,6 @@ interface Draft {
 
 const PRESET_INTERVAL_SEC = 45;
 
-/** ホイールの目盛り1つ分の幅（px）。CSS の .pour-dial-tick と揃える。 */
-const TICK_WIDTH = 32;
-
 type PourFieldKey = 'targetG' | 'atSec' | 'waterTempC';
 
 interface DialSpec {
@@ -36,31 +34,22 @@ interface DialSpec {
   step: number;
   min: number;
   max: number;
-  /** 目盛りに数字を出す間隔。 */
-  major: number;
   format: (value: number) => string;
 }
 
 const DIALS: Record<PourFieldKey, DialSpec> = {
-  targetG: { label: '累計湯量', unit: 'g', step: 5, min: 0, max: 600, major: 10, format: (v) => String(v) },
-  atSec: { label: '開始', unit: '秒', step: 5, min: 0, max: 600, major: 15, format: formatSeconds },
-  waterTempC: { label: '湯温', unit: '℃', step: 1, min: 60, max: 100, major: 5, format: (v) => String(v) },
+  targetG: { label: '累計湯量', unit: 'g', step: 1, min: 0, max: 800, format: (v) => String(v) },
+  atSec: { label: '開始', unit: '秒', step: 1, min: 0, max: 900, format: formatSeconds },
+  waterTempC: { label: '湯温', unit: '℃', step: 1, min: 60, max: 100, format: (v) => String(v) },
 };
 
 const POUR_FIELDS: PourFieldKey[] = ['targetG', 'atSec', 'waterTempC'];
 
-const clampToDial = (spec: DialSpec, value: number) => Math.min(spec.max, Math.max(spec.min, value));
-
-/** 目盛りの並びを作る。 */
-function ticksOf(spec: DialSpec): number[] {
-  const ticks: number[] = [];
-  for (let value = spec.min; value <= spec.max; value += spec.step) ticks.push(Math.round(value * 100) / 100);
-  return ticks;
-}
+const STEPS = ['基本', '注湯', '確認'] as const;
 
 /**
- * 1つの数値をダイヤルで詰めるための行。
- * 畳んでいるときは「ラベル＋値」の1行サマリー、開くと大きな数字＋横ホイール＋−/＋になる。
+ * 1投カードの中の1項目。
+ * 畳んでいるときは「ラベル＋値」の1行、開くと1刻みスライダーになる。
  */
 function PourDial({
   spec,
@@ -73,20 +62,8 @@ function PourDial({
   value: number | undefined;
   active: boolean;
   onActivate: () => void;
-  onChange: (value: number) => void;
+  onChange: (value: number | undefined) => void;
 }) {
-  const wheelRef = useRef<HTMLDivElement | null>(null);
-  // ホイールを弾いて出した値。自分が出した値でスクロール位置を戻して指と喧嘩しないようにする。
-  const scrolledTo = useRef<number | undefined>(undefined);
-
-  useEffect(() => {
-    const wheel = wheelRef.current;
-    if (!active || wheel === null || value === undefined) return;
-    if (scrolledTo.current === value) return;
-    wheel.scrollLeft = ((clampToDial(spec, value) - spec.min) / spec.step) * TICK_WIDTH;
-    scrolledTo.current = value;
-  }, [active, value, spec]);
-
   if (!active) {
     return (
       <button className="pour-dial-row" type="button" onClick={onActivate}>
@@ -98,76 +75,18 @@ function PourDial({
     );
   }
 
-  const shown = value ?? spec.min;
-  const nudge = (direction: 1 | -1) => onChange(clampToDial(spec, shown + direction * spec.step));
-
   return (
     <div className="pour-dial">
-      <p className="pour-dial-label">{spec.label}</p>
-      <div className="pour-dial-head">
-        <p className="pour-dial-value mono">
-          {value === undefined ? '—' : spec.format(value)}
-          <span className="pour-dial-unit">{spec.unit}</span>
-        </p>
-        <div className="pour-dial-steppers">
-          <button
-            className="pour-dial-step"
-            type="button"
-            aria-label={`${spec.label}を減らす`}
-            disabled={shown <= spec.min}
-            onClick={() => nudge(-1)}
-          >
-            −
-          </button>
-          <button
-            className="pour-dial-step"
-            type="button"
-            aria-label={`${spec.label}を増やす`}
-            disabled={shown >= spec.max}
-            onClick={() => nudge(1)}
-          >
-            ＋
-          </button>
-        </div>
-      </div>
-      <div className="pour-dial-track">
-        <div
-          className="pour-dial-wheel"
-          ref={wheelRef}
-          role="slider"
-          tabIndex={0}
-          aria-label={`${spec.label}（${spec.unit}）`}
-          aria-valuemin={spec.min}
-          aria-valuemax={spec.max}
-          aria-valuenow={value}
-          onScroll={(event) => {
-            const index = Math.round(event.currentTarget.scrollLeft / TICK_WIDTH);
-            const next = clampToDial(spec, spec.min + index * spec.step);
-            if (next === value) return;
-            scrolledTo.current = next;
-            onChange(next);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-              event.preventDefault();
-              nudge(1);
-            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-              event.preventDefault();
-              nudge(-1);
-            }
-          }}
-        >
-          {ticksOf(spec).map((tick) => (
-            <span
-              key={tick}
-              className={tick % spec.major === 0 ? 'pour-dial-tick major' : 'pour-dial-tick'}
-              aria-hidden="true"
-            >
-              {tick % spec.major === 0 ? <em className="mono">{spec.format(tick)}</em> : null}
-            </span>
-          ))}
-        </div>
-      </div>
+      <StepSlider
+        label={spec.label}
+        unit={spec.unit}
+        value={value}
+        min={spec.min}
+        max={spec.max}
+        step={spec.step}
+        format={spec.format}
+        onChange={onChange}
+      />
     </div>
   );
 }
@@ -246,9 +165,12 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  // ウィザードを開いているときだけ 0〜2 のステップを持つ。
+  const [step, setStep] = useState<number | undefined>(undefined);
   // カードをまたいで 1 つだけ拡大しているフィールド。
   const [focus, setFocus] = useState<{ index: number; field: PourFieldKey }>({ index: 0, field: 'targetG' });
   const editing = recipes.find((recipe) => recipe.id === editingId);
+  const open = step !== undefined;
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
   useEffect(() => {
@@ -261,7 +183,8 @@ export function RecipeScreen() {
       pour.targetG !== undefined && pour.atSec !== undefined,
   );
   const totalWaterG = filledPours[filledPours.length - 1]?.targetG ?? 0;
-  const canSave = draft.name.trim() !== '' && draft.doseG !== undefined && filledPours.length > 0;
+  const baseReady = draft.name.trim() !== '' && draft.doseG !== undefined;
+  const canSave = baseReady && filledPours.length > 0;
 
   function setPour(index: number, patch: Partial<DraftPour>) {
     setDraft({
@@ -312,20 +235,28 @@ export function RecipeScreen() {
     }));
   }
 
-  function startEdit(recipe: Recipe) {
+  function openCreate() {
+    setEditingId(undefined);
+    setDraft(emptyDraft(defaults));
+    setFocus({ index: 0, field: 'targetG' });
+    setStep(0);
+  }
+
+  function openEdit(recipe: Recipe) {
     setEditingId(recipe.id);
     setDraft(draftOf(recipe));
     setFocus({ index: 0, field: 'targetG' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setStep(0);
   }
 
-  function cancelEdit() {
+  function close() {
+    setStep(undefined);
     setEditingId(undefined);
     setDraft(emptyDraft(defaults));
     setFocus({ index: 0, field: 'targetG' });
   }
 
-  async function add() {
+  async function save() {
     if (!canSave) return;
     const recipe: Recipe = {
       id: editingId ?? uid('recipe'),
@@ -349,135 +280,22 @@ export function RecipeScreen() {
       createdAt: editing?.createdAt ?? new Date().toISOString(),
     };
     await saveRecipe(recipe);
-    setEditingId(undefined);
-    setDraft(emptyDraft(defaults));
-    setFocus({ index: 0, field: 'targetG' });
+    close();
   }
+
+  const nextDisabled = step === 0 && !baseReady;
 
   return (
     <>
-      <Card
-        title={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
-        hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。"
-      >
+      <Card title="レシピ">
         <div className="stack">
-          <Field label="レシピ名">
-            <input
-              value={draft.name}
-              placeholder="例: 中細 92℃ 1:16"
-              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-            />
-          </Field>
-          <div className="row">
-            <NumberField
-              label="粉量"
-              suffix="g"
-              step={0.1}
-              min={0}
-              value={draft.doseG}
-              onChange={(doseG) => setDraft({ ...draft, doseG })}
-            />
-            <NumberField
-              label="初期湯温"
-              suffix="℃"
-              step={1}
-              min={0}
-              value={draft.waterTempC}
-              onChange={setInitialTemp}
-            />
-          </div>
-          <div className="row">
-            <Field label="挽き目">
-              <input
-                value={draft.grindSetting}
-                placeholder="例: 中細 / ダイヤル 18"
-                onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
-              />
-            </Field>
-            <Field label="ドリッパー">
-              <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="pour-timeline">
-            <legend>注湯（上から下へ時間が流れます）</legend>
-            <ol className="pour-timeline-list">
-              {draft.pours.map((pour, index) => (
-                <li className="pour-node" key={index}>
-                  <div className="pour-node-axis">
-                    <span className="pour-node-badge">{index + 1}</span>
-                    <span className="pour-node-time mono">
-                      {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
-                    </span>
-                  </div>
-                  <div className={focus.index === index ? 'pour-node-card focused' : 'pour-node-card'}>
-                    <button
-                      className="pour-node-remove"
-                      type="button"
-                      aria-label={`${index + 1}投目を削除`}
-                      disabled={draft.pours.length <= 1}
-                      onClick={() => removePour(index)}
-                    >
-                      ×
-                    </button>
-                    <div className="pour-dial-stack">
-                      {POUR_FIELDS.map((key) => (
-                        <PourDial
-                          key={key}
-                          spec={DIALS[key]}
-                          value={pour[key]}
-                          active={focus.index === index && focus.field === key}
-                          onActivate={() => setFocus({ index, field: key })}
-                          onChange={(value) => setPour(index, { [key]: value })}
-                        />
-                      ))}
-                    </div>
-                    <p className="pour-node-delta mono">
-                      この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
-                    </p>
-                  </div>
-                </li>
-              ))}
-              <li className="pour-node pour-node-last">
-                <div className="pour-node-axis">
-                  <span className="pour-node-badge ghost">＋</span>
-                </div>
-                <button className="pour-node-add" type="button" onClick={addPour}>
-                  ＋ この投を追加
-                </button>
-              </li>
-            </ol>
-            <p className="pour-timeline-total">
-              <span className="muted">総湯量</span>
-              <strong className="mono">{totalWaterG}g</strong>
-            </p>
-          </fieldset>
-          <NumberField
-            label="抽出終了（落ち切り）"
-            suffix="秒"
-            step={5}
-            min={0}
-            value={draft.finishSec}
-            onChange={(finishSec) => setDraft({ ...draft, finishSec })}
-          />
-          <div className="row">
-            <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
-              {editing ? 'レシピを更新' : 'レシピを登録'}
-            </button>
-            {editing ? (
-              <button type="button" onClick={cancelEdit}>
-                編集をやめる
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </Card>
-
-      <Card title="登録済みレシピ" hint="レシピ名をタップすると詳細が見られます。">
-        {recipes.length === 0 ? (
-          <Banner>まだレシピがありません。</Banner>
-        ) : (
-          <div className="stack">
-            {recipes.map((recipe) => (
+          <button className="primary" type="button" onClick={openCreate}>
+            ＋ 追加
+          </button>
+          {recipes.length === 0 ? (
+            <Banner>まだレシピがありません。</Banner>
+          ) : (
+            recipes.map((recipe) => (
               <div key={recipe.id} className="todo-item recipe-item">
                 <button
                   className="log-summary"
@@ -486,33 +304,245 @@ export function RecipeScreen() {
                   onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
                 >
                   <strong>{recipe.name}</strong>
+                  <span className="mono muted">
+                    {recipe.doseG}g / {recipe.totalWaterG}g / {recipe.waterTempC}℃
+                  </span>
                 </button>
 
                 {openId === recipe.id ? (
                   <>
                     <RecipeDetail recipe={recipe} />
                     <div className="row">
-                      <button type="button" onClick={() => startEdit(recipe)}>
+                      <button type="button" onClick={() => openEdit(recipe)}>
                         編集
                       </button>
-                      <button
-                        className="danger"
-                        type="button"
-                        onClick={() => {
-                          if (recipe.id === editingId) cancelEdit();
-                          void deleteRecipe(recipe.id);
-                        }}
-                      >
+                      <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
                         削除
                       </button>
                     </div>
                   </>
                 ) : null}
               </div>
-            ))}
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </Card>
+
+      {open ? (
+        <div className="modal-backdrop" onClick={close}>
+          <div
+            className="modal recipe-wizard"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editing ? 'レシピ編集' : 'レシピ追加'}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="wizard-head">
+              <strong>{editing ? `編集: ${editing.name}` : 'レシピ追加'}</strong>
+              <button className="wizard-close" type="button" aria-label="閉じる" onClick={close}>
+                ×
+              </button>
+            </div>
+
+            <ol className="wizard-steps">
+              {STEPS.map((label, index) => (
+                <li
+                  key={label}
+                  className={index === step ? 'wizard-step current' : index < (step ?? 0) ? 'wizard-step done' : 'wizard-step'}
+                  aria-current={index === step ? 'step' : undefined}
+                >
+                  <span className="wizard-step-num mono">{index + 1}</span>
+                  <span className="wizard-step-label">{label}</span>
+                </li>
+              ))}
+            </ol>
+
+            <div className="wizard-body">
+              {step === 0 ? (
+                <div className="stack">
+                  <Field label="レシピ名">
+                    <input
+                      value={draft.name}
+                      placeholder="例: 中細 92℃ 1:16"
+                      onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                    />
+                  </Field>
+                  <StepSlider
+                    label="粉量"
+                    unit="g"
+                    value={draft.doseG}
+                    min={0}
+                    max={60}
+                    step={1}
+                    inputStep={0.1}
+                    onChange={(doseG) => setDraft({ ...draft, doseG })}
+                  />
+                  <StepSlider
+                    label="初期湯温"
+                    unit="℃"
+                    value={draft.waterTempC}
+                    min={60}
+                    max={100}
+                    step={1}
+                    onChange={setInitialTemp}
+                  />
+                  <div className="row">
+                    <Field label="挽き目">
+                      <input
+                        value={draft.grindSetting}
+                        placeholder="中細 / 18"
+                        onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
+                      />
+                    </Field>
+                    <Field label="ドリッパー">
+                      <input
+                        value={draft.brewer}
+                        onChange={(event) => setDraft({ ...draft, brewer: event.target.value })}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              ) : null}
+
+              {step === 1 ? (
+                <div className="stack">
+                  <ol className="pour-timeline-list">
+                    {draft.pours.map((pour, index) => (
+                      <li className="pour-node" key={index}>
+                        <div className="pour-node-axis">
+                          <span className="pour-node-badge">{index + 1}</span>
+                          <span className="pour-node-time mono">
+                            {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+                          </span>
+                        </div>
+                        <div className={focus.index === index ? 'pour-node-card focused' : 'pour-node-card'}>
+                          <button
+                            className="pour-node-remove"
+                            type="button"
+                            aria-label={`${index + 1}投目を削除`}
+                            disabled={draft.pours.length <= 1}
+                            onClick={() => removePour(index)}
+                          >
+                            ×
+                          </button>
+                          <div className="pour-dial-stack">
+                            {POUR_FIELDS.map((key) => (
+                              <PourDial
+                                key={key}
+                                spec={DIALS[key]}
+                                value={pour[key]}
+                                active={focus.index === index && focus.field === key}
+                                onActivate={() => setFocus({ index, field: key })}
+                                onChange={(value) => setPour(index, { [key]: value })}
+                              />
+                            ))}
+                          </div>
+                          <p className="pour-node-delta mono">
+                            この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                    <li className="pour-node pour-node-last">
+                      <div className="pour-node-axis">
+                        <span className="pour-node-badge ghost">＋</span>
+                      </div>
+                      <button className="pour-node-add" type="button" onClick={addPour}>
+                        ＋ 投を追加
+                      </button>
+                    </li>
+                  </ol>
+                  <p className="pour-timeline-total">
+                    <span className="muted">総湯量</span>
+                    <strong className="mono">{totalWaterG}g</strong>
+                  </p>
+                  <StepSlider
+                    label="抽出終了"
+                    unit="秒"
+                    value={draft.finishSec}
+                    min={0}
+                    max={900}
+                    step={1}
+                    format={formatSeconds}
+                    onChange={(finishSec) => setDraft({ ...draft, finishSec })}
+                  />
+                </div>
+              ) : null}
+
+              {step === 2 ? (
+                <div className="stack">
+                  <dl className="wizard-review">
+                    <dt>名前</dt>
+                    <dd>{draft.name.trim() || '—'}</dd>
+                    <dt>粉量 / 総湯量</dt>
+                    <dd className="mono">
+                      {draft.doseG ?? '—'}g / {totalWaterG}g
+                    </dd>
+                    <dt>比率</dt>
+                    <dd className="mono">
+                      {draft.doseG === undefined || draft.doseG === 0
+                        ? '—'
+                        : `1:${(totalWaterG / draft.doseG).toFixed(1)}`}
+                    </dd>
+                    <dt>湯温</dt>
+                    <dd className="mono">{draft.waterTempC ?? '—'}℃</dd>
+                    <dt>挽き目 / ドリッパー</dt>
+                    <dd>
+                      {draft.grindSetting || '—'} / {draft.brewer || '—'}
+                    </dd>
+                    <dt>抽出終了</dt>
+                    <dd className="mono">
+                      {draft.finishSec === undefined ? '—' : formatSeconds(draft.finishSec)}
+                    </dd>
+                  </dl>
+                  <table className="wizard-review-table">
+                    <thead>
+                      <tr>
+                        <th>投</th>
+                        <th>時間</th>
+                        <th>累計g</th>
+                        <th>差分g</th>
+                        <th>℃</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draft.pours.map((pour, index) => (
+                        <tr key={index}>
+                          <td className="mono">{index + 1}</td>
+                          <td className="mono">{pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}</td>
+                          <td className="mono">{pour.targetG ?? '—'}</td>
+                          <td className="mono">{deltaOf(index) ?? '—'}</td>
+                          <td className="mono">{pour.waterTempC ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="wizard-foot">
+              <button type="button" disabled={step === 0} onClick={() => setStep((current) => (current ?? 0) - 1)}>
+                戻る
+              </button>
+              {step === STEPS.length - 1 ? (
+                <button className="primary" type="button" disabled={!canSave} onClick={() => void save()}>
+                  {editing ? '更新' : '保存'}
+                </button>
+              ) : (
+                <button
+                  className="primary"
+                  type="button"
+                  disabled={nextDisabled}
+                  onClick={() => setStep((current) => (current ?? 0) + 1)}
+                >
+                  次へ
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

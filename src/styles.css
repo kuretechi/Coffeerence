@@ -507,6 +507,224 @@ th {
   opacity: 1;
 }
 
+/* レシピ作成の段階ウィザード。中央のモーダル内でステップを進める。 */
+.recipe-wizard {
+  gap: 8px;
+  max-height: 88vh;
+  overflow: hidden;
+  padding: 12px 12px 10px;
+}
+
+.wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wizard-close {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.wizard-steps {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.wizard-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.wizard-step.current {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.wizard-step.current .wizard-step-num,
+.wizard-step.done .wizard-step-num {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.wizard-step-label {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.wizard-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 2px 4px;
+}
+
+.wizard-foot {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.wizard-foot button {
+  flex: 1;
+}
+
+.wizard-review {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.wizard-review dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.wizard-review dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+}
+
+.wizard-review-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wizard-review-table th {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  text-align: right;
+}
+
+.wizard-review-table td {
+  padding: 4px 0;
+  text-align: right;
+  border-top: 1px solid var(--line);
+}
+
+/* 1刻みスライダー: 大きな現在値＋両端の −/＋＋直接入力。 */
+.step-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.step-slider-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.step-slider-input {
+  width: 76px;
+  min-height: 36px;
+  padding: 4px 6px;
+  text-align: right;
+  font-size: 14px;
+}
+
+.step-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step-slider-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-slider-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.step-slider-unit {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.step-slider-range {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  background: none;
+  touch-action: pan-y;
+}
+
+.step-slider-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.step-slider-step {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+}
+
 /* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
 .pour-timeline {
   border: 1px solid var(--line);
@@ -618,7 +836,7 @@ th {
 
 /* 先頭の項目だけは右上の×を避ける。 */
 .pour-dial-stack > .pour-dial-row:first-child,
-.pour-dial-stack > .pour-dial:first-child .pour-dial-head {
+.pour-dial-stack > .pour-dial:first-child .step-slider-head {
   padding-right: 44px;
 }
 
@@ -650,133 +868,6 @@ th {
 
 .pour-dial {
   margin: 2px 0 6px;
-}
-
-.pour-dial-label {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.pour-dial-value {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.pour-dial-unit {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.pour-dial-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pour-dial-steppers {
-  display: flex;
-  gap: 4px;
-}
-
-.pour-dial-step {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-}
-
-.pour-dial-track {
-  position: relative;
-  margin-top: 6px;
-}
-
-/* 選択位置を示す中央の指標。 */
-.pour-dial-track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  height: 15px;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
-/* 横スクロールの目盛り。中央の指標に合った目盛りが選択値。 */
-.pour-dial-wheel {
-  position: relative;
-  display: flex;
-  height: 44px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  /* 端の目盛りも中央に来られるよう、左右に半分ずつ余白を作る。 */
-  padding: 0 calc(50% - 16px);
-}
-
-.pour-dial-wheel::-webkit-scrollbar {
-  display: none;
-}
-
-.pour-dial-wheel:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.pour-dial-tick {
-  position: relative;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 44px;
-  scroll-snap-align: center;
-}
-
-/* 目盛りの線。数字を出す位置だけ長くする。 */
-.pour-dial-tick::before {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  width: 1px;
-  height: 7px;
-  background: var(--muted);
-  opacity: 0.5;
-}
-
-.pour-dial-tick.major::before {
-  height: 11px;
-  opacity: 1;
-}
-
-.pour-dial-tick em {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  font-style: normal;
-  color: var(--muted);
 }
 
 .pour-node-delta {
