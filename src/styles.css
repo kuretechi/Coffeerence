@@ -365,6 +365,11 @@ input.slider {
   border-radius: 6px;
 }
 
+/* 拡大したときは見える範囲も広げる。 */
+.keyboard-scroll.big {
+  max-height: 460px;
+}
+
 .keyboard {
   position: relative;
   display: flex;
@@ -401,7 +406,7 @@ input.slider {
   position: absolute;
   left: 0;
   width: 58%;
-  height: 24px;
+  height: calc(var(--key-height) * 0.6);
   transform: translateY(50%);
   background: #1b1b1b;
   border-color: #1b1b1b;

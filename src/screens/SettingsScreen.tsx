@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
 import {
   useAudit,
@@ -28,6 +28,7 @@ import {
   REVERB_PRESETS,
   REVERB_SECONDS_RANGE,
   SAME_AS_CHIME_ID,
+  SONG_TRANSPOSE_RANGE,
   SOUND_EFFECTS,
   canDecodeChime,
   chime,
@@ -41,7 +42,7 @@ import {
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
-import { MAX_NOTES, parseMidi, type MidiSong } from '../lib/midi';
+import { MAX_NOTES, centerSemitone, parseMidi, type MidiSong } from '../lib/midi';
 import type {
   GearKind,
   RecipeDefaults,
@@ -280,6 +281,7 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
   const customFinish = useCustomSound(CUSTOM_FINISH_SOUND_ID);
   const input = useRef<HTMLInputElement>(null);
   const [soundId, setSoundId] = useState(CHIME_SOUNDS[0].id);
+  const [transpose, setTranspose] = useState(0);
   const [playingId, setPlayingId] = useState<string | undefined>();
   const [message, setMessage] = useState<string | undefined>();
   // 同じ MIDI を何度も鳴らせるよう、読み取った音の並びは取っておく。
@@ -323,7 +325,8 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
     try {
       const song = await songOf(midi.id, midi.blob);
       primeAudio(true, soundId);
-      stop.current = playSong(song.notes, soundId, 0, effect, reverb);
+      // 合図音は音源ごとに元の高さが違うので、曲の中心を音源そのままの高さに寄せる。
+      stop.current = playSong(song.notes, soundId, transpose - centerSemitone(song.notes), effect, reverb);
       setPlayingId(midi.id);
       // 最後の音を鳴らし終えたら「再生」に戻す（余韻ぶん少し待つ）。
       endTimer.current = window.setTimeout(() => setPlayingId(undefined), (song.seconds + 3) * 1000);
@@ -361,6 +364,17 @@ function MidiCard({ effect, reverb }: { effect: SoundEffect; reverb: ReverbAmoun
             </button>
           ))}
         </div>
+      </Field>
+      <Field label={`高さ（${transpose > 0 ? '+' : ''}${transpose} 半音）`}>
+        <input
+          className="slider"
+          type="range"
+          min={-SONG_TRANSPOSE_RANGE}
+          max={SONG_TRANSPOSE_RANGE}
+          step={1}
+          value={transpose}
+          onChange={(event) => setTranspose(Number(event.target.value))}
+        />
       </Field>
       {message ? <Banner>{message}</Banner> : null}
       {midis.length === 0 ? (
@@ -515,8 +529,9 @@ function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
 
 const { whites: WHITE_KEYS, blacks: BLACK_KEYS } = buildKeys();
 
-/** 白鍵の高さ（px）。オクターブを増やしても鍵の大きさは変えない。 */
+/** 白鍵の高さ（px）。拡大すると押しやすい大きさになる。 */
 const KEY_HEIGHT = 40;
+const BIG_KEY_HEIGHT = 72;
 
 /**
  * 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。
@@ -524,19 +539,30 @@ const KEY_HEIGHT = 40;
  */
 function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
   const scroll = useRef<HTMLDivElement>(null);
+  const [big, setBig] = useState(false);
+  const keyHeight = big ? BIG_KEY_HEIGHT : KEY_HEIGHT;
 
-  // 基準のド（ピッチそのまま）が見える位置から始める。
+  // 基準のド（ピッチそのまま）が見える位置から始める。拡大しても同じ位置に戻す。
   useEffect(() => {
     const box = scroll.current;
     if (!box) return;
     const fromBottom = WHITE_KEYS.findIndex((key) => key.semitone === 0);
-    const baseTop = WHITE_KEYS.length * KEY_HEIGHT - (fromBottom + 1) * KEY_HEIGHT;
+    const baseTop = (WHITE_KEYS.length - fromBottom - 1) * keyHeight;
     box.scrollTop = Math.max(baseTop - box.clientHeight / 2, 0);
-  }, []);
+  }, [keyHeight]);
 
   return (
-    <div className="keyboard-scroll" ref={scroll}>
-      <div className="keyboard" style={{ height: `${WHITE_KEYS.length * KEY_HEIGHT}px` }}>
+    <>
+      <button type="button" onClick={() => setBig(!big)}>
+        {big ? '鍵盤を縮小' : '鍵盤を拡大'}
+      </button>
+      <div className={big ? 'keyboard-scroll big' : 'keyboard-scroll'} ref={scroll}>
+        <div
+          className="keyboard"
+          style={
+            { height: `${WHITE_KEYS.length * keyHeight}px`, '--key-height': `${keyHeight}px` } as CSSProperties
+          }
+        >
         {WHITE_KEYS.map((key) => (
           <button
             key={`white-${key.semitone}`}
@@ -557,8 +583,9 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
             aria-label={`${key.semitone} 半音上`}
           />
         ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

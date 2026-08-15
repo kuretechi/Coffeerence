@@ -498,6 +498,15 @@ function synthChime(ctx: AudioContext, frequency = 1244, out: AudioNode = ctx.de
 /** MIDI を鳴らすときのピッチ幅（半音）。曲は鍵盤より広い音域を使う。 */
 const SONG_PITCH_RANGE = 48;
 
+/** MIDI 再生で曲全体をずらせる幅（半音）。 */
+export const SONG_TRANSPOSE_RANGE = 24;
+
+/** MIDI 全体の音量。和音がいくつも重なるので、単発の合図音より下げる。 */
+const SONG_GAIN = 0.8;
+
+/** note off の後に音を落とし切るまでの時間（秒）。 */
+const SONG_RELEASE_SEC = 0.12;
+
 /** 半音差を再生速度に直す（MIDI 用に鍵盤より広く許す）。 */
 function songRate(semitones: number): number {
   const clamped = Math.min(SONG_PITCH_RANGE, Math.max(-SONG_PITCH_RANGE, semitones));
@@ -536,17 +545,31 @@ export function playSong(
     // decode できない音源（動画）は一音ずつ鳴らせないので、MIDI 再生からは外す。
     if (!buffer || stopped) return;
     const out = effectInput(ctx, effect, reverb);
+    // 和音で音が重なると割れるので、全体の音量を落としてから鳴らす。
+    const master = ctx.createGain();
+    master.gain.value = SONG_GAIN;
+    master.connect(out);
     // 先頭の音が読み込み待ちで欠けないよう、少しだけ後ろから始める。
     const start = ctx.currentTime + 0.1;
     for (const note of notes) {
       const node = ctx.createBufferSource();
       node.buffer = buffer;
-      node.playbackRate.value = songRate(pitch + note.semitone);
+      const rate = songRate(pitch + note.semitone);
+      node.playbackRate.value = rate;
+      const at = start + note.startSec;
+      // 音源が音の長さより長いときは、note off で切って余韻を短く落とす。
+      const sample = buffer.duration / rate;
+      const held = Math.min(note.holdSec, sample);
       const gain = ctx.createGain();
-      gain.gain.value = note.velocity;
+      const level = Math.max(0.0001, note.velocity);
+      gain.gain.setValueAtTime(level, at);
+      // 音源自体の減衰は残したいので、note off までは強さのまま保つ。
+      gain.gain.setValueAtTime(level, at + held);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + held + SONG_RELEASE_SEC);
       node.connect(gain);
-      gain.connect(out);
-      node.start(start + note.startSec);
+      gain.connect(master);
+      node.start(at);
+      node.stop(at + held + SONG_RELEASE_SEC);
       playing.push(node);
     }
   });

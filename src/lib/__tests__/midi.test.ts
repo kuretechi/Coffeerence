@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseMidi } from '../midi';
+import { centerSemitone, parseMidi } from '../midi';
 
 /** 可変長数値（SMF のデルタタイム表現）。 */
 function varint(value: number): number[] {
@@ -40,10 +40,11 @@ describe('parseMidi', () => {
     ]);
     const song = parseMidi(data);
     expect(song.notes).toEqual([
-      { semitone: 0, startSec: 0, velocity: 1 },
-      { semitone: 12, startSec: 0.5, velocity: 64 / 127 },
+      // note off が来た音は 1 秒、来なかった音は既定の長さ。
+      { semitone: 0, startSec: 0, holdSec: 1, velocity: 1 },
+      { semitone: 12, startSec: 0.5, holdSec: 0.5, velocity: 64 / 127 },
     ]);
-    expect(song.seconds).toBeCloseTo(0.5);
+    expect(song.seconds).toBeCloseTo(1);
     expect(song.truncated).toBe(false);
   });
 
@@ -67,6 +68,27 @@ describe('parseMidi', () => {
     ]);
     const song = parseMidi(data);
     expect(song.notes.map((note) => note.semitone)).toEqual([0, 4]);
+  });
+
+  it('打楽器の 10ch は鳴らさない', () => {
+    const data = midiFile([
+      ...varint(0), 0x99, 36, 100,
+      ...varint(0), 0x90, 60, 100,
+    ]);
+    const song = parseMidi(data);
+    expect(song.notes).toHaveLength(1);
+    expect(song.notes[0].semitone).toBe(0);
+  });
+
+  it('音域の中心を半音で返す', () => {
+    expect(
+      centerSemitone([
+        { semitone: 12, startSec: 0, holdSec: 1, velocity: 1 },
+        { semitone: 24, startSec: 0, holdSec: 1, velocity: 1 },
+        { semitone: 30, startSec: 0, holdSec: 1, velocity: 1 },
+      ]),
+    ).toBe(24);
+    expect(centerSemitone([])).toBe(0);
   });
 
   it('MIDI でない中身や音が無い中身は例外にする', () => {
