@@ -8,8 +8,22 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-const RING_R = 132;
+const VIEW = 360;
+const CENTER = VIEW / 2;
+const RING_R = 156;
 const RING_C = 2 * Math.PI * RING_R;
+const LABEL_R = 114;
+/** 文字盤は真上に隙間を残した 0.9 周ぶんで一杯ぶんを表す。始点と終点が重ならない。 */
+const SWEEP = 0.9;
+const TICK_INNER = RING_R - 14;
+const TICK_OUTER = RING_R + 14;
+const RESET_HOLD_MS = 700;
+
+/** 文字盤上の位置（0＝真上、1＝一杯ぶんの終点）から座標を出す。 */
+function pointAt(ratio: number, radius: number): { x: number; y: number } {
+  const angle = ratio * SWEEP * 2 * Math.PI - Math.PI / 2;
+  return { x: CENTER + radius * Math.cos(angle), y: CENTER + radius * Math.sin(angle) };
+}
 
 export function TimerScreen() {
   const recipes = useRecipes();
@@ -17,6 +31,7 @@ export function TimerScreen() {
   const navigate = useNavigate();
   const stopwatch = useStopwatch();
   const [recipeId, setRecipeId] = useState('');
+  const [resetHint, setResetHint] = useState(false);
 
   const selectedId = recipeId || recipes[0]?.id || '';
   const recipe = recipes.find((item) => item.id === selectedId);
@@ -24,14 +39,16 @@ export function TimerScreen() {
   const steps = toSteps(pours);
   const progress = pourProgress(pours, stopwatch.elapsed);
   const announcedIndex = useRef(0);
+  const holdTimer = useRef<number>(0);
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
 
-  // リングは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
-  const segmentStart = progress.current?.startSec ?? 0;
-  const segmentEnd = progress.next?.startSec ?? finishSec ?? segmentStart;
-  const segmentLength = Math.max(segmentEnd - segmentStart, 1);
-  const ratio = Math.min(Math.max((stopwatch.elapsed - segmentStart) / segmentLength, 0), 1);
+  // 文字盤は抽出全体（0秒〜終了）を一周に対応させ、各投を時計の目盛りとして置く。
+  const totalSec = Math.max(finishSec ?? pours[pours.length - 1]?.startSec ?? 0, 1);
+  const ratio = Math.min(Math.max(stopwatch.elapsed / totalSec, 0), 1);
+  const head = pointAt(ratio, RING_R);
+
+  const segmentEnd = progress.next?.startSec ?? finishSec ?? stopwatch.elapsed;
   const remainSec = Math.max(segmentEnd - stopwatch.elapsed, 0);
 
   /** 投ごとの湯温。未登録の古いレシピは初期湯温を使う。 */
@@ -54,12 +71,33 @@ export function TimerScreen() {
     doubleChime(settings.soundEnabled);
   }, [finished, stopwatch, settings.soundEnabled]);
 
+  useEffect(() => () => window.clearTimeout(holdTimer.current), []);
+
   function start() {
     primeAudio(settings.soundEnabled);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
     chime(settings.soundEnabled);
     stopwatch.start();
+  }
+
+  function reset() {
+    holdTimer.current = 0;
+    announcedIndex.current = 0;
+    stopwatch.reset();
+    setResetHint(false);
+  }
+
+  // 大会中の誤タップで計測が消えないよう、リセットは長押しでのみ確定させる。
+  function holdStart() {
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(reset, RESET_HOLD_MS);
+  }
+
+  function holdEnd() {
+    if (holdTimer.current) setResetHint(true);
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = 0;
   }
 
   async function finish() {
@@ -87,12 +125,12 @@ export function TimerScreen() {
     : `まもなく 1投目`;
 
   return (
-    <div className="timer-stage">
+    <div className={stopwatch.running ? 'timer-hud running' : 'timer-hud'}>
       {recipes.length === 0 ? (
         <Banner>先にレシピを登録してください。</Banner>
       ) : (
         <select
-          className="timer-stage-recipe"
+          className="timer-hud-recipe"
           aria-label="レシピ"
           value={selectedId}
           onChange={(event) => setRecipeId(event.target.value)}
@@ -105,23 +143,66 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-stage-ring">
-        <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
-          <circle className="ring-track" cx="150" cy="150" r={RING_R} />
+      <div className="timer-hud-dial">
+        <svg viewBox={`0 0 ${VIEW} ${VIEW}`} role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
+          <circle
+            className="ring-track"
+            cx={CENTER}
+            cy={CENTER}
+            r={RING_R}
+            strokeDasharray={`${RING_C * SWEEP} ${RING_C}`}
+            transform={`rotate(-90 ${CENTER} ${CENTER})`}
+          />
           <circle
             className="ring-value"
-            cx="150"
-            cy="150"
+            cx={CENTER}
+            cy={CENTER}
             r={RING_R}
-            strokeDasharray={RING_C}
-            strokeDashoffset={RING_C * (1 - ratio)}
-            transform="rotate(-90 150 150)"
+            strokeDasharray={`${RING_C * SWEEP * ratio} ${RING_C}`}
+            transform={`rotate(-90 ${CENTER} ${CENTER})`}
           />
+          {pours.map((pour, index) => {
+            const at = Math.min(pour.startSec / totalSec, 1);
+            const inner = pointAt(at, TICK_INNER);
+            const outer = pointAt(at, TICK_OUTER);
+            const label = pointAt(at, LABEL_R);
+            const state =
+              progress.current?.index === pour.index && !finished
+                ? 'current'
+                : pour.startSec <= stopwatch.elapsed
+                ? 'done'
+                : 'ahead';
+            return (
+              <g key={pour.index} className={`dial-mark ${state}`}>
+                <line x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} />
+                <text x={label.x} y={label.y} textAnchor="middle" className="dial-index">
+                  {pour.index}
+                </text>
+                <text x={label.x} y={label.y + 16} textAnchor="middle" className="dial-target">
+                  {steps[index]?.waterG ?? 0}g
+                </text>
+              </g>
+            );
+          })}
+          {finishSec === undefined ? null : (
+            <g className={finished ? 'dial-mark current' : 'dial-mark ahead'}>
+              <line
+                x1={pointAt(1, TICK_INNER).x}
+                y1={pointAt(1, TICK_INNER).y}
+                x2={pointAt(1, TICK_OUTER).x}
+                y2={pointAt(1, TICK_OUTER).y}
+              />
+              <text x={pointAt(1, LABEL_R).x} y={pointAt(1, LABEL_R).y} textAnchor="middle" className="dial-target">
+                終了
+              </text>
+            </g>
+          )}
+          {stopwatch.elapsed === 0 ? null : <circle className="dial-head" cx={head.x} cy={head.y} r={10} />}
         </svg>
-        <div className="timer-stage-center">
-          <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
-          <span className="timer-stage-headline">{headline}</span>
-          <span className="timer-stage-remain muted">
+        <div className="timer-hud-center">
+          <span className="timer-hud-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
+          <span className="timer-hud-headline">{headline}</span>
+          <span className="timer-hud-remain">
             {finished
               ? '抽出終了です'
               : progress.next
@@ -133,59 +214,45 @@ export function TimerScreen() {
         </div>
       </div>
 
-      {pours.length === 0 ? (
-        recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
-      ) : (
-        <ol className="timer-stage-chips">
-          {pours.map((pour, index) => (
-            <li key={pour.index} className={progress.current?.index === pour.index ? 'current' : ''}>
-              <span className="chip-time mono">{formatSeconds(pour.startSec)}</span>
-              <span className="chip-main">{pour.index}投目</span>
-              <span className="chip-sub mono muted">
-                {steps[index]?.waterG ?? 0}g / {tempOf(pour)}℃
-              </span>
-            </li>
-          ))}
-          {finishSec === undefined ? null : (
-            <li className={finished ? 'current' : ''}>
-              <span className="chip-time mono">{formatSeconds(finishSec)}</span>
-              <span className="chip-main">終了</span>
-              <span className="chip-sub mono muted">—</span>
-            </li>
-          )}
-        </ol>
-      )}
+      {pours.length === 0 && recipe ? (
+        <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
+      ) : null}
 
-      <div className="timer-stage-actions">
+      <p className="timer-hud-legend mono">
+        {progress.current
+          ? `湯温 ${tempOf(progress.current)}℃ ／ 全 ${pours.length}投 ／ 終了 ${formatSeconds(totalSec)}`
+          : `全 ${pours.length}投 ／ 終了 ${formatSeconds(totalSec)}`}
+      </p>
+
+      <div className="timer-hud-actions">
         {stopwatch.running ? (
-          <button className="timer-stage-main" type="button" onClick={stopwatch.pause}>
+          <button className="timer-hud-main" type="button" onClick={stopwatch.pause}>
             停止
           </button>
         ) : (
-          <button className="timer-stage-main primary" type="button" disabled={finished} onClick={start}>
+          <button className="timer-hud-main primary" type="button" disabled={finished} onClick={start}>
             開始
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            announcedIndex.current = 0;
-            stopwatch.reset();
-          }}
-        >
-          リセット
-        </button>
-        {recipes.length === 0 ? null : (
+        <div className="timer-hud-sub">
           <button
-            className="primary"
             type="button"
-            disabled={stopwatch.elapsed === 0}
-            onClick={() => void finish()}
+            aria-label="リセット（長押し）"
+            onPointerDown={holdStart}
+            onPointerUp={holdEnd}
+            onPointerLeave={holdEnd}
+            onPointerCancel={holdEnd}
           >
-            記録して味評価へ
+            リセット（長押し）
           </button>
-        )}
+          {recipes.length === 0 ? null : (
+            <button type="button" disabled={stopwatch.elapsed === 0} onClick={() => void finish()}>
+              記録して味評価へ
+            </button>
+          )}
+        </div>
       </div>
+      {resetHint ? <p className="timer-hud-note muted">リセットは長押しで確定します。</p> : null}
       {settings.soundEnabled ? null : <Banner>設定でタイマー音をオフにしています。</Banner>}
     </div>
   );
