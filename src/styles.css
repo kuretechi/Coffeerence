@@ -900,3 +900,38 @@ table button {
   border-radius: var(--radius-l);
   background: var(--surface);
 }
+
+/* 抽出終了のお祝い。降ってくるだけで操作は邪魔しない。 */
+.cat-rain {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.cat-rain span {
+  position: absolute;
+  top: -14vh;
+  line-height: 1;
+  animation-name: cat-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes cat-fall {
+  from {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(120vh) rotate(var(--cat-spin, 360deg));
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-rain {
+    display: none;
+  }
+}
