@@ -336,20 +336,9 @@ export interface ModerationVerdict {
   provider: 'local' | 'remote';
 }
 
-/** 判定の実行方法。remote は OpenAI 互換の moderation API を使う。 */
-export interface ModerationSettings {
-  provider: 'local' | 'remote';
-  endpoint: string;
-  model: string;
-  apiKey: string;
-  /** ローカル判定に追加するNGワード。 */
-  blocklist: string[];
-}
-
 export interface Settings {
   id: 'settings';
   recipeDefaults: RecipeDefaults;
-  moderation: ModerationSettings;
   theme: ThemeName;
   activeCompetitionId: string;
   weights: ScoreWeights;

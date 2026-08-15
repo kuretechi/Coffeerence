@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { Banner, Card, Field, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
 import { chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
@@ -15,7 +15,6 @@ export function TimerScreen() {
   const navigate = useNavigate();
   const stopwatch = useStopwatch();
   const [recipeId, setRecipeId] = useState('');
-  const [beverageG, setBeverageG] = useState<number | undefined>(undefined);
 
   const selectedId = recipeId || recipes[0]?.id || '';
   const recipe = recipes.find((item) => item.id === selectedId);
@@ -61,12 +60,10 @@ export function TimerScreen() {
       date: new Date().toISOString(),
       recipeId: selectedId,
       totalTimeSec: Math.round(stopwatch.elapsed),
-      beverageG,
     };
     await saveBrew(record);
     announcedIndex.current = 0;
     stopwatch.reset();
-    setBeverageG(undefined);
     navigate('/log');
   }
 
@@ -159,7 +156,6 @@ export function TimerScreen() {
 
         {recipes.length === 0 ? null : (
           <div className="row timer-record">
-            <NumberField label="抽出量" suffix="g" step={1} min={0} value={beverageG} onChange={setBeverageG} />
             <button
               className="primary"
               type="button"

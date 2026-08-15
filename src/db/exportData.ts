@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { BrewRecord, Competition, Recipe, ScoreWeights, Session, Settings } from '../domain/types';
+import type { BrewRecord, Competition, Recipe, ScoreWeights, Session } from '../domain/types';
 import { CRITERION_ORDER } from '../domain/defaults';
 import { composeScores } from '../lib/scoring';
 
@@ -21,12 +21,6 @@ export interface ExportBundle {
   audit: unknown[];
   posts: unknown[];
 }
-
-/** APIキーは端末内に留めたいので、書き出しからは落とす。 */
-const withoutSecrets = (settings: Settings): Settings => ({
-  ...settings,
-  moderation: { ...settings.moderation, apiKey: '' },
-});
 
 /** NF-03: データはユーザーのもの。全件を JSON で持ち出せる。 */
 export async function exportAll(): Promise<ExportBundle> {
@@ -73,7 +67,7 @@ export async function exportAll(): Promise<ExportBundle> {
     externalLabels,
     triangleTrials,
     rehearsals,
-    settings: settings.map(withoutSecrets),
+    settings,
     audit,
     posts,
   };
