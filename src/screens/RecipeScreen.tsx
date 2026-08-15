@@ -61,6 +61,19 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
 
+/** ツールバーを固定する位置。上に重なっているアプリヘッダーの高さぶん下げる。 */
+function useStickyHeaderHeight(): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const header = document.querySelector('.app-header');
+    if (header === null) return;
+    const observer = new ResizeObserver(() => setHeight(header.getBoundingClientRect().height));
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  return height;
+}
+
 /** レシピ名をタップしたときに開く抽出条件の内訳。 */
 function RecipeDetail({ recipe }: { recipe: Recipe }) {
   return (
@@ -100,6 +113,7 @@ export function RecipeScreen() {
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const headerHeight = useStickyHeaderHeight();
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -302,7 +316,7 @@ export function RecipeScreen() {
 
   return (
     <div className="recipe-dense">
-      <div className="recipe-dense-toolbar">
+      <div className="recipe-dense-toolbar" style={{ top: headerHeight }}>
         <button className="primary" type="button" onClick={startCreate}>
           新規レシピ
         </button>
