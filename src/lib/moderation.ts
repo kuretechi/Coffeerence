@@ -2,8 +2,12 @@ import type { ModerationVerdict } from '../domain/types';
 
 /**
  * 投稿の不適切判定。アプリ側で必ず実行するもので、利用者は設定も無効化もできない。
- * 常にオフラインの規則判定を通し、ビルド時に moderation API が設定されていれば
- * さらに外部モデルにも問い合わせる（失敗時は規則判定の結果に従う）。
+ * 本判定は自然言語処理モデル（OpenAI 互換 moderation）で行い、語彙による規則判定は
+ * モデルに到達できないとき（オフライン・プロキシ停止）の保険としてだけ使う。
+ *
+ * API キーは静的サイトに置けないので、鍵を持つプロキシ（proxy/moderation-worker.js）の
+ * URL をビルド時に VITE_MODERATION_ENDPOINT で渡す。VITE_MODERATION_API_KEY は
+ * ローカル検証で直接 OpenAI を叩くときだけ使う。
  */
 
 const REMOTE = {
@@ -105,7 +109,8 @@ async function moderateRemotely(text: string): Promise<ModerationVerdict> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${REMOTE.apiKey}`,
+      // プロキシ経由のときは鍵を持たないので Authorization は付けない。
+      ...(REMOTE.apiKey === '' ? {} : { Authorization: `Bearer ${REMOTE.apiKey}` }),
     },
     body: JSON.stringify({ model: REMOTE.model, input: text }),
   });
@@ -127,17 +132,17 @@ async function moderateRemotely(text: string): Promise<ModerationVerdict> {
 }
 
 /**
- * 投稿本文を判定する。外部モデルが使えないときはローカル判定の結果を返すので、
- * オフラインでも判定機構そのものは必ず働く。
+ * 投稿本文を判定する。モデル判定を本線とし、到達できないときだけ規則判定に落ちる。
+ * 規則判定が先に弾いた分は明らかな表現なので、モデルに投げずにその場で拒否する。
  */
 export async function moderate(text: string): Promise<ModerationVerdict> {
   const local = moderateLocally(text);
   if (!local.allowed) return local;
-  if (REMOTE.endpoint === '' || REMOTE.apiKey === '') return local;
+  if (REMOTE.endpoint === '') return local;
   try {
     return await moderateRemotely(text);
   } catch {
-    // 判定できないときは投稿を止めず、ローカル判定の結果に従う。
+    // 判定できないときは投稿を止めず、規則判定の結果に従う。
     return { ...local, provider: 'local' };
   }
 }

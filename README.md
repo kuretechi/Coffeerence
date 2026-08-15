@@ -53,6 +53,13 @@ npm run typecheck  # tsc
 npm run build      # 本番ビルド
 ```
 
+## 投稿の判定
+
+豆友の投稿は保存前に必ず判定を通す（利用者側の設定項目は無い）。本判定は OpenAI 互換の
+moderation モデルで、API キーを静的サイトに置けないため `proxy/`（Cloudflare Workers）を経由する。
+プロキシの URL は Actions 変数 `VITE_MODERATION_ENDPOINT` で渡す。到達できないときは
+`src/lib/moderation.ts` の規則判定だけが働く。手順は `proxy/README.md` を参照。
+
 ## スコープ外（v1）
 
 豆のEC・SNS・焙煎プロファイル管理・大会運営・他人のレシピ配布・BLEスケール連携・アカウント/クラウド同期。
