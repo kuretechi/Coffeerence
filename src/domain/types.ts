@@ -382,7 +382,18 @@ export interface Settings {
   age?: number;
   gender?: Gender;
   soundEnabled: boolean;
+  /** 合図音の種類。既定音の ID か、アップロードした音を指す 'custom'。 */
+  soundId: string;
+  /** アップロードした音のファイル名（表示用）。 */
+  customSoundName?: string;
   targetLine: number; // F-13 目標ライン（合計点）
+}
+
+/** アップロードした合図音。音源は Blob のまま端末内に置く。 */
+export interface StoredSound {
+  id: 'custom';
+  name: string;
+  blob: Blob;
 }
 
 // ─── 監査ログ（NF-07 / R-2）───────────────

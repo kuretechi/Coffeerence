@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
-import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
-import { deleteGear, saveGear, saveSettings } from '../db/repo';
+import {
+  useAudit,
+  useBrews,
+  useCustomSound,
+  useGear,
+  useLoadedSettings,
+  useRecipes,
+  useSettings,
+} from '../ui/data';
+import { deleteCustomSound, deleteGear, saveCustomSound, saveGear, saveSettings } from '../db/repo';
+import { CHIME_SOUNDS, CUSTOM_SOUND_ID, chime, primeAudio } from '../ui/useTimer';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
@@ -21,6 +30,9 @@ export function SettingsScreen() {
   const recipes = useRecipes();
   const audit = useAudit();
   const fileInput = useRef<HTMLInputElement>(null);
+  const soundInput = useRef<HTMLInputElement>(null);
+  const customSound = useCustomSound();
+  const [soundMessage, setSoundMessage] = useState<string | undefined>();
   const [message, setMessage] = useState<string | undefined>();
   const loaded = useLoadedSettings();
   // 保存の往復を待たず入力を反映させるため、入力中の値は手元で持つ。
@@ -50,6 +62,21 @@ export function SettingsScreen() {
       brewsToCsv(brews, recipes),
       'text/csv',
     );
+  }
+
+  /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
+  function playPreview(soundId: string) {
+    primeAudio(true, soundId);
+    chime(true, soundId);
+  }
+
+  async function uploadSound(file: File) {
+    if (!file.type.startsWith('audio/')) {
+      setSoundMessage('音声ファイル（mp3 など）を選んでください。');
+      return;
+    }
+    await saveCustomSound(file);
+    setSoundMessage(`${file.name} を合図音にしました。`);
   }
 
   async function doImport(file: File) {
@@ -127,6 +154,66 @@ export function SettingsScreen() {
           label="タイマー音"
           checked={settings.soundEnabled}
           onChange={(soundEnabled) => void saveSettings({ ...settings, soundEnabled })}
+        />
+        <Field label="合図音">
+          <div className="segmented">
+            {CHIME_SOUNDS.map((sound) => (
+              <button
+                key={sound.id}
+                type="button"
+                className={settings.soundId === sound.id ? 'selected' : ''}
+                onClick={() => {
+                  void saveSettings({ ...settings, soundId: sound.id });
+                  playPreview(sound.id);
+                }}
+              >
+                {sound.label}
+              </button>
+            ))}
+            {customSound ? (
+              <button
+                type="button"
+                className={settings.soundId === CUSTOM_SOUND_ID ? 'selected' : ''}
+                onClick={() => {
+                  void saveSettings({ ...settings, soundId: CUSTOM_SOUND_ID });
+                  playPreview(CUSTOM_SOUND_ID);
+                }}
+              >
+                {customSound.name}
+              </button>
+            ) : null}
+          </div>
+        </Field>
+        {soundMessage ? <Banner>{soundMessage}</Banner> : null}
+        <div className="row">
+          <button type="button" onClick={() => soundInput.current?.click()}>
+            mp3 をアップロード
+          </button>
+          <button type="button" onClick={() => playPreview(settings.soundId)}>
+            試聴
+          </button>
+          {customSound ? (
+            <button
+              type="button"
+              onClick={() => {
+                void deleteCustomSound();
+                setSoundMessage('アップロードした音を削除しました。');
+              }}
+            >
+              アップロードした音を削除
+            </button>
+          ) : null}
+        </div>
+        <input
+          ref={soundInput}
+          type="file"
+          accept="audio/mpeg,audio/*,.mp3"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void uploadSound(file);
+            event.target.value = '';
+          }}
         />
       </Card>
 

@@ -9,6 +9,10 @@ const APP_SHELL = [
   `${BASE}manifest.webmanifest`,
   `${BASE}icon.svg`,
   `${BASE}bell.mp3`,
+  `${BASE}chime-desk.mp3`,
+  `${BASE}chime-high.mp3`,
+  `${BASE}chime-low.mp3`,
+  `${BASE}chime-beep.mp3`,
 ];
 
 self.addEventListener('install', (event) => {

@@ -84,6 +84,21 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await db.settings.put(settings);
 }
 
+/** アップロードした合図音を端末内に保存し、選択状態にする。 */
+export async function saveCustomSound(file: File): Promise<void> {
+  await db.sounds.put({ id: 'custom', name: file.name, blob: file });
+  const settings = await getSettings();
+  await saveSettings({ ...settings, soundId: 'custom', customSoundName: file.name });
+}
+
+/** アップロードした合図音を捨て、既定音に戻す。 */
+export async function deleteCustomSound(): Promise<void> {
+  await db.sounds.delete('custom');
+  const settings = await getSettings();
+  const { customSoundName: _dropped, ...rest } = settings;
+  await saveSettings({ ...rest, soundId: DEFAULT_SETTINGS.soundId });
+}
+
 export async function getActiveCompetition(): Promise<Competition> {
   const settings = await getSettings();
   return (await db.competitions.get(settings.activeCompetitionId)) ?? DEFAULT_COMPETITION;
