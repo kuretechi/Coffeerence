@@ -671,49 +671,125 @@ table button {
   font-weight: 700;
 }
 
-.timer-stage-remain {
-  font-size: 13px;
+/* 控えめに残したリング。デッキが主役なので少し小さくする。 */
+.timer-deck-ring {
+  width: min(42vw, 168px);
 }
 
-.timer-next-card {
+.timer-deck-ring .ring-track,
+.timer-deck-ring .ring-value {
+  stroke-width: 8;
+}
+
+.timer-deck-ring .timer-stage-elapsed {
+  font-size: clamp(26px, 8.5vw, 34px);
+}
+
+.timer-deck-ring .timer-stage-headline {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.timer-deck-ring .timer-stage-center {
+  padding: 0 14%;
+  gap: 4px;
+}
+
+/* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
+.timer-deck {
   width: 100%;
+  display: grid;
+  grid-template-areas: 'deck';
+  padding-bottom: 26px;
+  touch-action: pan-y;
+}
+
+.timer-deck-card {
+  grid-area: deck;
   box-sizing: border-box;
   padding: 14px 16px 16px;
   border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
   border-radius: var(--radius-l);
   background: var(--surface-2);
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  transition: transform 0.28s ease, opacity 0.28s ease;
 }
 
-.timer-next-head {
+.timer-deck-card.front {
+  border-left: 4px solid var(--accent);
+  z-index: 3;
+}
+
+/* 手で覗いているだけのカードは差し色を外し、計測中の投と見分ける。 */
+.timer-deck-card.front.peek {
+  border-left-color: var(--line);
+}
+
+.timer-deck-card[data-depth='1'] {
+  transform: translateY(13px) scale(0.965) rotate(-1.2deg);
+  opacity: 0.72;
+  z-index: 2;
+}
+
+.timer-deck-card[data-depth='2'] {
+  transform: translateY(24px) scale(0.93) rotate(1.4deg);
+  opacity: 0.45;
+  z-index: 1;
+}
+
+/* 奥のカードは枠だけを見せて束の厚みを出す。 */
+.timer-deck-card:not(.front) > *:not(.timer-deck-edge) {
+  visibility: hidden;
+}
+
+/* 前面カードの枠に沿って進捗を示す線。 */
+.timer-deck-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transition: transform 0.2s linear;
+}
+
+.timer-deck-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 
-.timer-next-label {
+.timer-deck-label {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent-strong);
 }
 
-.timer-next-at {
+.timer-deck-card:not(.front) .timer-deck-label,
+.timer-deck-card.done .timer-deck-label {
+  color: var(--muted);
+}
+
+.timer-deck-at {
   font-size: 12px;
 }
 
-.timer-next-title {
+.timer-deck-title {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   line-height: 1;
 }
 
-.timer-next-index {
+.timer-deck-index {
   font-size: 40px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -721,19 +797,19 @@ table button {
   color: var(--accent-strong);
 }
 
-.timer-next-grid {
+.timer-deck-grid {
   margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 12px;
 }
 
-.timer-next-grid dt {
+.timer-deck-grid dt {
   font-size: 11px;
   color: var(--muted);
 }
 
-.timer-next-grid dd {
+.timer-deck-grid dd {
   margin: 2px 0 0;
   font-size: 22px;
   font-weight: 700;
@@ -741,47 +817,42 @@ table button {
   font-variant-numeric: tabular-nums;
 }
 
-.timer-next-done {
+.timer-deck-done {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
 }
 
-.timer-queue {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.timer-deck-nav {
   width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.timer-queue li {
-  display: grid;
-  grid-template-columns: 52px 1fr auto;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timer-deck-nav .timer-deck-arrow {
+  flex: 0 0 auto;
+  min-width: 44px;
   min-height: 44px;
-  padding: 6px 12px;
-  box-sizing: border-box;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
   background: transparent;
-  opacity: 0.75;
+  color: var(--muted);
 }
 
-.timer-queue-time {
+.timer-deck-count {
   font-size: 12px;
 }
 
-.timer-queue-main {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.timer-queue-sub {
-  font-size: 12px;
+.timer-deck-nav .timer-deck-back {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg);
 }
 
 .timer-stage-actions {

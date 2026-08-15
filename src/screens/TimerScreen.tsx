@@ -10,6 +10,20 @@ import type { BrewRecord, Pour } from '../domain/types';
 
 const RING_R = 132;
 const RING_C = 2 * Math.PI * RING_R;
+/** デッキで背面に覗かせる枚数。これより奥のカードは描かない。 */
+const DECK_PEEK = 2;
+/** スワイプと見なす横移動量(px)。 */
+const SWIPE_PX = 40;
+
+/** デッキ1枚ぶんの表示内容。注湯の投と、落ち切りの終了札を同じ形で扱う。 */
+interface DeckCard {
+  key: string;
+  startSec: number;
+  index?: number;
+  waterG?: number;
+  targetG?: number;
+  tempC?: number;
+}
 
 export function TimerScreen() {
   const recipes = useRecipes();
@@ -86,12 +100,38 @@ export function TimerScreen() {
     ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
     : `まもなく 1投目`;
 
-  // 大カードは「いま注ぐ投」を映す。開始前は1投目、注ぎ終えたら終了の案内に切り替える。
-  const focus = progress.current ?? pours[0];
-  const focusIndex = pours.findIndex((pour) => pour.index === focus?.index);
-  const focusWaterG = focusIndex < 0 ? 0 : steps[focusIndex]?.waterG ?? 0;
-  const upcoming = focusIndex < 0 ? [] : pours.slice(focusIndex + 1);
-  const focusDone = finished || (progress.current !== undefined && progress.next === undefined);
+  // 投カードに落ち切りの終了札を足したものがデッキ。並びはそのまま時系列。
+  const deck: DeckCard[] = pours.map((pour, position) => ({
+    key: `pour-${pour.index}`,
+    startSec: pour.startSec,
+    index: pour.index,
+    waterG: steps[position]?.waterG ?? 0,
+    targetG: pour.targetG,
+    tempC: tempOf(pour),
+  }));
+  if (finishSec !== undefined) deck.push({ key: 'finish', startSec: finishSec });
+
+  // 前面に来るのは「いま注ぐ投」。注ぎ切ったら終了札が前面に出る。
+  const focusIndex = progress.current
+    ? pours.findIndex((pour) => pour.index === progress.current?.index)
+    : 0;
+  const poured = progress.current !== undefined && progress.next === undefined;
+  const activeIndex =
+    deck.length === 0 ? 0 : finishSec !== undefined && (finished || poured) ? deck.length - 1 : Math.max(focusIndex, 0);
+
+  // 手前/奥を手で覗くためのずれ。計測が次の投に進んだら自動で解除する。
+  const [peek, setPeek] = useState(0);
+  useEffect(() => {
+    setPeek(0);
+  }, [activeIndex]);
+  const viewIndex = Math.min(Math.max(activeIndex + peek, 0), Math.max(deck.length - 1, 0));
+  const peeking = viewIndex !== activeIndex;
+  const touchX = useRef<number | undefined>(undefined);
+
+  function movePeek(delta: number) {
+    const next = Math.min(Math.max(viewIndex + delta, 0), Math.max(deck.length - 1, 0));
+    setPeek(next - activeIndex);
+  }
 
   return (
     <div className="timer-stage">
@@ -112,7 +152,7 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-stage-ring">
+      <div className="timer-stage-ring timer-deck-ring">
         <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
           <circle className="ring-track" cx="150" cy="150" r={RING_R} />
           <circle
@@ -128,84 +168,134 @@ export function TimerScreen() {
         <div className="timer-stage-center">
           <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
           <span className="timer-stage-headline">{headline}</span>
-          {pours.length > 0 ? null : (
-            <span className="timer-stage-remain muted">
-              {finished
-                ? '抽出終了です'
-                : finishSec === undefined
-                ? '注湯完了'
-                : `抽出終了まで ${formatSeconds(remainSec)}`}
-            </span>
-          )}
         </div>
       </div>
 
-      {pours.length === 0 ? (
-        recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
-      ) : (
-        <>
-          {focus === undefined ? null : (
-            <section className="timer-next-card" aria-live="polite">
-              <header className="timer-next-head">
-                <span className="timer-next-label">{focusDone ? 'このあと' : 'いま注ぐ'}</span>
-                <span className="timer-next-at mono muted">{formatSeconds(focus.startSec)}〜</span>
-              </header>
-              {focusDone ? (
-                <p className="timer-next-done">
-                  {finished
-                    ? '抽出終了です。ドリッパーを外してください。'
-                    : finishSec === undefined
-                    ? '注湯は完了です。落ち切りを待ちます。'
-                    : `落ち切りまで あと ${formatSeconds(remainSec)}`}
-                </p>
-              ) : (
-                <>
-                  <p className="timer-next-title">
-                    <strong className="timer-next-index">{focus.index}</strong>投目
-                  </p>
-                  <dl className="timer-next-grid">
-                    <div>
-                      <dt>この投</dt>
-                      <dd className="mono">{focusWaterG}g</dd>
-                    </div>
-                    <div>
-                      <dt>累計まで</dt>
-                      <dd className="mono">{focus.targetG}g</dd>
-                    </div>
-                    <div>
-                      <dt>湯温</dt>
-                      <dd className="mono">{tempOf(focus)}℃</dd>
-                    </div>
-                    <div>
-                      <dt>{progress.next ? '次まで' : '終了まで'}</dt>
-                      <dd className="mono">{formatSeconds(remainSec)}</dd>
-                    </div>
-                  </dl>
-                </>
-              )}
-            </section>
-          )}
+      {recipe && pours.length === 0 ? (
+        <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
+      ) : null}
 
-          {upcoming.length === 0 && (finishSec === undefined || finished) ? null : (
-            <ol className="timer-queue">
-              {upcoming.map((pour) => (
-                <li key={pour.index}>
-                  <span className="timer-queue-time mono muted">{formatSeconds(pour.startSec)}</span>
-                  <span className="timer-queue-main">{pour.index}投目</span>
-                  <span className="timer-queue-sub mono muted">
-                    {steps[pours.findIndex((item) => item.index === pour.index)]?.waterG ?? 0}g / {tempOf(pour)}℃
-                  </span>
-                </li>
-              ))}
-              {finishSec === undefined || finished ? null : (
-                <li>
-                  <span className="timer-queue-time mono muted">{formatSeconds(finishSec)}</span>
-                  <span className="timer-queue-main">終了</span>
-                  <span className="timer-queue-sub mono muted">落ち切り</span>
-                </li>
+      {deck.length === 0 ? null : (
+        <>
+          <div
+            className="timer-deck"
+            onTouchStart={(event) => {
+              touchX.current = event.touches[0]?.clientX;
+            }}
+            onTouchEnd={(event) => {
+              const from = touchX.current;
+              const to = event.changedTouches[0]?.clientX;
+              touchX.current = undefined;
+              if (from === undefined || to === undefined) return;
+              if (Math.abs(to - from) < SWIPE_PX) return;
+              movePeek(to > from ? -1 : 1);
+            }}
+          >
+            {deck.map((card, position) => {
+              const depth = position - viewIndex;
+              if (depth < 0 || depth > DECK_PEEK) return null;
+              const front = depth === 0;
+              const isActive = position === activeIndex;
+              const done = position < activeIndex;
+              return (
+                <article
+                  key={card.key}
+                  className={`timer-deck-card${front ? ' front' : ''}${done ? ' done' : ''}${
+                    front && !isActive ? ' peek' : ''
+                  }`}
+                  data-depth={depth}
+                  aria-hidden={front ? undefined : true}
+                  aria-live={front ? 'polite' : undefined}
+                >
+                  {front ? (
+                    <span
+                      className="timer-deck-edge"
+                      style={{ transform: `scaleX(${isActive ? ratio : 0})` }}
+                    />
+                  ) : null}
+                  <header className="timer-deck-head">
+                    <span className="timer-deck-label">
+                      {isActive
+                        ? card.index === undefined
+                          ? finished
+                            ? '抽出終了'
+                            : '落ち切り'
+                          : 'いま注ぐ'
+                        : done
+                        ? '注ぎ終えた'
+                        : 'このあと'}
+                    </span>
+                    <span className="timer-deck-at mono muted">{formatSeconds(card.startSec)}〜</span>
+                  </header>
+                  {card.index === undefined ? (
+                    <p className="timer-deck-done">
+                      {finished
+                        ? '抽出終了です。ドリッパーを外してください。'
+                        : isActive
+                        ? `落ち切りまで あと ${formatSeconds(remainSec)}`
+                        : '落ち切りを待ちます。'}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="timer-deck-title">
+                        <strong className="timer-deck-index">{card.index}</strong>投目
+                      </p>
+                      <dl className="timer-deck-grid">
+                        <div>
+                          <dt>この投</dt>
+                          <dd className="mono">{card.waterG}g</dd>
+                        </div>
+                        <div>
+                          <dt>累計まで</dt>
+                          <dd className="mono">{card.targetG}g</dd>
+                        </div>
+                        <div>
+                          <dt>湯温</dt>
+                          <dd className="mono">{card.tempC}℃</dd>
+                        </div>
+                        <div>
+                          <dt>{isActive ? (progress.next ? '次まで' : '終了まで') : '開始'}</dt>
+                          <dd className="mono">
+                            {isActive ? formatSeconds(remainSec) : formatSeconds(card.startSec)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="timer-deck-nav">
+            <button
+              type="button"
+              className="timer-deck-arrow"
+              aria-label="1枚前を見る"
+              disabled={viewIndex === 0}
+              onClick={() => movePeek(-1)}
+            >
+              ‹
+            </button>
+            <span className="timer-deck-count mono muted">
+              {peeking ? (
+                <button type="button" className="timer-deck-back" onClick={() => setPeek(0)}>
+                  いまに戻る
+                </button>
+              ) : (
+                `${viewIndex + 1} / ${deck.length}`
               )}
-            </ol>
-          )}
+            </span>
+            <button
+              type="button"
+              className="timer-deck-arrow"
+              aria-label="1枚先を見る"
+              disabled={viewIndex >= deck.length - 1}
+              onClick={() => movePeek(1)}
+            >
+              ›
+            </button>
+          </div>
         </>
       )}
 
