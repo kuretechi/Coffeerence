@@ -102,14 +102,12 @@ export function TimerScreen() {
   }
 
   const headline = finished
-    ? '抽出終了'
+    ? '終了'
     : pours.length === 0
-    ? '注湯の内訳なし'
-    : !stopwatch.running && stopwatch.elapsed === 0
-    ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
+    ? ''
     : progress.current
-    ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
-    : `まもなく 1投目`;
+    ? `${progress.current.index}投目 ${progress.current.targetG}g`
+    : `1投目 ${pours[0]?.targetG ?? 0}g`;
 
   // 投カードに落ち切りの終了札を足したものがデッキ。並びはそのまま時系列。
   const deck: DeckCard[] = pours.map((pour, position) => ({
@@ -226,25 +224,21 @@ export function TimerScreen() {
                   ) : null}
                   <header className="timer-deck-head">
                     <span className="timer-deck-label">
-                      {isActive
-                        ? card.index === undefined
-                          ? finished
-                            ? '抽出終了'
-                            : '落ち切り'
-                          : 'いま注ぐ'
+                      {card.index === undefined
+                        ? finished
+                          ? '終了'
+                          : '落ち切り'
                         : done
-                        ? '注ぎ終えた'
-                        : 'このあと'}
+                        ? '済'
+                        : isActive
+                        ? ''
+                        : '予定'}
                     </span>
                     <span className="timer-deck-at mono muted">{formatSeconds(card.startSec)}〜</span>
                   </header>
                   {card.index === undefined ? (
-                    <p className="timer-deck-done">
-                      {finished
-                        ? '抽出終了です。ドリッパーを外してください。'
-                        : isActive
-                        ? `落ち切りまで あと ${formatSeconds(remainSec)}`
-                        : '落ち切りを待ちます。'}
+                    <p className="timer-deck-done mono">
+                      {finished ? formatSeconds(card.startSec) : formatSeconds(isActive ? remainSec : card.startSec)}
                     </p>
                   ) : (
                     <>
@@ -291,7 +285,7 @@ export function TimerScreen() {
             <span className="timer-deck-count mono muted">
               {peeking ? (
                 <button type="button" className="timer-deck-back" onClick={() => setPeek(0)}>
-                  いまに戻る
+                  現在
                 </button>
               ) : (
                 `${viewIndex + 1} / ${deck.length}`
