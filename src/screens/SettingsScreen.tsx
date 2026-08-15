@@ -296,6 +296,55 @@ function GearCard({
   );
 }
 
+/** 白鍵（ド〜次のド）。値は基準からの半音差。 */
+const WHITE_KEYS: { semitone: number; label: string }[] = [
+  { semitone: 0, label: 'ド' },
+  { semitone: 2, label: 'レ' },
+  { semitone: 4, label: 'ミ' },
+  { semitone: 5, label: 'ファ' },
+  { semitone: 7, label: 'ソ' },
+  { semitone: 9, label: 'ラ' },
+  { semitone: 11, label: 'シ' },
+  { semitone: 12, label: 'ド' },
+];
+
+/** 黒鍵。after は左隣の白鍵の位置。 */
+const BLACK_KEYS: { semitone: number; after: number }[] = [
+  { semitone: 1, after: 0 },
+  { semitone: 3, after: 1 },
+  { semitone: 6, after: 3 },
+  { semitone: 8, after: 4 },
+  { semitone: 10, after: 5 },
+];
+
+/** 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。 */
+function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
+  return (
+    <div className="keyboard">
+      {WHITE_KEYS.map((key, index) => (
+        <button
+          key={`white-${index}`}
+          type="button"
+          className="keyboard-key"
+          onPointerDown={() => onPlay(key.semitone)}
+        >
+          {key.label}
+        </button>
+      ))}
+      {BLACK_KEYS.map((key) => (
+        <button
+          key={`black-${key.semitone}`}
+          type="button"
+          className="keyboard-key black"
+          style={{ left: `${((key.after + 1) * 100) / WHITE_KEYS.length}%` }}
+          onPointerDown={() => onPlay(key.semitone)}
+          aria-label={`${key.semitone} 半音上`}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
  * 合図音の選択。内蔵音に加えて、この置き場にアップロードした音を選べる。
  * sameLabel を渡すと「未選択＝別の音を使わない」も選べる。
@@ -415,6 +464,9 @@ function SoundPicker({
           value={pitch}
           onChange={(event) => changePitch(Number(event.target.value))}
         />
+      </Field>
+      <Field label={`${label}の鍵盤`}>
+        <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
       </Field>
       <Field label={`${label}の効果`}>
         <div className="segmented">
