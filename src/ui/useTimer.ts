@@ -91,11 +91,32 @@ function audioContext(): AudioContext | undefined {
   return sharedContext;
 }
 
+/** 同梱のベル音。オフラインでも鳴るよう静的アセットとして持つ。 */
+const BELL_URL = `${import.meta.env.BASE_URL}bell.mp3`;
+
+let bellBuffer: AudioBuffer | undefined;
+let bellLoad: Promise<void> | undefined;
+
+/** ベル音を一度だけ読み込む。失敗した場合は合成音にそのまま落とす。 */
+function loadBell(ctx: AudioContext): Promise<void> {
+  bellLoad ??= fetch(BELL_URL)
+    .then((response) => response.arrayBuffer())
+    .then((data) => ctx.decodeAudioData(data))
+    .then((buffer) => {
+      bellBuffer = buffer;
+    })
+    .catch(() => {
+      /* 読み込めない場合は合成音で鳴らす */
+    });
+  return bellLoad;
+}
+
 /** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
 export function primeAudio(enabled: boolean): void {
   if (!enabled) return;
   try {
-    audioContext();
+    const ctx = audioContext();
+    if (ctx) void loadBell(ctx);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
@@ -136,12 +157,9 @@ function strike(ctx: AudioContext, destination: AudioNode, frequency: number, no
   source.stop(now + 0.02);
 }
 
-/** 「チーン」と一度鳴らす合図（音声ファイル不要）。 */
-export function chime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
-  if (!enabled) return;
+/** ベル音が読み込めない環境向けの合成音。 */
+function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): void {
   try {
-    const ctx = audioContext();
-    if (!ctx) return;
     const now = ctx.currentTime;
     const seconds = durationMs / 1000;
     // 高域の刺さりを抑えて、器を叩いたような丸い響きにする。
@@ -172,11 +190,34 @@ export function chime(enabled: boolean, frequency = 1244, durationMs = 2200): vo
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
+}
+
+/** 同梱のベル音を一度鳴らす合図。 */
+export function chime(enabled: boolean): void {
+  if (!enabled) return;
+  try {
+    const ctx = audioContext();
+    if (ctx) {
+      void loadBell(ctx).then(() => {
+        if (!bellBuffer) {
+          synthChime(ctx);
+          return;
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = bellBuffer;
+        source.connect(ctx.destination);
+        source.start();
+      });
+    }
+  } catch {
+    /* 音が出せない環境では黙って続行する */
+  }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
 }
 
-/** 「チーン、チーン」と2回鳴らす合図。 */
-export function doubleChime(enabled: boolean, frequency = 1244, durationMs = 2200): void {
-  chime(enabled, frequency, durationMs);
-  window.setTimeout(() => chime(enabled, frequency, durationMs), 420);
+/** ベル音を2回鳴らす合図。2打目は1打目が鳴り終わってから重ねる。 */
+export function doubleChime(enabled: boolean): void {
+  chime(enabled);
+  const gap = bellBuffer ? Math.min(bellBuffer.duration, 1.2) * 1000 : 420;
+  window.setTimeout(() => chime(enabled), gap);
 }
