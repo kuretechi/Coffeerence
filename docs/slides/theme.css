@@ -1,0 +1,152 @@
+/* @theme coffeerence */
+/* アプリの既定テーマ（焙煎色の暗い地に橙のアクセント）に合わせたスライド見た目。 */
+
+@import 'default';
+
+:root {
+  --bg: #17100c;
+  --surface: #221812;
+  --line: #3d2e24;
+  --text: #f3e9e1;
+  --muted: #b09b8b;
+  --accent: #e8a45c;
+  --ok: #7fbf7f;
+  --danger: #e2735f;
+}
+
+section {
+  width: 1280px;
+  height: 720px;
+  padding: 56px 64px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', 'IPAPGothic', system-ui, sans-serif;
+  font-size: 26px;
+  line-height: 1.55;
+  display: flex;
+  flex-flow: column nowrap;
+  align-content: safe start;
+  justify-content: flex-start;
+}
+
+section::after {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+h1 {
+  font-size: 48px;
+  color: var(--text);
+  margin: 0 0 8px;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 12px;
+}
+
+h2 {
+  font-size: 38px;
+  color: var(--accent);
+  margin: 0 0 24px;
+}
+
+h3 {
+  font-size: 28px;
+  color: var(--accent);
+  margin: 24px 0 8px;
+}
+
+strong {
+  color: var(--accent);
+}
+
+h1 strong,
+h2 strong,
+h3 strong {
+  color: var(--text);
+}
+
+em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+ul,
+ol {
+  margin: 0;
+}
+
+li {
+  margin-bottom: 10px;
+}
+
+code {
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9em;
+}
+
+table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 24px;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  text-align: left;
+  background: transparent;
+  color: var(--text);
+}
+
+th {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+tbody tr {
+  background: transparent;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--surface);
+}
+
+blockquote {
+  margin: 28px 0 0;
+  border-left: 6px solid var(--accent);
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 26px;
+}
+
+/* 表題スライド。 */
+section.title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+section.title h1 {
+  font-size: 68px;
+  border: none;
+}
+
+section.title p {
+  color: var(--muted);
+  font-size: 30px;
+}
+
+/* 一言だけ大きく置くスライド。 */
+section.statement {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+section.statement h2 {
+  font-size: 52px;
+  line-height: 1.4;
+}

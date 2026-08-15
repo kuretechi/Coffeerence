@@ -9,7 +9,11 @@
     "lint": "oxlint",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "slides": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --preview",
+    "slides:watch": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --watch -o docs/slides/dist/coffeerence.html",
+    "slides:pdf": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --pdf --allow-local-files -o docs/slides/dist/coffeerence.pdf",
+    "slides:png": "marp docs/slides/coffeerence.md --theme docs/slides/theme.css --images png --allow-local-files -o docs/slides/dist/coffeerence.png"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.2",
@@ -20,6 +24,7 @@
     "react-router-dom": "^7.1.5"
   },
   "devDependencies": {
+    "@marp-team/marp-cli": "^4.5.0",
     "@types/node": "^22.13.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

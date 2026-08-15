@@ -67,6 +67,22 @@ npm run build      # 本番ビルド
 - 設定手順（プロジェクト作成・鍵・公開ビルド）: [docs/supabase-setup.md](docs/supabase-setup.md)
 - 読むのは誰でも、書く・消すのは本人の行だけ（サーバー側でも強制）。投稿は必ず自動判定を通る。
 
+## 発表スライド
+
+Marp（Markdown）で書いています。1スライド1テーマ、発表 8 分（うちライブデモ 2 分）+ 質疑 2 分の全10枚。
+持ち時間と話す順はスピーカーノート（各スライド末尾の HTML コメント）に入れています。
+
+- 原稿: [docs/slides/coffeerence.md](docs/slides/coffeerence.md) / 見た目: `docs/slides/theme.css`
+
+```sh
+npm run slides       # ブラウザでプレビュー
+npm run slides:watch # HTML を書き出して自動更新
+npm run slides:pdf   # docs/slides/dist/coffeerence.pdf
+npm run slides:png   # 1枚ずつ PNG
+```
+
+VS Code なら拡張「Marp for VS Code」でそのままプレビューできます。
+
 ## スコープ外（v1）
 
 豆のEC・焙煎プロファイル管理・大会運営・BLEスケール連携・練習データのクラウド同期。
