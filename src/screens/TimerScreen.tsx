@@ -101,12 +101,12 @@ export function TimerScreen() {
           <div className="pour-guide">
             <p className="pour-now">
               {finished
-                ? `抽出終了（${formatSeconds(finishSec ?? 0)}）`
+                ? '抽出終了'
                 : !stopwatch.running && stopwatch.elapsed === 0
-                ? `開始したら 1投目 累計${pours[0]?.targetG ?? 0}gまで（${tempOf(pours[0])}℃）`
+                ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
                 : progress.current
-                ? `${progress.current.index}投目 累計${progress.current.targetG}g まで注いでください（この回 ${steps[progress.current.index - 1]?.waterG ?? 0}g・${tempOf(progress.current)}℃）`
-                : `${formatSeconds(progress.untilNextSec)} 後に 1投目を開始`}
+                ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
+                : `${formatSeconds(progress.untilNextSec)} 後に 1投目`}
             </p>
             <p className="pour-next muted">
               {finished

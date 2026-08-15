@@ -36,6 +36,21 @@ function presetPours(defaults: RecipeDefaults): DraftPour[] {
   ];
 }
 
+/** 既存レシピを編集フォームの下書きに変換する。 */
+const draftOf = (recipe: Recipe): Draft => ({
+  name: recipe.name,
+  grindSetting: recipe.grindSetting,
+  doseG: recipe.doseG,
+  waterTempC: recipe.waterTempC,
+  brewer: recipe.brewer,
+  pours: recipe.pours.map((pour) => ({
+    targetG: pour.targetG,
+    atSec: pour.startSec,
+    waterTempC: pour.waterTempC ?? recipe.waterTempC,
+  })),
+  finishSec: recipe.finishSec,
+});
+
 const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   name: '',
   grindSetting: defaults.grindSetting,
@@ -51,6 +66,8 @@ export function RecipeScreen() {
   const beans = useBeans();
   const defaults = useSettings().recipeDefaults;
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
+  const [editingId, setEditingId] = useState<string | undefined>(undefined);
+  const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
   useEffect(() => {
@@ -100,10 +117,21 @@ export function RecipeScreen() {
     setDraft({ ...draft, pours: draft.pours.filter((_, i) => i !== index) });
   }
 
+  function startEdit(recipe: Recipe) {
+    setEditingId(recipe.id);
+    setDraft(draftOf(recipe));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelEdit() {
+    setEditingId(undefined);
+    setDraft(emptyDraft(defaults));
+  }
+
   async function add() {
     if (!canSave) return;
     const recipe: Recipe = {
-      id: uid('recipe'),
+      id: editingId ?? uid('recipe'),
       name: draft.name.trim(),
       beanId,
       doseG: draft.doseG ?? 0,
@@ -121,15 +149,19 @@ export function RecipeScreen() {
         waterTempC: pour.waterTempC ?? draft.waterTempC,
       })),
       finishSec: draft.finishSec,
-      createdAt: new Date().toISOString(),
+      createdAt: editing?.createdAt ?? new Date().toISOString(),
     };
     await saveRecipe(recipe);
+    setEditingId(undefined);
     setDraft(emptyDraft(defaults));
   }
 
   return (
     <>
-      <Card title="レシピ登録" hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。">
+      <Card
+        title={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
+        hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。"
+      >
         <div className="stack">
           <Field label="レシピ名">
             <input
@@ -219,9 +251,16 @@ export function RecipeScreen() {
             value={draft.finishSec}
             onChange={(finishSec) => setDraft({ ...draft, finishSec })}
           />
-          <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
-            レシピを登録
-          </button>
+          <div className="row">
+            <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
+              {editing ? 'レシピを更新' : 'レシピを登録'}
+            </button>
+            {editing ? (
+              <button type="button" onClick={cancelEdit}>
+                編集をやめる
+              </button>
+            ) : null}
+          </div>
         </div>
       </Card>
 
@@ -258,9 +297,21 @@ export function RecipeScreen() {
                   </td>
                   <td className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</td>
                   <td>
-                    <button className="danger" type="button" onClick={() => void deleteRecipe(recipe.id)}>
-                      削除
-                    </button>
+                    <div className="row">
+                      <button type="button" onClick={() => startEdit(recipe)}>
+                        編集
+                      </button>
+                      <button
+                        className="danger"
+                        type="button"
+                        onClick={() => {
+                          if (recipe.id === editingId) cancelEdit();
+                          void deleteRecipe(recipe.id);
+                        }}
+                      >
+                        削除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
