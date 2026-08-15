@@ -601,201 +601,171 @@ table button {
   font-weight: 700;
 }
 
-/* 進捗リングと「いま注ぐ投」の大カードを組み合わせたタイマー画面。 */
-.timer-stage {
+/* 「いま注ぐ量」を主役に据えた縦積みのタイマー画面（案J）。 */
+.timer-focus {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-.timer-stage-recipe {
+.timer-focus-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.timer-focus-recipe {
+  flex: 1 1 auto;
+  min-width: 0;
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
-  padding: 4px 8px;
+  padding: 4px 2px;
   font-size: 15px;
   color: var(--muted);
-  text-align: center;
 }
 
-.timer-stage-ring {
-  position: relative;
-  width: min(56vw, 232px);
-  aspect-ratio: 1;
-}
-
-.timer-stage-ring svg {
-  width: 100%;
-  height: 100%;
-}
-
-.ring-track,
-.ring-value {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.ring-track {
-  stroke: var(--line);
-}
-
-.ring-value {
-  stroke: var(--accent);
-  transition: stroke-dashoffset 0.2s linear;
-}
-
-.timer-stage-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
-  padding: 0 18%;
-}
-
-.timer-stage-elapsed {
-  font-size: clamp(32px, 11vw, 48px);
+.timer-focus-elapsed {
+  flex: 0 0 auto;
+  font-size: 24px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--accent-strong);
 }
 
-.timer-stage-headline {
-  font-size: 17px;
-  font-weight: 700;
+.timer-focus-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
 }
 
-.timer-stage-remain {
-  font-size: 13px;
+.timer-focus-bar-value {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
 }
 
-.timer-next-card {
-  width: 100%;
+.timer-focus-card {
   box-sizing: border-box;
-  padding: 14px 16px 16px;
+  min-height: 46vh;
+  padding: 16px;
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);
   border-radius: var(--radius-l);
   background: var(--surface-2);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
 }
 
-.timer-next-head {
+.timer-focus-card.done {
+  border-left-color: var(--muted);
+}
+
+.timer-focus-step {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent-strong);
+}
+
+.timer-focus-amount {
+  margin: 0;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.timer-next-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--accent-strong);
-}
-
-.timer-next-at {
-  font-size: 12px;
-}
-
-.timer-next-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
+  justify-content: center;
+  gap: 4px;
   line-height: 1;
 }
 
-.timer-next-index {
-  font-size: 40px;
-  line-height: 1;
+.timer-focus-amount strong {
+  font-size: clamp(72px, 30vw, 120px);
+  line-height: 0.9;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  margin-right: 4px;
-  color: var(--accent-strong);
 }
 
-.timer-next-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
-}
-
-.timer-next-grid dt {
-  font-size: 11px;
+.timer-focus-unit {
+  font-size: 28px;
+  font-weight: 700;
   color: var(--muted);
 }
 
-.timer-next-grid dd {
-  margin: 2px 0 0;
-  font-size: 22px;
+.timer-focus-scale {
+  margin: 0;
+  font-size: 15px;
+}
+
+.timer-focus-countdown {
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
-  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.timer-next-done {
+.timer-focus-done {
   margin: 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
 }
 
-.timer-queue {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.timer-queue li {
+.timer-focus-preview {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: 24px 1fr auto;
   align-items: center;
   gap: 10px;
   min-height: 44px;
   padding: 6px 12px;
   box-sizing: border-box;
-  border: 1px solid var(--line);
+  border: 1px dashed var(--line);
   border-radius: var(--radius-m);
-  background: transparent;
-  opacity: 0.75;
+  opacity: 0.7;
 }
 
-.timer-queue-time {
+.timer-focus-preview-label {
   font-size: 12px;
-}
-
-.timer-queue-main {
-  font-size: 14px;
   font-weight: 700;
 }
 
-.timer-queue-sub {
+.timer-focus-preview-main {
+  font-size: 15px;
+}
+
+.timer-focus-preview-main strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-focus-preview-sub {
   font-size: 12px;
 }
 
-.timer-stage-actions {
+.timer-focus-rest {
+  margin: 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.timer-focus-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  width: 100%;
 }
 
-.timer-stage-actions button {
+.timer-focus-actions button {
   flex: 1 1 40%;
+  min-height: 44px;
 }
 
-.timer-stage-actions .timer-stage-main {
+.timer-focus-actions .timer-focus-main {
   flex: 1 1 100%;
   min-height: 56px;
   font-size: 17px;

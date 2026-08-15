@@ -8,9 +8,6 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-const RING_R = 132;
-const RING_C = 2 * Math.PI * RING_R;
-
 export function TimerScreen() {
   const recipes = useRecipes();
   const settings = useSettings();
@@ -27,7 +24,7 @@ export function TimerScreen() {
   const finishSec = recipe?.finishSec;
   const finished = finishSec !== undefined && stopwatch.elapsed >= finishSec;
 
-  // リングは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
+  // 進捗バーは「次の合図まで」の進みを表す。次がなければ抽出終了までを使う。
   const segmentStart = progress.current?.startSec ?? 0;
   const segmentEnd = progress.next?.startSec ?? finishSec ?? segmentStart;
   const segmentLength = Math.max(segmentEnd - segmentStart, 1);
@@ -76,146 +73,110 @@ export function TimerScreen() {
     navigate('/log');
   }
 
-  const headline = finished
-    ? '抽出終了'
-    : pours.length === 0
-    ? '注湯の内訳なし'
-    : !stopwatch.running && stopwatch.elapsed === 0
-    ? `1投目 ${pours[0]?.targetG ?? 0}gまで`
-    : progress.current
-    ? `${progress.current.index}投目 ${progress.current.targetG}gまで`
-    : `まもなく 1投目`;
-
-  // 大カードは「いま注ぐ投」を映す。開始前は1投目、注ぎ終えたら終了の案内に切り替える。
+  // 主役のカードは「いま注ぐ投」。開始前は1投目、注ぎ終えたら終了の案内に切り替える。
   const focus = progress.current ?? pours[0];
   const focusIndex = pours.findIndex((pour) => pour.index === focus?.index);
   const focusWaterG = focusIndex < 0 ? 0 : steps[focusIndex]?.waterG ?? 0;
-  const upcoming = focusIndex < 0 ? [] : pours.slice(focusIndex + 1);
   const focusDone = finished || (progress.current !== undefined && progress.next === undefined);
+  const preview = focusIndex < 0 ? undefined : pours[focusIndex + 1];
+  const previewWaterG = focusIndex < 0 ? 0 : steps[focusIndex + 1]?.waterG ?? 0;
+  const restCount = focusIndex < 0 ? 0 : Math.max(pours.length - focusIndex - 2, 0);
 
   return (
-    <div className="timer-stage">
-      {recipes.length === 0 ? (
-        <Banner>先にレシピを登録してください。</Banner>
-      ) : (
-        <select
-          className="timer-stage-recipe"
-          aria-label="レシピ"
-          value={selectedId}
-          onChange={(event) => setRecipeId(event.target.value)}
-        >
-          {recipes.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-      )}
+    <div className="timer-focus">
+      <header className="timer-focus-top">
+        {recipes.length === 0 ? (
+          <span className="timer-focus-recipe muted">レシピ未登録</span>
+        ) : (
+          <select
+            className="timer-focus-recipe"
+            aria-label="レシピ"
+            value={selectedId}
+            onChange={(event) => setRecipeId(event.target.value)}
+          >
+            {recipes.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <span className="timer-focus-elapsed mono" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
+          {formatSeconds(stopwatch.elapsed)}
+        </span>
+      </header>
 
-      <div className="timer-stage-ring">
-        <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
-          <circle className="ring-track" cx="150" cy="150" r={RING_R} />
-          <circle
-            className="ring-value"
-            cx="150"
-            cy="150"
-            r={RING_R}
-            strokeDasharray={RING_C}
-            strokeDashoffset={RING_C * (1 - ratio)}
-            transform="rotate(-90 150 150)"
-          />
-        </svg>
-        <div className="timer-stage-center">
-          <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
-          <span className="timer-stage-headline">{headline}</span>
-          {pours.length > 0 ? null : (
-            <span className="timer-stage-remain muted">
-              {finished
-                ? '抽出終了です'
-                : finishSec === undefined
-                ? '注湯完了'
-                : `抽出終了まで ${formatSeconds(remainSec)}`}
-            </span>
-          )}
-        </div>
+      <div
+        className="timer-focus-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(ratio * 100)}
+      >
+        <span className="timer-focus-bar-value" style={{ width: `${ratio * 100}%` }} />
       </div>
 
+      {recipes.length === 0 ? <Banner>先にレシピを登録してください。</Banner> : null}
+
       {pours.length === 0 ? (
-        recipe ? <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner> : null
+        recipe ? (
+          <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
+        ) : null
       ) : (
         <>
           {focus === undefined ? null : (
-            <section className="timer-next-card" aria-live="polite">
-              <header className="timer-next-head">
-                <span className="timer-next-label">{focusDone ? 'このあと' : 'いま注ぐ'}</span>
-                <span className="timer-next-at mono muted">{formatSeconds(focus.startSec)}〜</span>
-              </header>
+            <section className={`timer-focus-card${focusDone ? ' done' : ''}`} aria-live="polite">
               {focusDone ? (
-                <p className="timer-next-done">
-                  {finished
-                    ? '抽出終了です。ドリッパーを外してください。'
-                    : finishSec === undefined
-                    ? '注湯は完了です。落ち切りを待ちます。'
-                    : `落ち切りまで あと ${formatSeconds(remainSec)}`}
-                </p>
+                <>
+                  <span className="timer-focus-step">{finished ? '抽出終了' : '注湯完了'}</span>
+                  <p className="timer-focus-done">
+                    {finished ? 'ドリッパーを外してください。' : '落ち切りを待ちます。'}
+                  </p>
+                  {finished || finishSec === undefined ? null : (
+                    <p className="timer-focus-countdown mono">終了まで {formatSeconds(remainSec)}</p>
+                  )}
+                </>
               ) : (
                 <>
-                  <p className="timer-next-title">
-                    <strong className="timer-next-index">{focus.index}</strong>投目
+                  <span className="timer-focus-step">{focus.index}投目</span>
+                  <p className="timer-focus-amount">
+                    <strong className="mono">{focusWaterG}</strong>
+                    <span className="timer-focus-unit">g</span>
                   </p>
-                  <dl className="timer-next-grid">
-                    <div>
-                      <dt>この投</dt>
-                      <dd className="mono">{focusWaterG}g</dd>
-                    </div>
-                    <div>
-                      <dt>累計まで</dt>
-                      <dd className="mono">{focus.targetG}g</dd>
-                    </div>
-                    <div>
-                      <dt>湯温</dt>
-                      <dd className="mono">{tempOf(focus)}℃</dd>
-                    </div>
-                    <div>
-                      <dt>{progress.next ? '次まで' : '終了まで'}</dt>
-                      <dd className="mono">{formatSeconds(remainSec)}</dd>
-                    </div>
-                  </dl>
+                  <p className="timer-focus-scale mono muted">スケール {focus.targetG}g まで</p>
+                  <p className="timer-focus-countdown mono">
+                    {progress.next ? '次まで' : '終了まで'} {formatSeconds(remainSec)} ・ {tempOf(focus)}℃
+                  </p>
                 </>
               )}
             </section>
           )}
 
-          {upcoming.length === 0 && (finishSec === undefined || finished) ? null : (
-            <ol className="timer-queue">
-              {upcoming.map((pour) => (
-                <li key={pour.index}>
-                  <span className="timer-queue-time mono muted">{formatSeconds(pour.startSec)}</span>
-                  <span className="timer-queue-main">{pour.index}投目</span>
-                  <span className="timer-queue-sub mono muted">
-                    {steps[pours.findIndex((item) => item.index === pour.index)]?.waterG ?? 0}g / {tempOf(pour)}℃
-                  </span>
-                </li>
-              ))}
-              {finishSec === undefined || finished ? null : (
-                <li>
-                  <span className="timer-queue-time mono muted">{formatSeconds(finishSec)}</span>
-                  <span className="timer-queue-main">終了</span>
-                  <span className="timer-queue-sub mono muted">落ち切り</span>
-                </li>
-              )}
-            </ol>
+          {preview === undefined ? null : (
+            <section className="timer-focus-preview">
+              <span className="timer-focus-preview-label muted">次</span>
+              <span className="timer-focus-preview-main">
+                {preview.index}投目 <strong className="mono">{previewWaterG}g</strong>
+              </span>
+              <span className="timer-focus-preview-sub mono muted">
+                {formatSeconds(preview.startSec)}〜 / {preview.targetG}g
+              </span>
+            </section>
+          )}
+
+          {restCount === 0 ? null : (
+            <p className="timer-focus-rest muted">このあと 残り {restCount}投</p>
           )}
         </>
       )}
 
-      <div className="timer-stage-actions">
+      <div className="timer-focus-actions">
         {stopwatch.running ? (
-          <button className="timer-stage-main" type="button" onClick={stopwatch.pause}>
+          <button className="timer-focus-main" type="button" onClick={stopwatch.pause}>
             停止
           </button>
         ) : (
-          <button className="timer-stage-main primary" type="button" disabled={finished} onClick={start}>
+          <button className="timer-focus-main primary" type="button" disabled={finished} onClick={start}>
             開始
           </button>
         )}
