@@ -10,6 +10,18 @@ export function Card({ title, hint, children }: { title?: string; hint?: string;
   );
 }
 
+/** プロフィール画像。未設定なら名前の頭文字を出す。 */
+export function Avatar({ name, url, className = '' }: { name: string; url?: string; className?: string }) {
+  const classes = `account-avatar ${className}`.trim();
+  return url === undefined || url === '' ? (
+    <div className={classes} aria-hidden="true">
+      {name.slice(0, 1)}
+    </div>
+  ) : (
+    <img className={classes} src={url} alt="" />
+  );
+}
+
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="field">

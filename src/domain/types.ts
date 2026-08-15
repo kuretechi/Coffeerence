@@ -346,10 +346,12 @@ export interface Post {
   userId?: string;
 }
 
-/** Supabase の profiles テーブル。表示名だけを持つ。 */
+/** Supabase の profiles テーブル。表示名とプロフィール画像を持つ。 */
 export interface Profile {
   id: string;
   displayName: string;
+  /** プロフィール画像（128px 角の JPEG data URL）。未設定なら頭文字を表示する。 */
+  avatarUrl?: string;
 }
 
 /** 不適切判定の結果。`allowed` が false の投稿は保存せず削除する。 */
@@ -368,6 +370,8 @@ export interface Settings {
   weights: ScoreWeights;
   detectableEffect: number; // δ（既定 0.5点）
   prepChecklist: string[];
+  /** 端末内のプロフィール画像（Supabase 未設定でも使う）。 */
+  avatarUrl?: string;
   soundEnabled: boolean;
   targetLine: number; // F-13 目標ライン（合計点）
 }
