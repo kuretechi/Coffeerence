@@ -878,6 +878,190 @@ table button {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
+/* レシピタブ（罫線ノート）: 囲みを使わず、見出しと罫線と余白だけで階層を作る。 */
+.recipe-note {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding-bottom: 8px;
+}
+
+.recipe-note-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.recipe-note-subtitle {
+  margin: 28px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.recipe-note-hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.recipe-note-rows {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.recipe-note-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.recipe-note-label {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.recipe-note-control {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.recipe-note-suffix {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 入力欄は枠を外して下線だけにする。 */
+.recipe-note input {
+  min-height: 40px;
+  padding: 4px 2px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  text-align: right;
+}
+
+.recipe-note input:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+
+.recipe-note-control input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.recipe-note-pour {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recipe-note-pour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recipe-note-pour-cells {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.recipe-note-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.recipe-note-cell input {
+  width: 100%;
+}
+
+/* 罫線の中に置くので、副操作のボタンは文字だけにする。 */
+.recipe-note-quiet {
+  min-height: 44px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.recipe-note-quiet.danger {
+  color: var(--danger);
+}
+
+.recipe-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.recipe-note-actions.between {
+  justify-content: space-between;
+}
+
+.recipe-note-entry {
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recipe-note-entry-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.recipe-note-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.recipe-note-empty {
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+
+.recipe-note .brew-detail {
+  margin: 4px 0 8px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

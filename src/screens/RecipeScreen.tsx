@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { useEffect, useState, type ReactNode } from 'react';
+import { formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -60,6 +60,91 @@ const emptyDraft = (defaults: RecipeDefaults): Draft => ({
   pours: presetPours(defaults),
   finishSec: PRESET_INTERVAL_SEC * 2 + 90,
 });
+
+/** ラベル左・入力右の罫線1行。 */
+function NoteRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="recipe-note-row">
+      <span className="recipe-note-label">{label}</span>
+      <span className="recipe-note-control">{children}</span>
+    </label>
+  );
+}
+
+function NoteNumberInput({
+  value,
+  onChange,
+  step = 1,
+  min,
+}: {
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  step?: number;
+  min?: number;
+}) {
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      step={step}
+      min={min}
+      value={value ?? ''}
+      onChange={(event) => {
+        const raw = event.target.value;
+        onChange(raw === '' ? undefined : Number(raw));
+      }}
+    />
+  );
+}
+
+/** 罫線行に置く数値入力。単位は入力の右に添える。 */
+function NoteNumber({
+  label,
+  value,
+  onChange,
+  step = 1,
+  min,
+  suffix,
+}: {
+  label: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  step?: number;
+  min?: number;
+  suffix?: string;
+}) {
+  return (
+    <NoteRow label={label}>
+      <NoteNumberInput value={value} onChange={onChange} step={step} min={min} />
+      {suffix ? <span className="recipe-note-suffix">{suffix}</span> : null}
+    </NoteRow>
+  );
+}
+
+/** 注湯1投分の入力。狭い画面でも並べられるよう単位を小さく添える。 */
+function PourCell({
+  label,
+  suffix,
+  value,
+  onChange,
+  step,
+}: {
+  label: string;
+  suffix: string;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
+  step: number;
+}) {
+  return (
+    <label className="recipe-note-cell">
+      <span>
+        {label}
+        <span className="recipe-note-suffix">{suffix}</span>
+      </span>
+      <NoteNumberInput value={value} onChange={onChange} step={step} min={0} />
+    </label>
+  );
+}
 
 /** レシピ名をタップしたときに開く抽出条件の内訳。 */
 function RecipeDetail({ recipe }: { recipe: Recipe }) {
@@ -189,93 +274,39 @@ export function RecipeScreen() {
   }
 
   return (
-    <>
-      <Card
-        title={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
-        hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。"
-      >
-        <div className="stack">
-          <Field label="レシピ名">
+    <div className="recipe-note">
+      <section className="recipe-note-section">
+        <h2 className="recipe-note-title">{editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}</h2>
+        <p className="recipe-note-hint">淹れる条件を登録します。タイマーで計測するときにここから選びます。</p>
+
+        <div className="recipe-note-rows">
+          <NoteRow label="レシピ名">
             <input
               value={draft.name}
               placeholder="例: 中細 92℃ 1:16"
               onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             />
-          </Field>
-          <div className="row">
-            <NumberField
-              label="粉量"
-              suffix="g"
-              step={0.1}
-              min={0}
-              value={draft.doseG}
-              onChange={(doseG) => setDraft({ ...draft, doseG })}
+          </NoteRow>
+          <NoteNumber
+            label="粉量"
+            suffix="g"
+            step={0.1}
+            min={0}
+            value={draft.doseG}
+            onChange={(doseG) => setDraft({ ...draft, doseG })}
+          />
+          <NoteNumber label="初期湯温" suffix="℃" step={1} min={0} value={draft.waterTempC} onChange={setInitialTemp} />
+          <NoteRow label="挽き目">
+            <input
+              value={draft.grindSetting}
+              placeholder="例: 中細 / ダイヤル 18"
+              onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
             />
-            <NumberField
-              label="初期湯温"
-              suffix="℃"
-              step={1}
-              min={0}
-              value={draft.waterTempC}
-              onChange={setInitialTemp}
-            />
-          </div>
-          <div className="row">
-            <Field label="挽き目">
-              <input
-                value={draft.grindSetting}
-                placeholder="例: 中細 / ダイヤル 18"
-                onChange={(event) => setDraft({ ...draft, grindSetting: event.target.value })}
-              />
-            </Field>
-            <Field label="ドリッパー">
-              <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
-            </Field>
-          </div>
-          <fieldset className="pour-editor">
-            <legend>注湯（累計湯量・開始からの秒数・湯温）</legend>
-            <div className="stack">
-              {draft.pours.map((pour, index) => (
-                <div className="row pour-row" key={index}>
-                  <span className="pour-index">{index + 1}投目</span>
-                  <NumberField
-                    label="累計"
-                    suffix="g"
-                    step={1}
-                    min={0}
-                    value={pour.targetG}
-                    onChange={(targetG) => setPour(index, { targetG })}
-                  />
-                  <NumberField
-                    label="開始"
-                    suffix="秒"
-                    step={5}
-                    min={0}
-                    value={pour.atSec}
-                    onChange={(atSec) => setPour(index, { atSec })}
-                  />
-                  <NumberField
-                    label="湯温"
-                    suffix="℃"
-                    step={1}
-                    min={0}
-                    value={pour.waterTempC}
-                    onChange={(waterTempC) => setPour(index, { waterTempC })}
-                  />
-                  <button type="button" disabled={draft.pours.length <= 1} onClick={() => removePour(index)}>
-                    削除
-                  </button>
-                </div>
-              ))}
-              <div className="row between">
-                <button type="button" onClick={addPour}>
-                  投を追加
-                </button>
-                <span className="muted mono">総湯量 {totalWaterG}g</span>
-              </div>
-            </div>
-          </fieldset>
-          <NumberField
+          </NoteRow>
+          <NoteRow label="ドリッパー">
+            <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
+          </NoteRow>
+          <NoteNumber
             label="抽出終了（落ち切り）"
             suffix="秒"
             step={5}
@@ -283,44 +314,99 @@ export function RecipeScreen() {
             value={draft.finishSec}
             onChange={(finishSec) => setDraft({ ...draft, finishSec })}
           />
-          <div className="row">
-            <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
-              {editing ? 'レシピを更新' : 'レシピを登録'}
-            </button>
-            {editing ? (
-              <button type="button" onClick={cancelEdit}>
-                編集をやめる
-              </button>
-            ) : null}
-          </div>
         </div>
-      </Card>
 
-      <Card title="登録済みレシピ" hint="レシピ名をタップすると詳細が見られます。">
-        {recipes.length === 0 ? (
-          <Banner>まだレシピがありません。</Banner>
-        ) : (
-          <div className="stack">
-            {recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item recipe-item">
+        <h3 className="recipe-note-subtitle">注湯</h3>
+        <p className="recipe-note-hint">累計湯量・開始からの秒数・湯温を投ごとに入れます。</p>
+        <div className="recipe-note-rows">
+          {draft.pours.map((pour, index) => (
+            <div className="recipe-note-pour" key={index}>
+              <div className="recipe-note-pour-head">
+                <span className="recipe-note-label">{index + 1}投目</span>
                 <button
-                  className="log-summary"
+                  className="recipe-note-quiet"
+                  type="button"
+                  disabled={draft.pours.length <= 1}
+                  onClick={() => removePour(index)}
+                >
+                  削除
+                </button>
+              </div>
+              <div className="recipe-note-pour-cells">
+                <PourCell
+                  label="累計"
+                  suffix="g"
+                  step={1}
+                  value={pour.targetG}
+                  onChange={(targetG) => setPour(index, { targetG })}
+                />
+                <PourCell
+                  label="開始"
+                  suffix="秒"
+                  step={5}
+                  value={pour.atSec}
+                  onChange={(atSec) => setPour(index, { atSec })}
+                />
+                <PourCell
+                  label="湯温"
+                  suffix="℃"
+                  step={1}
+                  value={pour.waterTempC}
+                  onChange={(waterTempC) => setPour(index, { waterTempC })}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="recipe-note-actions between">
+          <button className="recipe-note-quiet" type="button" onClick={addPour}>
+            投を追加
+          </button>
+          <span className="muted mono">総湯量 {totalWaterG}g</span>
+        </div>
+
+        <div className="recipe-note-actions">
+          <button className="primary" type="button" disabled={!canSave} onClick={() => void add()}>
+            {editing ? 'レシピを更新' : 'レシピを登録'}
+          </button>
+          {editing ? (
+            <button type="button" onClick={cancelEdit}>
+              編集をやめる
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="recipe-note-section">
+        <h2 className="recipe-note-title">登録済みレシピ</h2>
+        <p className="recipe-note-hint">レシピ名をタップすると詳細が見られます。</p>
+        {recipes.length === 0 ? (
+          <p className="recipe-note-empty muted">まだレシピがありません。</p>
+        ) : (
+          <div className="recipe-note-rows">
+            {recipes.map((recipe) => (
+              <div key={recipe.id} className="recipe-note-entry">
+                <button
+                  className="recipe-note-entry-name"
                   type="button"
                   aria-expanded={openId === recipe.id}
                   onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
                 >
                   <strong>{recipe.name}</strong>
+                  <span className="recipe-note-chevron" aria-hidden="true">
+                    {openId === recipe.id ? '−' : '+'}
+                  </span>
                 </button>
 
                 {openId === recipe.id ? (
                   <>
                     <RecipeDetail recipe={recipe} />
-                    <div className="row">
-                      <button type="button" onClick={() => startEdit(recipe)}>
+                    <div className="recipe-note-actions">
+                      <button className="recipe-note-quiet" type="button" onClick={() => startEdit(recipe)}>
                         編集
                       </button>
                       <button
-                        className="danger"
+                        className="recipe-note-quiet danger"
                         type="button"
                         onClick={() => {
                           if (recipe.id === editingId) cancelEdit();
@@ -336,7 +422,7 @@ export function RecipeScreen() {
             ))}
           </div>
         )}
-      </Card>
-    </>
+      </section>
+    </div>
   );
 }
