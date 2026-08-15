@@ -86,7 +86,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
 }
 
 /** 拡張子から MIME を補う。端末によっては File.type が空で来る。 */
-function audioMimeType(file: File): string {
+function mediaMimeType(file: File): string {
   if (file.type) return file.type;
   const extension = file.name.toLowerCase().split('.').pop() ?? '';
   const byExtension: Record<string, string> = {
@@ -95,6 +95,10 @@ function audioMimeType(file: File): string {
     m4a: 'audio/mp4',
     aac: 'audio/aac',
     ogg: 'audio/ogg',
+    // iPhone で撮った動画。音声トラックだけ使う。
+    mov: 'video/quicktime',
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
   };
   return byExtension[extension] ?? 'audio/mpeg';
 }
@@ -103,7 +107,7 @@ function audioMimeType(file: File): string {
 export async function saveCustomSound(file: File, slot: SoundSlot = 'custom'): Promise<void> {
   // File はディスク上の実体への参照なので、そのまま保存すると端末側で
   // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
-  const blob = new Blob([await file.arrayBuffer()], { type: audioMimeType(file) });
+  const blob = new Blob([await file.arrayBuffer()], { type: mediaMimeType(file) });
   await db.sounds.put({ id: slot, name: file.name, blob });
   const settings = await getSettings();
   await saveSettings(
