@@ -19,3 +19,21 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # スライドの原稿を直したのに PDF を書き出し忘れていないか見る。
+  slides:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 原稿が変わったら PDF も更新されていること
+        run: |
+          base="origin/${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD -- docs/slides/coffeerence.md docs/slides/theme.css)
+          [ -n "$changed" ] || exit 0
+          if git diff --quiet "$base"...HEAD -- docs/slides/coffeerence.pdf; then
+            echo "スライドを直したら npm run slides:pdf を実行して docs/slides/coffeerence.pdf も更新してください。" >&2
+            exit 1
+          fi
