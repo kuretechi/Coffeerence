@@ -10,7 +10,7 @@ import {
   useSettings,
 } from '../ui/data';
 import { deleteCustomSound, deleteGear, saveCustomSound, saveGear, saveSettings } from '../db/repo';
-import { CHIME_SOUNDS, CUSTOM_SOUND_ID, chime, primeAudio } from '../ui/useTimer';
+import { CHIME_SOUNDS, CUSTOM_SOUND_ID, canDecodeChime, chime, primeAudio, setCustomChime } from '../ui/useTimer';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
@@ -71,12 +71,16 @@ export function SettingsScreen() {
   }
 
   async function uploadSound(file: File) {
-    if (!file.type.startsWith('audio/')) {
-      setSoundMessage('音声ファイル（mp3 など）を選んでください。');
+    // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
+    if (!(await canDecodeChime(file))) {
+      setSoundMessage(`${file.name} はこの端末で再生できません。別の mp3 を選んでください。`);
       return;
     }
     await saveCustomSound(file);
+    // 保存の反映を待たずに鳴らせるよう、この場でも登録しておく。
+    setCustomChime(file, `${file.name}:${file.size}`);
     setSoundMessage(`${file.name} を合図音にしました。`);
+    playPreview(CUSTOM_SOUND_ID);
   }
 
   async function doImport(file: File) {
@@ -207,7 +211,7 @@ export function SettingsScreen() {
         <input
           ref={soundInput}
           type="file"
-          accept="audio/mpeg,audio/*,.mp3"
+          accept="audio/*,.mp3,.m4a,.wav"
           hidden
           onChange={(event) => {
             const file = event.target.files?.[0];

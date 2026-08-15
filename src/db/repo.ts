@@ -86,7 +86,10 @@ export async function saveSettings(settings: Settings): Promise<void> {
 
 /** アップロードした合図音を端末内に保存し、選択状態にする。 */
 export async function saveCustomSound(file: File): Promise<void> {
-  await db.sounds.put({ id: 'custom', name: file.name, blob: file });
+  // File はディスク上の実体への参照なので、そのまま保存すると端末側で
+  // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
+  const blob = new Blob([await file.arrayBuffer()], { type: file.type || 'audio/mpeg' });
+  await db.sounds.put({ id: 'custom', name: file.name, blob });
   const settings = await getSettings();
   await saveSettings({ ...settings, soundId: 'custom', customSoundName: file.name });
 }
