@@ -388,17 +388,24 @@ export interface Settings {
   customSoundName?: string;
   /** 合図音のピッチ（半音、未設定なら 0）。 */
   soundPitch?: number;
+  /** 合図音にかける効果（未設定なら 'none'）。 */
+  soundEffect?: SoundEffect;
   /** 抽出終了（2回鳴らし）だけに使う音。'same' なら合図音と同じ。 */
   finishSoundId?: string;
   /** 終了用にアップロードした音のファイル名（表示用）。 */
   finishCustomSoundName?: string;
   /** 抽出終了の音のピッチ（半音、未設定なら 0）。 */
   finishSoundPitch?: number;
+  /** 抽出終了の音にかける効果（未設定なら 'none'）。 */
+  finishSoundEffect?: SoundEffect;
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
 /** アップロード音の置き場。合図音と終了音で別のファイルを持てる。 */
 export type SoundSlot = 'custom' | 'custom-finish';
+
+/** 合図音にかける効果。 */
+export type SoundEffect = 'none' | 'room' | 'hall' | 'echo' | 'muffled' | 'radio';
 
 /** アップロードした合図音。音源は Blob のまま端末内に置く。 */
 export interface StoredSound {

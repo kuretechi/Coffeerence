@@ -43,6 +43,8 @@ export function TimerScreen() {
   const finishSoundId = chosenFinishId === SAME_AS_CHIME_ID ? settings.soundId : chosenFinishId;
   const pitch = settings.soundPitch ?? 0;
   const finishPitch = chosenFinishId === SAME_AS_CHIME_ID ? pitch : settings.finishSoundPitch ?? 0;
+  const effect = settings.soundEffect ?? 'none';
+  const finishEffect = chosenFinishId === SAME_AS_CHIME_ID ? effect : settings.finishSoundEffect ?? 'none';
 
   // 「次の合図まで」の進み。次がなければ抽出終了までを使う。
   const segmentStart = progress.current?.startSec ?? 0;
@@ -60,24 +62,25 @@ export function TimerScreen() {
   useEffect(() => {
     const index = progress.current?.index ?? 0;
     if (index === announcedIndex.current) return;
-    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled, settings.soundId, pitch);
+    if (index > announcedIndex.current && stopwatch.running)
+      chime(settings.soundEnabled, settings.soundId, pitch, effect);
     announcedIndex.current = index;
-  }, [progress.current?.index, stopwatch.running, settings.soundEnabled, settings.soundId, pitch]);
+  }, [progress.current?.index, stopwatch.running, settings.soundEnabled, settings.soundId, pitch, effect]);
 
   // 抽出終了時間に達したら計測を止めて知らせる。
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    chime(settings.soundEnabled, finishSoundId, finishPitch);
+    chime(settings.soundEnabled, finishSoundId, finishPitch, finishEffect);
     setCheerRun((run) => run + 1);
-  }, [finished, stopwatch, settings.soundEnabled, finishSoundId, finishPitch]);
+  }, [finished, stopwatch, settings.soundEnabled, finishSoundId, finishPitch, finishEffect]);
 
   function start() {
     primeAudio(settings.soundEnabled, settings.soundId);
     primeAudio(settings.soundEnabled, finishSoundId);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
-    chime(settings.soundEnabled, settings.soundId, pitch);
+    chime(settings.soundEnabled, settings.soundId, pitch, effect);
     stopwatch.start();
   }
 
