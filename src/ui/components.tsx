@@ -31,6 +31,30 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
+/** オン・オフのトグルスイッチ。 */
+export function Switch({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="switch-field">
+      <span>{label}</span>
+      <input
+        className="switch"
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    </label>
+  );
+}
+
 export function NumberField({
   label,
   value,
