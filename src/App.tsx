@@ -22,7 +22,6 @@ const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
   { to: '/timer', label: 'タイマー', icon: 'timer' },
   { to: '/log', label: '記録', icon: 'log' },
-  { to: '/stats', label: '分析', icon: 'stats' },
   { to: '/friends', label: '豆友', icon: 'friends' },
   { to: '/account', label: 'アカウント', icon: 'account' },
   { to: '/settings', label: '設定', icon: 'settings' },

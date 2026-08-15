@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
 import {
   useAudit,
@@ -590,9 +590,16 @@ const WHITE_LABELS: Record<number, string> = {
   11: 'シ',
 };
 
-/** 鍵盤の範囲（3オクターブ。ピッチの調整幅に収まるよう下に1オクターブ分伸ばす）。 */
-const KEYBOARD_LOW = -12;
-const KEYBOARD_HIGH = 24;
+/** オクターブ数ごとの鍵盤の範囲。ピッチの調整幅（±24半音）に収まるよう基準のドの上下に伸ばす。 */
+const KEYBOARD_RANGES: Record<number, { low: number; high: number }> = {
+  1: { low: 0, high: 12 },
+  2: { low: -12, high: 12 },
+  3: { low: -12, high: 24 },
+  4: { low: -24, high: 24 },
+};
+
+/** 鍵盤で選べるオクターブ数。 */
+const OCTAVE_CHOICES = [1, 2, 3, 4];
 
 interface WhiteKey {
   semitone: number;
@@ -606,10 +613,10 @@ interface BlackKey {
 }
 
 /** 範囲分の白鍵・黒鍵を作る。 */
-function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
+function buildKeys(low: number, high: number): { whites: WhiteKey[]; blacks: BlackKey[] } {
   const whites: WhiteKey[] = [];
   const blacks: BlackKey[] = [];
-  for (let semitone = KEYBOARD_LOW; semitone <= KEYBOARD_HIGH; semitone += 1) {
+  for (let semitone = low; semitone <= high; semitone += 1) {
     const pitchClass = ((semitone % 12) + 12) % 12;
     const label = WHITE_LABELS[pitchClass];
     if (label === undefined) blacks.push({ semitone, after: whites.length - 1 });
@@ -618,17 +625,18 @@ function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
   return { whites, blacks };
 }
 
-const { whites: WHITE_KEYS, blacks: BLACK_KEYS } = buildKeys();
+/** 全画面いっぱいに指定オクターブ分を詰めた鍵盤の並び。 */
+function Keys({ onPlay, octaves }: { onPlay: (semitone: number) => void; octaves: number }) {
+  const { low, high } = KEYBOARD_RANGES[octaves] ?? KEYBOARD_RANGES[3];
+  const { whites, blacks } = useMemo(() => buildKeys(low, high), [low, high]);
 
-/** 全画面いっぱいに3オクターブを詰めた鍵盤の並び。 */
-function Keys({ onPlay }: { onPlay: (semitone: number) => void }) {
   // 鍵の高さは画面に合わせて割り付けるので、黒鍵も割合で置く。
-  const blackHeight = `${(60 / WHITE_KEYS.length).toFixed(3)}%`;
+  const blackHeight = `${(60 / whites.length).toFixed(3)}%`;
 
   return (
     <div className="keyboard-scroll">
       <div className="keyboard">
-        {WHITE_KEYS.map((key) => (
+        {whites.map((key) => (
           <button
             key={`white-${key.semitone}`}
             type="button"
@@ -638,12 +646,12 @@ function Keys({ onPlay }: { onPlay: (semitone: number) => void }) {
             {key.label}
           </button>
         ))}
-        {BLACK_KEYS.map((key) => (
+        {blacks.map((key) => (
           <button
             key={`black-${key.semitone}`}
             type="button"
             className="keyboard-key black"
-            style={{ bottom: `${((key.after + 1) * 100) / WHITE_KEYS.length}%`, height: blackHeight }}
+            style={{ bottom: `${((key.after + 1) * 100) / whites.length}%`, height: blackHeight }}
             onPointerDown={() => onPlay(key.semitone)}
             aria-label={`${key.semitone} 半音上`}
           />
@@ -659,6 +667,7 @@ function Keys({ onPlay }: { onPlay: (semitone: number) => void }) {
  */
 function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
   const [full, setFull] = useState(false);
+  const [octaves, setOctaves] = useState(3);
   const closedAt = useRef(0);
 
   return (
@@ -674,7 +683,17 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
       {full ? (
         <div className="keyboard-full">
           <div className="keyboard-full-bar">
-            <span className="muted">3オクターブ</span>
+            <select
+              aria-label="オクターブ数"
+              value={octaves}
+              onChange={(event) => setOctaves(Number(event.target.value))}
+            >
+              {OCTAVE_CHOICES.map((count) => (
+                <option key={count} value={count}>
+                  {count}オクターブ
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => {
@@ -686,7 +705,7 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
               閉じる
             </button>
           </div>
-          <Keys onPlay={onPlay} />
+          <Keys onPlay={onPlay} octaves={octaves} />
         </div>
       ) : null}
     </>
