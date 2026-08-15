@@ -319,11 +319,25 @@ export interface RecipeDefaults {
 
 // ─── 豆友（投稿と自動判定）───────────────
 /** 端末内に保存する投稿。サーバーができたら同期対象にする。 */
+/** 投稿に添付するレシピ。元のレシピを消しても読めるよう写しで持つ。 */
+export interface SharedRecipe {
+  name: string;
+  doseG: number;
+  totalWaterG: number;
+  grindSetting: string;
+  brewer: string;
+  waterTempC: number;
+  pours: Pour[];
+  finishSec?: number;
+}
+
 export interface Post {
   id: string;
   author: string;
   body: string;
   createdAt: string;
+  /** 添付されたレシピ。無い投稿もある。 */
+  recipe?: SharedRecipe;
   /** 直近の判定結果。再判定で上書きする。 */
   moderation: ModerationVerdict;
 }

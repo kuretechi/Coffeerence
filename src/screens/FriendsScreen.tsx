@@ -1,25 +1,81 @@
 import { useState } from 'react';
-import { Banner, Card, Field } from '../ui/components';
-import { usePosts } from '../ui/data';
-import { deletePost, submitPost } from '../db/repo';
+import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { usePosts, useRecipes } from '../ui/data';
+import { deletePost, importSharedRecipe, submitPost, toSharedRecipe } from '../db/repo';
+import type { SharedRecipe } from '../domain/types';
 
 const MAX_BODY = 500;
+
+/** 投稿に添付されたレシピ。取り込むと自分のレシピ一覧に追加される。 */
+function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
+  const [imported, setImported] = useState(false);
+
+  return (
+    <div className="stack post-recipe">
+      <strong>{recipe.name}</strong>
+      <dl className="brew-detail">
+        <dt>粉量 / 総湯量</dt>
+        <dd className="mono">
+          {recipe.doseG}g / {recipe.totalWaterG}g
+        </dd>
+        <dt>挽き目 / ドリッパー</dt>
+        <dd>
+          {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
+        </dd>
+        <dt>初期湯温</dt>
+        <dd className="mono">{recipe.waterTempC}℃</dd>
+        <dt>注湯</dt>
+        <dd className="mono">
+          {recipe.pours.length === 0
+            ? '—'
+            : recipe.pours
+                .map(
+                  (pour) =>
+                    `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
+                )
+                .join(' / ')}
+        </dd>
+        <dt>抽出終了</dt>
+        <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
+      </dl>
+      <div className="row">
+        <button
+          type="button"
+          disabled={imported}
+          onClick={() => {
+            void importSharedRecipe(recipe).then(() => setImported(true));
+          }}
+        >
+          {imported ? '取り込み済み' : '自分のレシピに取り込む'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
 export function FriendsScreen() {
   const posts = usePosts();
+  const recipes = useRecipes();
   const [author, setAuthor] = useState('');
+  const [recipeId, setRecipeId] = useState('');
   const [body, setBody] = useState('');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'danger'; text: string } | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
   async function post() {
-    if (body.trim() === '' || busy) return;
+    if (busy || (body.trim() === '' && recipeId === '')) return;
     setBusy(true);
     try {
-      const verdict = await submitPost(author, body.trim());
+      const attached = recipes.find((recipe) => recipe.id === recipeId);
+      const verdict = await submitPost(
+        author,
+        body.trim(),
+        attached ? toSharedRecipe(attached) : undefined,
+      );
       if (verdict.allowed) {
         setBody('');
+        setRecipeId('');
         setNotice({ tone: 'ok', text: '投稿しました。' });
       } else {
         setNotice({ tone: 'danger', text: `投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}` });
@@ -47,9 +103,20 @@ export function FriendsScreen() {
               placeholder="レシピの気づきや質問を書けます。"
             />
           </Field>
+          <Field label="レシピを添付">
+            <select value={recipeId} onChange={(event) => setRecipeId(event.target.value)}>
+              <option value="">添付しない</option>
+              {recipes.map((recipe) => (
+                <option key={recipe.id} value={recipe.id}>
+                  {recipe.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {recipes.length === 0 ? <p className="muted">レシピタブで登録すると添付できます。</p> : null}
           {notice ? <Banner tone={notice.tone}>{notice.text}</Banner> : null}
           <div className="row">
-            <button className="primary" type="button" disabled={body.trim() === '' || busy} onClick={() => void post()}>
+            <button className="primary" type="button" disabled={busy || (body.trim() === '' && recipeId === '')} onClick={() => void post()}>
               投稿する
             </button>
           </div>
@@ -69,6 +136,7 @@ export function FriendsScreen() {
                   <span className="muted">{new Date(post.createdAt).toLocaleString('ja-JP')}</span>
                 </span>
                 <p>{post.body}</p>
+                {post.recipe ? <AttachedRecipe recipe={post.recipe} /> : null}
                 <div className="row">
                   <button className="danger" type="button" onClick={() => void deletePost(post.id)}>
                     削除

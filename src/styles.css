@@ -707,3 +707,10 @@ table button {
   border-color: var(--ok);
 }
 
+
+.post-recipe {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  gap: 6px;
+}
