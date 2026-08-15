@@ -314,51 +314,90 @@ function GearCard({
   );
 }
 
-/** 白鍵（ド〜次のド）。値は基準からの半音差。 */
-const WHITE_KEYS: { semitone: number; label: string }[] = [
-  { semitone: 0, label: 'ド' },
-  { semitone: 2, label: 'レ' },
-  { semitone: 4, label: 'ミ' },
-  { semitone: 5, label: 'ファ' },
-  { semitone: 7, label: 'ソ' },
-  { semitone: 9, label: 'ラ' },
-  { semitone: 11, label: 'シ' },
-  { semitone: 12, label: 'ド' },
-];
+/** 白鍵の音名（ドを 0 とした半音差で引く）。 */
+const WHITE_LABELS: Record<number, string> = {
+  0: 'ド',
+  2: 'レ',
+  4: 'ミ',
+  5: 'ファ',
+  7: 'ソ',
+  9: 'ラ',
+  11: 'シ',
+};
 
-/** 黒鍵。after は左隣の白鍵の位置。 */
-const BLACK_KEYS: { semitone: number; after: number }[] = [
-  { semitone: 1, after: 0 },
-  { semitone: 3, after: 1 },
-  { semitone: 6, after: 3 },
-  { semitone: 8, after: 4 },
-  { semitone: 10, after: 5 },
-];
+/** 鍵盤の範囲（3オクターブ。ピッチの調整幅に収まるよう下に1オクターブ分伸ばす）。 */
+const KEYBOARD_LOW = -12;
+const KEYBOARD_HIGH = 24;
 
-/** 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。 */
+interface WhiteKey {
+  semitone: number;
+  label: string;
+}
+
+/** 黒鍵。after は低い側の隣の白鍵の位置。 */
+interface BlackKey {
+  semitone: number;
+  after: number;
+}
+
+/** 範囲分の白鍵・黒鍵を作る。 */
+function buildKeys(): { whites: WhiteKey[]; blacks: BlackKey[] } {
+  const whites: WhiteKey[] = [];
+  const blacks: BlackKey[] = [];
+  for (let semitone = KEYBOARD_LOW; semitone <= KEYBOARD_HIGH; semitone += 1) {
+    const pitchClass = ((semitone % 12) + 12) % 12;
+    const label = WHITE_LABELS[pitchClass];
+    if (label === undefined) blacks.push({ semitone, after: whites.length - 1 });
+    else whites.push({ semitone, label });
+  }
+  return { whites, blacks };
+}
+
+const { whites: WHITE_KEYS, blacks: BLACK_KEYS } = buildKeys();
+
+/** 白鍵の高さ（px）。オクターブを増やしても鍵の大きさは変えない。 */
+const KEY_HEIGHT = 40;
+
+/**
+ * 選んである音を音階で鳴らす鍵盤。押した鍵の半音差をそのままピッチに足す。
+ * 3オクターブを鍵の大きさのまま入れるため、低い音を下にした縦型に並べる。
+ */
 function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
+  const scroll = useRef<HTMLDivElement>(null);
+
+  // 基準のド（ピッチそのまま）が見える位置から始める。
+  useEffect(() => {
+    const box = scroll.current;
+    if (!box) return;
+    const fromBottom = WHITE_KEYS.findIndex((key) => key.semitone === 0);
+    const baseTop = WHITE_KEYS.length * KEY_HEIGHT - (fromBottom + 1) * KEY_HEIGHT;
+    box.scrollTop = Math.max(baseTop - box.clientHeight / 2, 0);
+  }, []);
+
   return (
-    <div className="keyboard">
-      {WHITE_KEYS.map((key, index) => (
-        <button
-          key={`white-${index}`}
-          type="button"
-          className="keyboard-key"
-          onPointerDown={() => onPlay(key.semitone)}
-        >
-          {key.label}
-        </button>
-      ))}
-      {BLACK_KEYS.map((key) => (
-        <button
-          key={`black-${key.semitone}`}
-          type="button"
-          className="keyboard-key black"
-          style={{ left: `${((key.after + 1) * 100) / WHITE_KEYS.length}%` }}
-          onPointerDown={() => onPlay(key.semitone)}
-          aria-label={`${key.semitone} 半音上`}
-        />
-      ))}
+    <div className="keyboard-scroll" ref={scroll}>
+      <div className="keyboard" style={{ height: `${WHITE_KEYS.length * KEY_HEIGHT}px` }}>
+        {WHITE_KEYS.map((key) => (
+          <button
+            key={`white-${key.semitone}`}
+            type="button"
+            className="keyboard-key"
+            onPointerDown={() => onPlay(key.semitone)}
+          >
+            {key.label}
+          </button>
+        ))}
+        {BLACK_KEYS.map((key) => (
+          <button
+            key={`black-${key.semitone}`}
+            type="button"
+            className="keyboard-key black"
+            style={{ bottom: `${((key.after + 1) * 100) / WHITE_KEYS.length}%` }}
+            onPointerDown={() => onPlay(key.semitone)}
+            aria-label={`${key.semitone} 半音上`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
