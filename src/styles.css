@@ -883,191 +883,221 @@ table button {
   text-align: center;
 }
 
-/* 経過時間と次の合図までの進度。縦を使いすぎないよう、進度は細い横バーで示す。 */
-.timer-stage-head {
-  width: min(82vw, 330px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
+/* 計器盤の版。要素が多いので縦の間隔を詰める。 */
+.timer-stage-gauges {
+  gap: 12px;
 }
 
-.seven-segment.timer-stage-elapsed {
+/* 計器盤。等幅数字の大きなセルを並べ、上段に経過時間を置く。 */
+.timer-gauge {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.timer-gauge-cell {
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+
+.timer-gauge-cell-wide {
+  grid-column: 1 / -1;
+  min-height: 88px;
+  padding: 12px;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.timer-gauge-seg {
   width: 100%;
   max-width: none;
   margin: 0;
 }
 
-.timer-bar {
-  width: 100%;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
+.timer-gauge-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
-.timer-bar-value {
-  display: block;
+.timer-gauge-value i {
+  font-style: normal;
+  font-size: 14px;
+  margin-left: 2px;
+  color: var(--muted);
+}
+
+.timer-gauge-cell-wide .timer-gauge-value {
+  font-size: clamp(44px, 15vw, 60px);
+  color: var(--accent-strong);
+}
+
+.timer-gauge-sym {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+/* 投ごとに1セグメント。現在のセグメントだけ塗りが伸びる。 */
+.timer-seg {
   width: 100%;
-  height: 100%;
+  display: flex;
+  gap: 3px;
+  height: 10px;
+}
+
+.timer-seg-cell {
+  flex: 1 1 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.timer-seg-cell.finish {
+  flex: 0 0 28px;
+}
+
+.timer-seg-cell i {
+  position: absolute;
+  inset: 0;
   background: var(--accent);
-  transform-origin: left center;
+  transform-origin: 0 50%;
   transition: transform 0.2s linear;
 }
 
-.timer-stage-headline {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.3;
+.timer-seg-cell.done i {
+  background: color-mix(in srgb, var(--accent) 55%, var(--surface-2));
 }
 
-/* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
-.timer-deck {
+/* 現在の投だけを数値グリッドのカードにする。 */
+.timer-now {
   width: 100%;
-  display: grid;
-  grid-template-areas: 'deck';
-  padding-bottom: 26px;
-  touch-action: pan-y;
-}
-
-.timer-deck-card {
-  grid-area: deck;
   box-sizing: border-box;
-  padding: 14px 16px 16px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius-l);
   background: var(--surface-2);
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  position: relative;
-  overflow: hidden;
-  transform-origin: 50% 100%;
-  transition: transform 0.28s ease, opacity 0.28s ease;
+  align-items: center;
+  gap: 14px;
 }
 
-.timer-deck-card.front {
-  border-left: 4px solid var(--accent);
-  z-index: 3;
-}
-
-/* 手で覗いているだけのカードは差し色を外し、計測中の投と見分ける。 */
-.timer-deck-card.front.peek {
+.timer-now.finish {
   border-left-color: var(--line);
 }
 
-.timer-deck-card[data-depth='1'] {
-  transform: translateY(13px) scale(0.965) rotate(-1.2deg);
-  opacity: 0.72;
-  z-index: 2;
-}
-
-.timer-deck-card[data-depth='2'] {
-  transform: translateY(24px) scale(0.93) rotate(1.4deg);
-  opacity: 0.45;
-  z-index: 1;
-}
-
-/* 奥のカードは枠だけを見せて束の厚みを出す。 */
-.timer-deck-card:not(.front) > * {
-  visibility: hidden;
-}
-
-.timer-deck-head {
+.timer-now-index {
+  flex: 0 0 auto;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 2px;
 }
 
-.timer-deck-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--accent-strong);
-}
-
-.timer-deck-card:not(.front) .timer-deck-label,
-.timer-deck-card.done .timer-deck-label {
-  color: var(--muted);
-}
-
-.timer-deck-at {
-  font-size: 12px;
-}
-
-.timer-deck-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.timer-deck-index {
-  font-size: 40px;
+.timer-now-index strong {
+  font-size: 46px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  margin-right: 4px;
   color: var(--accent-strong);
 }
 
-.timer-deck-grid {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 12px;
+.timer-now-of {
+  font-size: 14px;
 }
 
-.timer-deck-grid dt {
-  font-size: 11px;
+.timer-now-mark {
+  font-size: 34px;
+  line-height: 1;
   color: var(--muted);
 }
 
-.timer-deck-grid dd {
-  margin: 2px 0 0;
-  font-size: 22px;
+.timer-now-grid {
+  margin: 0;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 8px;
+}
+
+.timer-now.finish .timer-now-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.timer-now-grid dt {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  text-align: center;
+}
+
+.timer-now-grid dd {
+  margin: 4px 0 0;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
-.timer-deck-done {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.timer-deck-nav {
+/* ほかの投は数字だけの小さなセルにする。 */
+.timer-cells {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.timer-deck-nav .timer-deck-arrow {
-  flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
+  margin: 0;
   padding: 0;
-  font-size: 22px;
-  line-height: 1;
-  background: transparent;
-  color: var(--muted);
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 6px;
 }
 
-.timer-deck-count {
-  font-size: 12px;
-}
-
-.timer-deck-nav .timer-deck-back {
+.timer-cells-item {
+  box-sizing: border-box;
   min-height: 44px;
-  padding: 0 14px;
-  font-size: 13px;
-  background: transparent;
+  padding: 5px 4px;
   border: 1px solid var(--line);
-  color: var(--fg);
+  border-radius: 8px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  opacity: 0.55;
+}
+
+.timer-cells-item.now {
+  opacity: 1;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+
+.timer-cells-item.done {
+  opacity: 0.4;
+}
+
+.timer-cells-at {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-cells-value {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .timer-stage-actions {
