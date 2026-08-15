@@ -601,12 +601,12 @@ table button {
   font-weight: 700;
 }
 
-/* カードをやめ、進捗リング一枚に集中させるタイマー画面。 */
+/* 進捗リングと「いま注ぐ投」の大カードを組み合わせたタイマー画面。 */
 .timer-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .timer-stage-recipe {
@@ -622,7 +622,7 @@ table button {
 
 .timer-stage-ring {
   position: relative;
-  width: min(78vw, 320px);
+  width: min(56vw, 232px);
   aspect-ratio: 1;
 }
 
@@ -660,7 +660,7 @@ table button {
 }
 
 .timer-stage-elapsed {
-  font-size: clamp(40px, 15vw, 64px);
+  font-size: clamp(32px, 11vw, 48px);
   line-height: 1;
   font-variant-numeric: tabular-nums;
   color: var(--accent-strong);
@@ -675,53 +675,113 @@ table button {
   font-size: 13px;
 }
 
-.timer-stage-chips {
-  list-style: none;
-  display: flex;
-  gap: 8px;
-  margin: 0;
-  padding: 4px;
+.timer-next-card {
   width: 100%;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-}
-
-.timer-stage-chips li {
-  flex: 0 0 auto;
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-  scroll-snap-align: center;
-  opacity: 0.6;
-  text-align: center;
+  gap: 10px;
 }
 
-.timer-stage-chips li.current {
-  opacity: 1;
-  background: var(--accent);
-  color: var(--on-accent);
+.timer-next-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.timer-stage-chips li.current .chip-sub,
-.timer-stage-chips li.current .chip-time {
-  color: var(--on-accent);
+.timer-next-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-strong);
 }
 
-.chip-time {
+.timer-next-at {
+  font-size: 12px;
+}
+
+.timer-next-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.timer-next-index {
+  font-size: 40px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+  color: var(--accent-strong);
+}
+
+.timer-next-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.timer-next-grid dt {
   font-size: 11px;
   color: var(--muted);
 }
 
-.chip-main {
+.timer-next-grid dd {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-next-done {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.timer-queue {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timer-queue li {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: transparent;
+  opacity: 0.75;
+}
+
+.timer-queue-time {
+  font-size: 12px;
+}
+
+.timer-queue-main {
   font-size: 14px;
   font-weight: 700;
 }
 
-.chip-sub {
-  font-size: 11px;
+.timer-queue-sub {
+  font-size: 12px;
 }
 
 .timer-stage-actions {
