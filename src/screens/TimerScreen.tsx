@@ -34,22 +34,22 @@ export function TimerScreen() {
   useEffect(() => {
     const index = progress.current?.index ?? 0;
     if (index === announcedIndex.current) return;
-    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled);
+    if (index > announcedIndex.current && stopwatch.running) chime(settings.soundEnabled, settings.soundId);
     announcedIndex.current = index;
-  }, [progress.current?.index, stopwatch.running, settings.soundEnabled]);
+  }, [progress.current?.index, stopwatch.running, settings.soundEnabled, settings.soundId]);
 
   // 抽出終了時間に達したら計測を止めて知らせる。
   useEffect(() => {
     if (!finished || !stopwatch.running) return;
     stopwatch.pause();
-    doubleChime(settings.soundEnabled);
-  }, [finished, stopwatch, settings.soundEnabled]);
+    doubleChime(settings.soundEnabled, settings.soundId);
+  }, [finished, stopwatch, settings.soundEnabled, settings.soundId]);
 
   function start() {
-    primeAudio(settings.soundEnabled);
+    primeAudio(settings.soundEnabled, settings.soundId);
     // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
     announcedIndex.current = progress.current?.index ?? 0;
-    chime(settings.soundEnabled);
+    chime(settings.soundEnabled, settings.soundId);
     stopwatch.start();
   }
 

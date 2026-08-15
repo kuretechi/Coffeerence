@@ -12,6 +12,7 @@ import type {
   RehearsalRecord,
   Session,
   Settings,
+  StoredSound,
   TriangleTrial,
 } from '../domain/types';
 
@@ -30,6 +31,7 @@ export class CoffeerenceDb extends Dexie {
   settings!: Table<Settings, string>;
   audit!: Table<AuditEntry, string>;
   posts!: Table<Post, string>;
+  sounds!: Table<StoredSound, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -53,6 +55,9 @@ export class CoffeerenceDb extends Dexie {
     });
     this.version(4).stores({
       posts: 'id, createdAt',
+    });
+    this.version(5).stores({
+      sounds: 'id',
     });
   }
 }

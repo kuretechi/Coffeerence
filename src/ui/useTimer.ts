@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
 
 interface WakeLockSentinelLike {
   release: () => Promise<void>;
@@ -91,32 +93,74 @@ function audioContext(): AudioContext | undefined {
   return sharedContext;
 }
 
-/** 同梱のベル音。オフラインでも鳴るよう静的アセットとして持つ。 */
-const BELL_URL = `${import.meta.env.BASE_URL}bell.mp3`;
+/** 選べる既定の合図音。オフラインでも鳴るよう同梱の静的アセットを指す。 */
+export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
+  { id: 'bell', label: 'ベル', file: 'bell.mp3' },
+  { id: 'desk', label: '卓上ベル', file: 'chime-desk.mp3' },
+  { id: 'high', label: '高い鈴', file: 'chime-high.mp3' },
+  { id: 'low', label: '低い鐘', file: 'chime-low.mp3' },
+  { id: 'beep', label: '電子音', file: 'chime-beep.mp3' },
+];
 
-let bellBuffer: AudioBuffer | undefined;
-let bellLoad: Promise<void> | undefined;
+/** アップロードした音を指すID。 */
+export const CUSTOM_SOUND_ID = 'custom';
 
-/** ベル音を一度だけ読み込む。失敗した場合は合成音にそのまま落とす。 */
-function loadBell(ctx: AudioContext): Promise<void> {
-  bellLoad ??= fetch(BELL_URL)
+const buffers = new Map<string, AudioBuffer>();
+const loads = new Map<string, Promise<AudioBuffer | undefined>>();
+let customUrl: string | undefined;
+
+/** アップロードした音の Blob URL を差し替える。 */
+function setCustomChimeUrl(url: string | undefined): void {
+  customUrl = url;
+}
+
+function soundUrl(soundId: string): string | undefined {
+  if (soundId === CUSTOM_SOUND_ID) return customUrl;
+  const sound = CHIME_SOUNDS.find((item) => item.id === soundId) ?? CHIME_SOUNDS[0];
+  return `${import.meta.env.BASE_URL}${sound.file}`;
+}
+
+/** 音源をURLごとに一度だけデコードして使い回す。 */
+function load(ctx: AudioContext, url: string): Promise<AudioBuffer | undefined> {
+  const cached = loads.get(url);
+  if (cached) return cached;
+  const pending = fetch(url)
     .then((response) => response.arrayBuffer())
     .then((data) => ctx.decodeAudioData(data))
     .then((buffer) => {
-      bellBuffer = buffer;
+      buffers.set(url, buffer);
+      return buffer;
     })
-    .catch(() => {
-      /* 読み込めない場合は合成音で鳴らす */
-    });
-  return bellLoad;
+    .catch(() => undefined);
+  loads.set(url, pending);
+  return pending;
+}
+
+/** アップロードされた合図音を鳴らせるよう登録しておく。 */
+export function useCustomChime(): void {
+  const stored = useLiveQuery(() => db.sounds.get(CUSTOM_SOUND_ID), [], undefined);
+
+  useEffect(() => {
+    if (!stored) {
+      setCustomChimeUrl(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(stored.blob);
+    setCustomChimeUrl(url);
+    return () => {
+      setCustomChimeUrl(undefined);
+      URL.revokeObjectURL(url);
+    };
+  }, [stored]);
 }
 
 /** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
-export function primeAudio(enabled: boolean): void {
+export function primeAudio(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
-    if (ctx) void loadBell(ctx);
+    const url = soundUrl(soundId);
+    if (ctx && url !== undefined) void load(ctx, url);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
@@ -192,19 +236,22 @@ function synthChime(ctx: AudioContext, frequency = 1244, durationMs = 2200): voi
   }
 }
 
-/** 同梱のベル音を一度鳴らす合図。 */
-export function chime(enabled: boolean): void {
+/** 選んである合図音を一度鳴らす。 */
+export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
   if (!enabled) return;
   try {
     const ctx = audioContext();
     if (ctx) {
-      void loadBell(ctx).then(() => {
-        if (!bellBuffer) {
+      const url = soundUrl(soundId);
+      // 読み込み前に呼ばれても取りこぼさないよう、完了を待ってから鳴らす。
+      const ready = url === undefined ? Promise.resolve(undefined) : load(ctx, url);
+      void ready.then((buffer) => {
+        if (!buffer) {
           synthChime(ctx);
           return;
         }
         const source = ctx.createBufferSource();
-        source.buffer = bellBuffer;
+        source.buffer = buffer;
         source.connect(ctx.destination);
         source.start();
       });
@@ -215,9 +262,11 @@ export function chime(enabled: boolean): void {
   if ('vibrate' in navigator) navigator.vibrate?.(80);
 }
 
-/** ベル音を2回鳴らす合図。2打目は1打目が鳴り終わってから重ねる。 */
-export function doubleChime(enabled: boolean): void {
-  chime(enabled);
-  const gap = bellBuffer ? Math.min(bellBuffer.duration, 1.2) * 1000 : 420;
-  window.setTimeout(() => chime(enabled), gap);
+/** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
+export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void {
+  chime(enabled, soundId);
+  const url = soundUrl(soundId);
+  const loaded = url === undefined ? undefined : buffers.get(url);
+  const gap = loaded ? Math.min(loaded.duration, 1.2) * 1000 : 420;
+  window.setTimeout(() => chime(enabled, soundId), gap);
 }

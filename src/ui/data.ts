@@ -12,6 +12,7 @@ import type {
   Recipe,
   Session,
   Settings,
+  StoredSound,
 } from '../domain/types';
 
 /** 廃止したテーマ（HUD）が保存されたままの端末を既定へ戻す。 */
@@ -58,6 +59,11 @@ export function useBrews(): BrewRecord[] {
 
 export function usePosts(): Post[] {
   return useLiveQuery(() => db.posts.orderBy('createdAt').reverse().toArray(), [], []) ?? [];
+}
+
+/** アップロードした合図音（未設定なら undefined）。 */
+export function useCustomSound(): StoredSound | undefined {
+  return useLiveQuery(() => db.sounds.get('custom'), [], undefined);
 }
 
 export function useBeans(): Bean[] {

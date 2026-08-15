@@ -118,6 +118,7 @@ export const DEFAULT_SETTINGS: Settings = {
     'タイマーとスケールをゼロにする',
   ],
   soundEnabled: true,
+  soundId: 'bell',
   targetLine: 168,
 };
 
