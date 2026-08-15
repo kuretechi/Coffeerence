@@ -147,21 +147,18 @@ export function TimerScreen() {
 
       <div className="timer-gauge">
         <div className="timer-gauge-cell timer-gauge-cell-wide">
+          <span className="timer-gauge-label">経過</span>
           <SevenSegment className="timer-gauge-seg" value={formatSeconds(stopwatch.elapsed)} />
         </div>
-        <div className="timer-gauge-cell" aria-label="累計">
-          <span className="timer-gauge-sym mono" aria-hidden="true">
-            Σ
-          </span>
+        <div className="timer-gauge-cell">
+          <span className="timer-gauge-label">累計</span>
           <span className="timer-gauge-value mono">
             {targetG ?? '--'}
             <i>g</i>
           </span>
         </div>
-        <div className="timer-gauge-cell" aria-label={progress.next ? '次まで' : '終了まで'}>
-          <span className="timer-gauge-sym mono" aria-hidden="true">
-            →
-          </span>
+        <div className="timer-gauge-cell">
+          <span className="timer-gauge-label">{progress.next ? '次まで' : '終了まで'}</span>
           <span className="timer-gauge-value mono">
             {segments.length === 0 ? '--:--' : formatSeconds(remainSec)}
           </span>
@@ -195,13 +192,11 @@ export function TimerScreen() {
         <article className={`timer-now${active.index === undefined ? ' finish' : ''}`} aria-live="polite">
           <div className="timer-now-index">
             {active.index === undefined ? (
-              <span className="timer-now-mark mono" aria-hidden="true">
-                ▪
-              </span>
+              <span className="timer-now-label">落ち切り</span>
             ) : (
               <>
                 <strong className="mono">{active.index}</strong>
-                <span className="timer-now-of mono muted">/{pours.length}</span>
+                <span className="timer-now-of mono muted">投/{pours.length}</span>
               </>
             )}
           </div>
@@ -209,17 +204,17 @@ export function TimerScreen() {
             {active.index === undefined ? null : (
               <>
                 <div>
-                  <dt aria-label="この投">＋</dt>
+                  <dt>湯量</dt>
                   <dd className="mono">{active.waterG}g</dd>
                 </div>
                 <div>
-                  <dt aria-label="湯温">℃</dt>
-                  <dd className="mono">{active.tempC}</dd>
+                  <dt>湯温</dt>
+                  <dd className="mono">{active.tempC}℃</dd>
                 </div>
               </>
             )}
             <div>
-              <dt aria-label="開始">▶</dt>
+              <dt>{active.index === undefined ? '時刻' : '開始'}</dt>
               <dd className="mono">{formatSeconds(active.startSec)}</dd>
             </div>
           </dl>
@@ -227,25 +222,33 @@ export function TimerScreen() {
       )}
 
       {segments.length === 0 ? null : (
-        <ol className="timer-cells">
-          {segments.map((segment, position) => {
-            const done = position < activeIndex;
-            const now = position === activeIndex;
-            return (
-              <li
-                key={segment.key}
-                className={`timer-cells-item${done ? ' done' : ''}${now ? ' now' : ''}${
-                  segment.index === undefined ? ' finish' : ''
-                }`}
-              >
-                <span className="timer-cells-at mono">{formatSeconds(segment.startSec)}</span>
-                <span className="timer-cells-value mono">
-                  {segment.targetG === undefined ? '▪' : `${segment.targetG}g`}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          <div className="timer-cells-head" aria-hidden="true">
+            <span>投</span>
+            <span>時刻</span>
+            <span>累計</span>
+          </div>
+          <ol className="timer-cells" aria-label="投ごとの時刻と累計">
+            {segments.map((segment, position) => {
+              const done = position < activeIndex;
+              const now = position === activeIndex;
+              return (
+                <li
+                  key={segment.key}
+                  className={`timer-cells-item${done ? ' done' : ''}${now ? ' now' : ''}${
+                    segment.index === undefined ? ' finish' : ''
+                  }`}
+                >
+                  <span className="timer-cells-index mono">{segment.index ?? ''}</span>
+                  <span className="timer-cells-at mono">{formatSeconds(segment.startSec)}</span>
+                  <span className="timer-cells-value mono">
+                    {segment.targetG === undefined ? '落ち切り' : `${segment.targetG}g`}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
 
       <div className="timer-stage-actions">
