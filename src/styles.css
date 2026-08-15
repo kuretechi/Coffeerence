@@ -887,75 +887,43 @@ table button {
   text-align: center;
 }
 
-.timer-stage-ring {
-  position: relative;
-  width: min(56vw, 232px);
-  aspect-ratio: 1;
-}
-
-.timer-stage-ring svg {
-  width: 100%;
-  height: 100%;
-}
-
-.ring-track,
-.ring-value {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-}
-
-.ring-track {
-  stroke: var(--line);
-}
-
-.ring-value {
-  stroke: var(--accent);
-  transition: stroke-dashoffset 0.2s linear;
-}
-
-.timer-stage-center {
-  position: absolute;
-  inset: 0;
+/* 経過時間と次の合図までの進度。縦を使いすぎないよう、進度は細い横バーで示す。 */
+.timer-stage-head {
+  width: min(82vw, 330px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 8px;
   text-align: center;
-  padding: 0 18%;
 }
 
-/* リング中央の7セグ表示。幅は中央領域いっぱいに合わせる。 */
 .seven-segment.timer-stage-elapsed {
   width: 100%;
   max-width: none;
   margin: 0;
 }
 
+.timer-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.timer-bar-value {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 0.2s linear;
+}
+
 .timer-stage-headline {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
-}
-
-/* 経過時間を遠目でも読めるように、リングは画面幅いっぱいまで大きく取る。 */
-.timer-deck-ring {
-  width: min(82vw, 330px);
-}
-
-.timer-deck-ring .ring-track,
-.timer-deck-ring .ring-value {
-  stroke-width: 12;
-}
-
-.timer-deck-ring .timer-stage-headline {
-  font-size: 14px;
   line-height: 1.3;
-}
-
-.timer-deck-ring .timer-stage-center {
-  padding: 0 15%;
-  gap: 10px;
 }
 
 /* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
