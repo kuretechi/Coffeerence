@@ -206,12 +206,6 @@ export function TimerScreen() {
                   aria-hidden={front ? undefined : true}
                   aria-live={front ? 'polite' : undefined}
                 >
-                  {front ? (
-                    <span
-                      className="timer-deck-edge"
-                      style={{ transform: `scaleX(${isActive ? ratio : 0})` }}
-                    />
-                  ) : null}
                   <header className="timer-deck-head">
                     <span className="timer-deck-label">
                       {isActive
