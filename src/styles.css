@@ -357,11 +357,20 @@ input.slider {
   font-weight: 700;
 }
 
+/* 3オクターブを鍵の大きさのまま並べるので、はみ出す分はここでスクロールする。 */
+.keyboard-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
 .keyboard {
   position: relative;
   display: flex;
+  /* 低い音を下にする。 */
+  flex-direction: column-reverse;
   gap: 2px;
-  height: 96px;
   touch-action: manipulation;
   user-select: none;
 }
@@ -369,15 +378,17 @@ input.slider {
 .keyboard .keyboard-key {
   flex: 1 1 0;
   min-width: 0;
-  padding: 0 0 8px;
+  /* 鍵の高さは鍵盤側で決めるので、ボタン既定の最小高は外す。 */
+  min-height: 0;
+  padding: 0 8px 0 0;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: center;
+  justify-content: flex-end;
   font-size: 11px;
   color: var(--muted);
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 0 0 6px 6px;
+  border-radius: 0 6px 6px 0;
 }
 
 .keyboard .keyboard-key:active {
@@ -388,12 +399,13 @@ input.slider {
 
 .keyboard .keyboard-key.black {
   position: absolute;
-  top: 0;
-  width: 8%;
-  height: 60%;
-  transform: translateX(-50%);
+  left: 0;
+  width: 58%;
+  height: 24px;
+  transform: translateY(50%);
   background: #1b1b1b;
   border-color: #1b1b1b;
+  border-radius: 0 4px 4px 0;
   z-index: 1;
 }
 
