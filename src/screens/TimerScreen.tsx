@@ -112,10 +112,10 @@ export function TimerScreen() {
               {finished
                 ? '抽出終了です。'
                 : progress.next
-                ? `次: ${progress.next.index}投目 累計${progress.next.targetG}gまで ${tempOf(progress.next)}℃ （残り ${formatSeconds(progress.untilNextSec)}）`
+                ? `次: ${progress.next.index}投目 ${progress.next.targetG}gまで`
                 : finishSec === undefined
-                ? '注湯は完了です。落ち切りを待ちます。'
-                : `注湯は完了です。${formatSeconds(finishSec)} で抽出終了（残り ${formatSeconds(Math.max(0, finishSec - stopwatch.elapsed))}）`}
+                ? '注湯完了'
+                : '次: 抽出終了'}
             </p>
             <ol className="pour-list">
               {pours.map((pour, index) => (

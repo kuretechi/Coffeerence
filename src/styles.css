@@ -588,6 +588,18 @@ table button {
   color: var(--text);
 }
 
+/* レシピ一覧はレシピ名だけなので、行を詰める。 */
+.recipe-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.recipe-item .log-summary {
+  min-height: 0;
+}
+
 /* 記録一覧の行。タップで詳細を開く。 */
 .log-summary {
   display: flex;
