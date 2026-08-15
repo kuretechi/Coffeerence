@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { BrewRecord, Competition, Recipe, ScoreWeights, Session } from '../domain/types';
+import type { BrewRecord, Competition, Recipe, ScoreWeights, Session, Settings } from '../domain/types';
 import { CRITERION_ORDER } from '../domain/defaults';
 import { composeScores } from '../lib/scoring';
 
@@ -19,7 +19,14 @@ export interface ExportBundle {
   rehearsals: unknown[];
   settings: unknown[];
   audit: unknown[];
+  posts: unknown[];
 }
+
+/** APIキーは端末内に留めたいので、書き出しからは落とす。 */
+const withoutSecrets = (settings: Settings): Settings => ({
+  ...settings,
+  moderation: { ...settings.moderation, apiKey: '' },
+});
 
 /** NF-03: データはユーザーのもの。全件を JSON で持ち出せる。 */
 export async function exportAll(): Promise<ExportBundle> {
@@ -36,6 +43,7 @@ export async function exportAll(): Promise<ExportBundle> {
     rehearsals,
     settings,
     audit,
+    posts,
   ] = await Promise.all([
     db.competitions.toArray(),
     db.beans.toArray(),
@@ -49,6 +57,7 @@ export async function exportAll(): Promise<ExportBundle> {
     db.rehearsals.toArray(),
     db.settings.toArray(),
     db.audit.toArray(),
+    db.posts.toArray(),
   ]);
   return {
     format: 'coffeerence-export',
@@ -64,8 +73,9 @@ export async function exportAll(): Promise<ExportBundle> {
     externalLabels,
     triangleTrials,
     rehearsals,
-    settings,
+    settings: settings.map(withoutSecrets),
     audit,
+    posts,
   };
 }
 
@@ -86,6 +96,7 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       db.rehearsals,
       db.settings,
       db.audit,
+      db.posts,
     ],
     async () => {
       await db.competitions.bulkPut(bundle.competitions as never[]);
@@ -102,6 +113,8 @@ export async function importAll(bundle: ExportBundle): Promise<void> {
       await db.rehearsals.bulkPut(bundle.rehearsals as never[]);
       await db.settings.bulkPut(bundle.settings as never[]);
       await db.audit.bulkPut(bundle.audit as never[]);
+      // posts は v4 で追加したため、古い書き出しには存在しない。
+      await db.posts.bulkPut((bundle.posts ?? []) as never[]);
     },
   );
 }

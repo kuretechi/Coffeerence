@@ -4,7 +4,7 @@ import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings
 import { deleteGear, saveGear, saveSettings } from '../db/repo';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
-import type { GearKind, RecipeDefaults, ThemeName } from '../domain/types';
+import type { GearKind, ModerationSettings, RecipeDefaults, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
@@ -36,6 +36,10 @@ export function SettingsScreen() {
     const next = { ...defaults, ...patch };
     setDefaults(next);
     void saveSettings({ ...settings, recipeDefaults: next });
+  }
+
+  function saveModeration(patch: Partial<ModerationSettings>) {
+    void saveSettings({ ...settings, moderation: { ...settings.moderation, ...patch } });
   }
 
   async function doExportJson() {
@@ -127,6 +131,61 @@ export function SettingsScreen() {
             type="checkbox"
             checked={settings.soundEnabled}
             onChange={(event) => void saveSettings({ ...settings, soundEnabled: event.target.checked })}
+          />
+        </Field>
+      </Card>
+
+      <Card
+        title="投稿の自動判定"
+        hint="豆友の投稿はここの判定を通ったものだけが保存されます。既定は端末内だけで動く規則判定です。"
+      >
+        <Field label="判定方法">
+          <div className="segmented">
+            <button
+              type="button"
+              className={settings.moderation.provider === 'local' ? 'selected' : ''}
+              onClick={() => saveModeration({ provider: 'local' })}
+            >
+              ローカル
+            </button>
+            <button
+              type="button"
+              className={settings.moderation.provider === 'remote' ? 'selected' : ''}
+              onClick={() => saveModeration({ provider: 'remote' })}
+            >
+              AI（API）
+            </button>
+          </div>
+        </Field>
+        {settings.moderation.provider === 'remote' ? (
+          <>
+            <Field label="エンドポイント">
+              <input
+                value={settings.moderation.endpoint}
+                onChange={(event) => saveModeration({ endpoint: event.target.value })}
+              />
+            </Field>
+            <Field label="モデル">
+              <input value={settings.moderation.model} onChange={(event) => saveModeration({ model: event.target.value })} />
+            </Field>
+            <Field label="APIキー">
+              <input
+                type="password"
+                value={settings.moderation.apiKey}
+                placeholder="この端末にのみ保存されます"
+                onChange={(event) => saveModeration({ apiKey: event.target.value })}
+              />
+            </Field>
+            <Banner>API につながらないときはローカル判定に戻ります。</Banner>
+          </>
+        ) : null}
+        <Field label="追加NGワード（改行区切り）">
+          <textarea
+            rows={3}
+            value={settings.moderation.blocklist.join('\n')}
+            onChange={(event) =>
+              saveModeration({ blocklist: event.target.value.split('\n').filter((word) => word.trim() !== '') })
+            }
           />
         </Field>
       </Card>

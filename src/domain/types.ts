@@ -317,9 +317,39 @@ export interface RecipeDefaults {
   brewer: string;
 }
 
+// ─── 豆友（投稿と自動判定）───────────────
+/** 端末内に保存する投稿。サーバーができたら同期対象にする。 */
+export interface Post {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  /** 直近の判定結果。再判定で上書きする。 */
+  moderation: ModerationVerdict;
+}
+
+/** 不適切判定の結果。`allowed` が false の投稿は保存せず削除する。 */
+export interface ModerationVerdict {
+  allowed: boolean;
+  categories: string[];
+  reason?: string;
+  provider: 'local' | 'remote';
+}
+
+/** 判定の実行方法。remote は OpenAI 互換の moderation API を使う。 */
+export interface ModerationSettings {
+  provider: 'local' | 'remote';
+  endpoint: string;
+  model: string;
+  apiKey: string;
+  /** ローカル判定に追加するNGワード。 */
+  blocklist: string[];
+}
+
 export interface Settings {
   id: 'settings';
   recipeDefaults: RecipeDefaults;
+  moderation: ModerationSettings;
   theme: ThemeName;
   activeCompetitionId: string;
   weights: ScoreWeights;
@@ -333,7 +363,7 @@ export interface Settings {
 export interface AuditEntry {
   id: string;
   at: string;
-  kind: 'delete' | 'plan_modified' | 'reveal' | 'abandon_trial' | 'score_edit';
+  kind: 'delete' | 'plan_modified' | 'reveal' | 'abandon_trial' | 'score_edit' | 'moderation';
   subject: string;
   detail: string;
 }

@@ -7,6 +7,7 @@ import type {
   ExternalLabel,
   FlavorDescriptorSet,
   Gear,
+  Post,
   Recipe,
   RehearsalRecord,
   Session,
@@ -28,6 +29,7 @@ export class CoffeerenceDb extends Dexie {
   rehearsals!: Table<RehearsalRecord, string>;
   settings!: Table<Settings, string>;
   audit!: Table<AuditEntry, string>;
+  posts!: Table<Post, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -48,6 +50,9 @@ export class CoffeerenceDb extends Dexie {
     });
     this.version(3).stores({
       gear: 'id, kind',
+    });
+    this.version(4).stores({
+      posts: 'id, createdAt',
     });
   }
 }
