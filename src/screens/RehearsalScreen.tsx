@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Banner, Card, Pill, formatSeconds } from '../ui/components';
 import { SevenSegment } from '../ui/SevenSegment';
 import { useCompetition, useRehearsals, useSettings } from '../ui/data';
-import { beep, useStopwatch, useWakeLock } from '../ui/useTimer';
+import { chime, useStopwatch, useWakeLock } from '../ui/useTimer';
 import { saveRehearsal } from '../db/repo';
 import { uid } from '../lib/random';
 import type { RehearsalPhase, RehearsalRecord } from '../domain/types';
@@ -40,7 +40,7 @@ export function RehearsalScreen() {
     if (phase === 'idle' || phase === 'done') return;
     if (remaining > 0) return;
     const elapsed = Math.round(stopwatch.elapsed);
-    beep(settings.soundEnabled, 880, 400);
+    chime(settings.soundEnabled);
     if (phase === 'prep') {
       setActuals((a) => ({ ...a, prep: elapsed }));
       setPhase('brew');
