@@ -120,8 +120,10 @@ export const DEFAULT_SETTINGS: Settings = {
   soundEnabled: true,
   soundId: 'desk',
   soundPitch: 0,
+  soundEffect: 'none',
   finishSoundId: 'tururu',
   finishSoundPitch: 0,
+  finishSoundEffect: 'none',
   targetLine: 168,
 };
 
