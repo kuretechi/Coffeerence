@@ -323,6 +323,15 @@ textarea {
   min-height: 80px;
 }
 
+/* 枠や余白の付いた入力欄の見た目を持ち込まず、つまみだけを見せる。 */
+input.slider {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
 .segmented {
   display: flex;
   gap: 6px;

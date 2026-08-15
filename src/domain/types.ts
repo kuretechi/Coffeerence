@@ -386,10 +386,14 @@ export interface Settings {
   soundId: string;
   /** アップロードした音のファイル名（表示用）。 */
   customSoundName?: string;
+  /** 合図音のピッチ（半音、未設定なら 0）。 */
+  soundPitch?: number;
   /** 抽出終了（2回鳴らし）だけに使う音。'same' なら合図音と同じ。 */
   finishSoundId?: string;
   /** 終了用にアップロードした音のファイル名（表示用）。 */
   finishCustomSoundName?: string;
+  /** 抽出終了の音のピッチ（半音、未設定なら 0）。 */
+  finishSoundPitch?: number;
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
