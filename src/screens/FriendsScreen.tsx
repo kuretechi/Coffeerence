@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Banner, Card, Field, formatSeconds } from '../ui/components';
-import { usePosts, useRecipes } from '../ui/data';
+import { useRecipes } from '../ui/data';
+import { useTimeline } from '../ui/social';
+import { useAuth } from '../ui/auth';
 import { deletePost, importSharedRecipe, submitPost, toSharedRecipe } from '../db/repo';
-import type { SharedRecipe } from '../domain/types';
+import { SignInRequiredError } from '../db/social';
+import type { Post, SharedRecipe } from '../domain/types';
 
 const MAX_BODY = 500;
 
@@ -53,23 +57,32 @@ function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
   );
 }
 
-/** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
+/** 豆友（投稿）。Supabase を設定すると全員のタイムラインになり、未設定なら端末内に残る。 */
 export function FriendsScreen() {
-  const posts = usePosts();
+  const timeline = useTimeline();
   const recipes = useRecipes();
+  const auth = useAuth();
   const [author, setAuthor] = useState('');
   const [recipeId, setRecipeId] = useState('');
   const [body, setBody] = useState('');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'danger'; text: string } | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
+  const remote = timeline.mode === 'remote';
+  const signedIn = auth.user !== undefined;
+  const canPost = !busy && (body.trim() !== '' || recipeId !== '') && (!remote || signedIn);
+
+  function canDelete(post: Post): boolean {
+    return post.source === 'remote' ? post.userId === auth.user?.id : true;
+  }
+
   async function post() {
-    if (busy || (body.trim() === '' && recipeId === '')) return;
+    if (!canPost) return;
     setBusy(true);
     try {
       const attached = recipes.find((recipe) => recipe.id === recipeId);
       const verdict = await submitPost(
-        author,
+        remote ? (auth.user?.displayName ?? '') : author,
         body.trim(),
         attached ? toSharedRecipe(attached) : undefined,
       );
@@ -77,23 +90,54 @@ export function FriendsScreen() {
         setBody('');
         setRecipeId('');
         setNotice({ tone: 'ok', text: '投稿しました。' });
+        timeline.reload();
       } else {
         setNotice({ tone: 'danger', text: `投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}` });
       }
-    } catch {
-      setNotice({ tone: 'danger', text: '投稿に失敗しました。もう一度お試しください。' });
+    } catch (cause) {
+      setNotice({
+        tone: 'danger',
+        text:
+          cause instanceof SignInRequiredError
+            ? '投稿にはログインが必要です。アカウントタブからログインしてください。'
+            : '投稿に失敗しました。もう一度お試しください。',
+      });
     } finally {
       setBusy(false);
     }
   }
 
+  async function remove(target: Post) {
+    try {
+      await deletePost(target);
+      timeline.reload();
+    } catch {
+      setNotice({ tone: 'danger', text: '削除に失敗しました。もう一度お試しください。' });
+    }
+  }
+
   return (
     <>
-      <Card title="豆友" hint="いまは端末内にだけ保存されます。投稿は自動判定を通ったものだけが残ります。">
+      <Card
+        title="豆友"
+        hint={
+          remote
+            ? '投稿はサーバーに保存され、ほかの豆友にも見えます。自動判定を通ったものだけが残ります。'
+            : 'いまは端末内にだけ保存されます。投稿は自動判定を通ったものだけが残ります。'
+        }
+      >
         <div className="stack">
-          <Field label="名前">
-            <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
-          </Field>
+          {remote && !signedIn ? (
+            <Banner>
+              投稿するには<Link to="/account">アカウントタブ</Link>でログインしてください。読むだけならログイン不要です。
+            </Banner>
+          ) : null}
+          {remote && signedIn ? <p className="muted">投稿者名: {auth.user?.displayName}（アカウントの表示名）</p> : null}
+          {remote ? null : (
+            <Field label="名前">
+              <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="豆挽けば名無し" />
+            </Field>
+          )}
           <Field label={`本文（${body.length}/${MAX_BODY}）`}>
             <textarea
               value={body}
@@ -116,7 +160,7 @@ export function FriendsScreen() {
           {recipes.length === 0 ? <p className="muted">レシピタブで登録すると添付できます。</p> : null}
           {notice ? <Banner tone={notice.tone}>{notice.text}</Banner> : null}
           <div className="row">
-            <button className="primary" type="button" disabled={busy || (body.trim() === '' && recipeId === '')} onClick={() => void post()}>
+            <button className="primary" type="button" disabled={!canPost} onClick={() => void post()}>
               投稿する
             </button>
           </div>
@@ -125,11 +169,14 @@ export function FriendsScreen() {
       </Card>
 
       <Card title="タイムライン">
-        {posts.length === 0 ? (
+        {timeline.error ? <Banner tone="danger">タイムラインを読み込めませんでした: {timeline.error}</Banner> : null}
+        {timeline.loading && timeline.posts.length === 0 ? (
+          <Banner>読み込み中です。</Banner>
+        ) : timeline.posts.length === 0 ? (
           <Banner>まだ投稿がありません。</Banner>
         ) : (
           <div className="stack">
-            {posts.map((post) => (
+            {timeline.posts.map((post) => (
               <div key={post.id} className="todo-item" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <span className="row between">
                   <strong>{post.author}</strong>
@@ -137,11 +184,13 @@ export function FriendsScreen() {
                 </span>
                 <p>{post.body}</p>
                 {post.recipe ? <AttachedRecipe recipe={post.recipe} /> : null}
-                <div className="row">
-                  <button className="danger" type="button" onClick={() => void deletePost(post.id)}>
-                    削除
-                  </button>
-                </div>
+                {canDelete(post) ? (
+                  <div className="row">
+                    <button className="danger" type="button" onClick={() => void remove(post)}>
+                      削除
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

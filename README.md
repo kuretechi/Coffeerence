@@ -46,6 +46,7 @@
 
 ```sh
 npm install
+cp .env.example .env  # 豆友（SNS）をサーバーと継ぐときだけ必要
 npm run dev        # 開発サーバー
 npm test           # ユニットテスト（統計・計画・識別）
 npm run lint       # oxlint
@@ -53,6 +54,20 @@ npm run typecheck  # tsc
 npm run build      # 本番ビルド
 ```
 
+## 豆友（SNS）とアカウント
+
+投稿と認証だけ Supabase（PostgreSQL + Auth）を使います。レシピ・記録・タイマーなど
+練習のデータは従来どおり端末内（IndexedDB）で完結し、ログイン不要・オフラインで動きます。
+
+| 環境変数 | 未設定のとき | 設定したとき |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | 投稿は端末内にのみ保存。ログイン不可 | 全員共有のタイムラインとメール認証 |
+
+- テーブルと権限（RLS）: `supabase/migrations/0001_social.sql`
+- 設定手順（プロジェクト作成・鍵・公開ビルド）: [docs/supabase-setup.md](docs/supabase-setup.md)
+- 読むのは誰でも、書く・消すのは本人の行だけ（サーバー側でも強制）。投稿は必ず自動判定を通る。
+
 ## スコープ外（v1）
 
-豆のEC・SNS・焙煎プロファイル管理・大会運営・他人のレシピ配布・BLEスケール連携・アカウント/クラウド同期。
+豆のEC・焙煎プロファイル管理・大会運営・BLEスケール連携・練習データのクラウド同期。
+（豆友の投稿とアカウントは Supabase で対応済み。それ以外は引き続き端末内で完結する。）

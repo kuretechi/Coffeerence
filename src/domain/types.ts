@@ -340,6 +340,16 @@ export interface Post {
   recipe?: SharedRecipe;
   /** 直近の判定結果。再判定で上書きする。 */
   moderation: ModerationVerdict;
+  /** Supabase から読んだ投稿は 'remote'。端末内だけの投稿は undefined。 */
+  source?: 'remote';
+  /** 投稿者の Supabase ユーザー ID（remote のみ）。削除可否の判定に使う。 */
+  userId?: string;
+}
+
+/** Supabase の profiles テーブル。表示名だけを持つ。 */
+export interface Profile {
+  id: string;
+  displayName: string;
 }
 
 /** 不適切判定の結果。`allowed` が false の投稿は保存せず削除する。 */
