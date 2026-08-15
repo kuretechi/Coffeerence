@@ -8,6 +8,7 @@ const APP_SHELL = [
   SHELL_DOCUMENT,
   `${BASE}manifest.webmanifest`,
   `${BASE}icon.svg`,
+  `${BASE}finish-character.png`,
   `${BASE}bell.mp3`,
   `${BASE}chime-desk.mp3`,
   `${BASE}chime-high.mp3`,
