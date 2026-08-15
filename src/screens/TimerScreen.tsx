@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { FinishCharacter } from '../ui/FinishCharacter';
+import { SevenSegment } from '../ui/SevenSegment';
 import { SAME_AS_CHIME_ID, chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
@@ -164,7 +165,7 @@ export function TimerScreen() {
       )}
 
       <div className="timer-stage-ring timer-deck-ring">
-        <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
+        <svg viewBox="0 0 300 300" aria-hidden="true">
           <circle className="ring-track" cx="150" cy="150" r={RING_R} />
           <circle
             className="ring-value"
@@ -177,7 +178,7 @@ export function TimerScreen() {
           />
         </svg>
         <div className="timer-stage-center">
-          <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
+          <SevenSegment className="timer-stage-elapsed" value={formatSeconds(stopwatch.elapsed)} />
           <span className="timer-stage-headline">{headline}</span>
         </div>
       </div>

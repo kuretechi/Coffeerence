@@ -926,11 +926,11 @@ table button {
   padding: 0 18%;
 }
 
-.timer-stage-elapsed {
-  font-size: clamp(32px, 11vw, 48px);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent-strong);
+/* リング中央の7セグ表示。幅は中央領域いっぱいに合わせる。 */
+.seven-segment.timer-stage-elapsed {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .timer-stage-headline {
@@ -938,28 +938,24 @@ table button {
   font-weight: 700;
 }
 
-/* 控えめに残したリング。デッキが主役なので少し小さくする。 */
+/* 経過時間を遠目でも読めるように、リングは画面幅いっぱいまで大きく取る。 */
 .timer-deck-ring {
-  width: min(42vw, 168px);
+  width: min(82vw, 330px);
 }
 
 .timer-deck-ring .ring-track,
 .timer-deck-ring .ring-value {
-  stroke-width: 8;
-}
-
-.timer-deck-ring .timer-stage-elapsed {
-  font-size: clamp(26px, 8.5vw, 34px);
+  stroke-width: 12;
 }
 
 .timer-deck-ring .timer-stage-headline {
-  font-size: 12px;
-  line-height: 1.25;
+  font-size: 14px;
+  line-height: 1.3;
 }
 
 .timer-deck-ring .timer-stage-center {
-  padding: 0 14%;
-  gap: 4px;
+  padding: 0 15%;
+  gap: 10px;
 }
 
 /* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
