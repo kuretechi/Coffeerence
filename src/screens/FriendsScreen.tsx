@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { Banner, Field, formatSeconds } from '../ui/components';
 import { useRecipes } from '../ui/data';
 import { useTimeline } from '../ui/social';
 import { useAuth } from '../ui/auth';
@@ -191,12 +191,7 @@ export function FriendsScreen() {
 
   return (
     <>
-      <Card title="タイムライン">
-        <div className="row feed-actions">
-          <button className="primary" type="button" disabled={remote && !signedIn} onClick={() => setComposing(true)}>
-            投稿する
-          </button>
-        </div>
+      <div className="feed-wrap">
         {remote && !signedIn ? (
           <Banner>
             投稿するには<Link to="/account">アカウントタブ</Link>でログインしてください。読むだけならログイン不要です。
@@ -241,7 +236,26 @@ export function FriendsScreen() {
             ))}
           </div>
         )}
-      </Card>
+      </div>
+
+      <button
+        className="fab"
+        type="button"
+        aria-label="投稿する"
+        disabled={remote && !signedIn}
+        onClick={() => setComposing(true)}
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path
+            d="M4 20h4l10-10-4-4L4 16v4zM16.5 3.5l4 4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
 
       {composing ? (
         <PostDialog remote={remote} onPosted={timeline.reload} onClose={() => setComposing(false)} />

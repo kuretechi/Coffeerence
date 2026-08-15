@@ -773,9 +773,25 @@ table button {
   overflow-wrap: anywhere;
 }
 
-.feed-actions {
-  justify-content: flex-end;
-  margin-bottom: 4px;
+.feed-wrap {
+  margin-bottom: 16px;
+}
+
+.fab {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .modal-backdrop {
