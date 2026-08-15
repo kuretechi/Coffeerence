@@ -15,18 +15,30 @@ import {
   CUSTOM_FINISH_SOUND_ID,
   CUSTOM_SOUND_ID,
   PITCH_RANGE,
+  REVERB_MIX_RANGE,
+  REVERB_PRESETS,
+  REVERB_SECONDS_RANGE,
   SAME_AS_CHIME_ID,
   SOUND_EFFECTS,
   canDecodeChime,
   chime,
   extractAudioTrack,
+  hasReverb,
   primeAudio,
+  reverbAmount,
   setCustomChime,
 } from '../ui/useTimer';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
-import type { GearKind, RecipeDefaults, SoundEffect, SoundSlot, ThemeName } from '../domain/types';
+import type {
+  GearKind,
+  RecipeDefaults,
+  ReverbAmount,
+  SoundEffect,
+  SoundSlot,
+  ThemeName,
+} from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
@@ -156,9 +168,11 @@ export function SettingsScreen() {
           fallbackId={settings.soundId}
           pitch={settings.soundPitch ?? 0}
           effect={settings.soundEffect ?? 'none'}
+          reverb={reverbAmount(settings.soundEffect ?? 'none', settings.soundReverb)}
           onSelect={(soundId) => void saveSettings({ ...settings, soundId })}
           onPitch={(soundPitch) => void saveSettings({ ...settings, soundPitch })}
-          onEffect={(soundEffect) => void saveSettings({ ...settings, soundEffect })}
+          onEffect={(soundEffect, soundReverb) => void saveSettings({ ...settings, soundEffect, soundReverb })}
+          onReverb={(soundReverb) => void saveSettings({ ...settings, soundReverb })}
         />
         <SoundPicker
           label="抽出終了の音"
@@ -169,9 +183,13 @@ export function SettingsScreen() {
           sameLabel="合図音と同じ"
           pitch={settings.finishSoundPitch ?? 0}
           effect={settings.finishSoundEffect ?? 'none'}
+          reverb={reverbAmount(settings.finishSoundEffect ?? 'none', settings.finishSoundReverb)}
           onSelect={(finishSoundId) => void saveSettings({ ...settings, finishSoundId })}
           onPitch={(finishSoundPitch) => void saveSettings({ ...settings, finishSoundPitch })}
-          onEffect={(finishSoundEffect) => void saveSettings({ ...settings, finishSoundEffect })}
+          onEffect={(finishSoundEffect, finishSoundReverb) =>
+            void saveSettings({ ...settings, finishSoundEffect, finishSoundReverb })
+          }
+          onReverb={(finishSoundReverb) => void saveSettings({ ...settings, finishSoundReverb })}
         />
       </Card>
 
@@ -358,9 +376,11 @@ function SoundPicker({
   sameLabel,
   pitch,
   effect,
+  reverb,
   onSelect,
   onPitch,
   onEffect,
+  onReverb,
 }: {
   label: string;
   hint?: string;
@@ -373,18 +393,26 @@ function SoundPicker({
   pitch: number;
   /** かける効果。 */
   effect: SoundEffect;
+  /** 残響の程度（効果ごとの既定値を当てはめた後の値）。 */
+  reverb: ReverbAmount;
   onSelect: (soundId: string) => void;
   onPitch: (pitch: number) => void;
-  onEffect: (effect: SoundEffect) => void;
+  onEffect: (effect: SoundEffect, reverb: ReverbAmount) => void;
+  onReverb: (reverb: ReverbAmount) => void;
 }) {
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
 
   /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
-  function playPreview(soundId: string, previewPitch = pitch, previewEffect = effect) {
+  function playPreview(
+    soundId: string,
+    previewPitch = pitch,
+    previewEffect = effect,
+    previewReverb = reverb,
+  ) {
     primeAudio(true, soundId);
-    chime(true, soundId, previewPitch, previewEffect);
+    chime(true, soundId, previewPitch, previewEffect, previewReverb);
   }
 
   const playedId = selected === SAME_AS_CHIME_ID ? fallbackId : selected;
@@ -403,8 +431,16 @@ function SoundPicker({
 
   /** 効果を変えたときもその場で確かめられるようにする。 */
   function changeEffect(next: SoundEffect) {
-    onEffect(next);
-    playPreview(playedId, pitch, next);
+    // 残響を選び直したら、その効果の既定値から数値をいじり始められるようにする。
+    const nextReverb = hasReverb(next) ? REVERB_PRESETS[next] : reverb;
+    onEffect(next, nextReverb);
+    playPreview(playedId, pitch, next, nextReverb);
+  }
+
+  /** 残響の数値を動かすたびに、その響きで鳴らして確かめられるようにする。 */
+  function changeReverb(next: ReverbAmount) {
+    onReverb(next);
+    playPreview(playedId, pitch, effect, next);
   }
 
   async function upload(file: File) {
@@ -482,6 +518,32 @@ function SoundPicker({
           ))}
         </div>
       </Field>
+      {hasReverb(effect) ? (
+        <>
+          <Field label={`${label}の残響の量（${reverb.mix}%）`}>
+            <input
+              className="slider"
+              type="range"
+              min={REVERB_MIX_RANGE.min}
+              max={REVERB_MIX_RANGE.max}
+              step={REVERB_MIX_RANGE.step}
+              value={reverb.mix}
+              onChange={(event) => changeReverb({ ...reverb, mix: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label={`${label}の残響の長さ（${reverb.seconds.toFixed(1)} 秒）`}>
+            <input
+              className="slider"
+              type="range"
+              min={REVERB_SECONDS_RANGE.min}
+              max={REVERB_SECONDS_RANGE.max}
+              step={REVERB_SECONDS_RANGE.step}
+              value={reverb.seconds}
+              onChange={(event) => changeReverb({ ...reverb, seconds: Number(event.target.value) })}
+            />
+          </Field>
+        </>
+      ) : null}
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
         <button type="button" onClick={() => input.current?.click()}>
