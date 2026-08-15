@@ -601,6 +601,146 @@ table button {
   font-weight: 700;
 }
 
+/* カードをやめ、進捗リング一枚に集中させるタイマー画面。 */
+.timer-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.timer-stage-recipe {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 4px 8px;
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.timer-stage-ring {
+  position: relative;
+  width: min(78vw, 320px);
+  aspect-ratio: 1;
+}
+
+.timer-stage-ring svg {
+  width: 100%;
+  height: 100%;
+}
+
+.ring-track,
+.ring-value {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.ring-track {
+  stroke: var(--line);
+}
+
+.ring-value {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+.timer-stage-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 0 18%;
+}
+
+.timer-stage-elapsed {
+  font-size: clamp(40px, 15vw, 64px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-strong);
+}
+
+.timer-stage-headline {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.timer-stage-remain {
+  font-size: 13px;
+}
+
+.timer-stage-chips {
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 4px;
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.timer-stage-chips li {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  scroll-snap-align: center;
+  opacity: 0.6;
+  text-align: center;
+}
+
+.timer-stage-chips li.current {
+  opacity: 1;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.timer-stage-chips li.current .chip-sub,
+.timer-stage-chips li.current .chip-time {
+  color: var(--on-accent);
+}
+
+.chip-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.chip-main {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chip-sub {
+  font-size: 11px;
+}
+
+.timer-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.timer-stage-actions button {
+  flex: 1 1 40%;
+}
+
+.timer-stage-actions .timer-stage-main {
+  flex: 1 1 100%;
+  min-height: 56px;
+  font-size: 17px;
+}
+
 .timer.warning {
   color: var(--warn);
 }
