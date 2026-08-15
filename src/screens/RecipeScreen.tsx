@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
+import { Banner, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
 import { uid } from '../lib/random';
@@ -189,11 +189,10 @@ export function RecipeScreen() {
   }
 
   return (
-    <>
-      <Card
-        title={editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}
-        hint="淹れる条件を登録します。タイマーで計測するときにここから選びます。"
-      >
+    <div className="recipe-bleed">
+      <section className="recipe-band recipe-band-alt">
+        <p className="recipe-band-label">{editing ? `レシピ編集: ${editing.name}` : 'レシピ登録'}</p>
+        <p className="recipe-band-hint">淹れる条件を登録します。タイマーで計測するときにここから選びます。</p>
         <div className="stack">
           <Field label="レシピ名">
             <input
@@ -294,22 +293,27 @@ export function RecipeScreen() {
             ) : null}
           </div>
         </div>
-      </Card>
+      </section>
 
-      <Card title="登録済みレシピ" hint="レシピ名をタップすると詳細が見られます。">
+      <section className="recipe-band">
+        <p className="recipe-band-label">登録済みレシピ</p>
+        <p className="recipe-band-hint">レシピ名をタップすると詳細が見られます。</p>
         {recipes.length === 0 ? (
           <Banner>まだレシピがありません。</Banner>
         ) : (
-          <div className="stack">
+          <div className="recipe-band-list">
             {recipes.map((recipe) => (
-              <div key={recipe.id} className="todo-item recipe-item">
+              <div key={recipe.id} className={openId === recipe.id ? 'recipe-band-row open' : 'recipe-band-row'}>
                 <button
-                  className="log-summary"
+                  className="recipe-row-toggle"
                   type="button"
                   aria-expanded={openId === recipe.id}
                   onClick={() => setOpenId(openId === recipe.id ? undefined : recipe.id)}
                 >
                   <strong>{recipe.name}</strong>
+                  <span className="recipe-row-mark" aria-hidden="true">
+                    {openId === recipe.id ? '−' : '＋'}
+                  </span>
                 </button>
 
                 {openId === recipe.id ? (
@@ -336,7 +340,7 @@ export function RecipeScreen() {
             ))}
           </div>
         )}
-      </Card>
-    </>
+      </section>
+    </div>
   );
 }

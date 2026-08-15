@@ -900,3 +900,72 @@ table button {
   border-radius: var(--radius-l);
   background: var(--surface);
 }
+
+/* レシピタブ: 枠の代わりに画面幅いっぱいの面でセクションを区切る。 */
+.recipe-bleed {
+  margin: -16px -16px 0;
+}
+
+.recipe-band {
+  padding: 18px 16px 24px;
+  background: var(--bg);
+}
+
+.recipe-band-alt {
+  background: var(--surface);
+}
+
+.recipe-band-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.recipe-band-hint {
+  margin: 6px 0 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.recipe-band-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 開いた行だけ面を強調する。左右は帯のパディングを打ち消して全幅にする。 */
+.recipe-band-row {
+  margin: 0 -16px;
+  padding: 0 16px;
+}
+
+.recipe-band-row.open {
+  padding-bottom: 16px;
+  background: var(--surface-2);
+}
+
+.recipe-row-toggle {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.recipe-row-mark {
+  flex: none;
+  font-size: 15px;
+  color: var(--muted);
+}
