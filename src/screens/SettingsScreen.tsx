@@ -354,10 +354,10 @@ function SoundPicker({
       return;
     }
     const sound = audio ?? file;
-    await saveCustomSound(file, slot, audio);
+    const name = await saveCustomSound(file, slot, audio);
     // 保存の反映を待たずに鳴らせるよう、この場でも登録しておく。
-    setCustomChime(slot, sound, `${file.name}:${sound.size}`);
-    setMessage(`${file.name} を${label}にしました。`);
+    setCustomChime(slot, sound, `${name}:${sound.size}`);
+    setMessage(`${name} を${label}にしました。`);
     playPreview(slot);
   }
 

@@ -104,21 +104,36 @@ function mediaMimeType(file: File): string {
 }
 
 /**
+ * 動画から取り出した音声に付ける表示名。IMG_1234.MOV のような長い名前ではなく
+ * 「音声1」「音声2」で示す。他の枠と同名にならない最小の番号を使う。
+ */
+export function nextExtractedSoundName(settings: Settings, slot: SoundSlot = 'custom'): string {
+  const other = slot === 'custom' ? settings.finishCustomSoundName : settings.customSoundName;
+  const taken = Number(/^音声(\d+)$/.exec(other ?? '')?.[1] ?? 0);
+  return `音声${taken === 1 ? 2 : 1}`;
+}
+
+/**
  * アップロードした合図音を端末内に保存し、その置き場を選択状態にする。
  * audio を渡すと、その中身（動画から取り出した音声）を元ファイルの代わりに保存する。
+ * 返すのは表示名。
  */
-export async function saveCustomSound(file: File, slot: SoundSlot = 'custom', audio?: Blob): Promise<void> {
+export async function saveCustomSound(file: File, slot: SoundSlot = 'custom', audio?: Blob): Promise<string> {
   // File はディスク上の実体への参照なので、そのまま保存すると端末側で
   // 元ファイルが消えたときに読めなくなる。中身を写した Blob を持つ。
   const source = audio ?? file;
   const blob = new Blob([await source.arrayBuffer()], { type: audio ? audio.type : mediaMimeType(file) });
-  await db.sounds.put({ id: slot, name: file.name, blob });
   const settings = await getSettings();
+  const name = mediaMimeType(file).startsWith('video/')
+    ? nextExtractedSoundName(settings, slot)
+    : file.name;
+  await db.sounds.put({ id: slot, name, blob });
   await saveSettings(
     slot === 'custom'
-      ? { ...settings, soundId: slot, customSoundName: file.name }
-      : { ...settings, finishSoundId: slot, finishCustomSoundName: file.name },
+      ? { ...settings, soundId: slot, customSoundName: name }
+      : { ...settings, finishSoundId: slot, finishCustomSoundName: name },
   );
+  return name;
 }
 
 /** アップロードした合図音を捨て、既定の選択に戻す。 */
