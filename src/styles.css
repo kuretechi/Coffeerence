@@ -601,6 +601,159 @@ table button {
   font-weight: 700;
 }
 
+/* カードをやめ、縦の時間軸に注湯を並べるタイマー画面。 */
+.timer-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timer-rail-bar {
+  position: sticky;
+  top: 56px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.timer-rail-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.timer-rail-clock .seven-segment {
+  width: 132px;
+  margin: 0;
+}
+
+.timer-rail-state {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.timer-rail-controls {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.timer-rail-controls button {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.timer-rail-recipe {
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 4px 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.timer-rail-now {
+  margin: 0;
+  font-size: 22px;
+}
+
+.timer-rail-line {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timer-rail-line li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 18px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 0 0 22px;
+  opacity: 0.55;
+}
+
+/* 節点をつなぐ縦線。最後の節点からは伸ばさない。 */
+.timer-rail-line li::before {
+  content: '';
+  position: absolute;
+  left: 70px;
+  top: 16px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.timer-rail-line li:last-child::before {
+  display: none;
+}
+
+.timer-rail-node {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.timer-rail-line li.passed {
+  opacity: 0.8;
+}
+
+.timer-rail-line li.passed .timer-rail-node {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.timer-rail-line li.current {
+  opacity: 1;
+}
+
+.timer-rail-line li.current .timer-rail-node {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.timer-rail-line li.current .timer-rail-title {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.timer-rail-time {
+  font-size: 13px;
+  color: var(--muted);
+  padding-top: 2px;
+  text-align: right;
+}
+
+.timer-rail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.timer-rail-title {
+  font-size: 15px;
+}
+
+.timer-rail-meta {
+  font-size: 12px;
+}
+
 .timer.warning {
   color: var(--warn);
 }
