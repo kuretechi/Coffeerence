@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -24,6 +24,153 @@ interface Draft {
 }
 
 const PRESET_INTERVAL_SEC = 45;
+
+/** ホイールの目盛り1つ分の幅（px）。CSS の .pour-dial-tick と揃える。 */
+const TICK_WIDTH = 32;
+
+type PourFieldKey = 'targetG' | 'atSec' | 'waterTempC';
+
+interface DialSpec {
+  label: string;
+  unit: string;
+  step: number;
+  min: number;
+  max: number;
+  /** 目盛りに数字を出す間隔。 */
+  major: number;
+  format: (value: number) => string;
+}
+
+const DIALS: Record<PourFieldKey, DialSpec> = {
+  targetG: { label: '累計湯量', unit: 'g', step: 5, min: 0, max: 600, major: 10, format: (v) => String(v) },
+  atSec: { label: '開始', unit: '秒', step: 5, min: 0, max: 600, major: 15, format: formatSeconds },
+  waterTempC: { label: '湯温', unit: '℃', step: 1, min: 60, max: 100, major: 5, format: (v) => String(v) },
+};
+
+const POUR_FIELDS: PourFieldKey[] = ['targetG', 'atSec', 'waterTempC'];
+
+const clampToDial = (spec: DialSpec, value: number) => Math.min(spec.max, Math.max(spec.min, value));
+
+/** 目盛りの並びを作る。 */
+function ticksOf(spec: DialSpec): number[] {
+  const ticks: number[] = [];
+  for (let value = spec.min; value <= spec.max; value += spec.step) ticks.push(Math.round(value * 100) / 100);
+  return ticks;
+}
+
+/**
+ * 1つの数値をダイヤルで詰めるための行。
+ * 畳んでいるときは「ラベル＋値」の1行サマリー、開くと大きな数字＋横ホイール＋−/＋になる。
+ */
+function PourDial({
+  spec,
+  value,
+  active,
+  onActivate,
+  onChange,
+}: {
+  spec: DialSpec;
+  value: number | undefined;
+  active: boolean;
+  onActivate: () => void;
+  onChange: (value: number) => void;
+}) {
+  const wheelRef = useRef<HTMLDivElement | null>(null);
+  // ホイールを弾いて出した値。自分が出した値でスクロール位置を戻して指と喧嘩しないようにする。
+  const scrolledTo = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const wheel = wheelRef.current;
+    if (!active || wheel === null || value === undefined) return;
+    if (scrolledTo.current === value) return;
+    wheel.scrollLeft = ((clampToDial(spec, value) - spec.min) / spec.step) * TICK_WIDTH;
+    scrolledTo.current = value;
+  }, [active, value, spec]);
+
+  if (!active) {
+    return (
+      <button className="pour-dial-row" type="button" onClick={onActivate}>
+        <span className="pour-dial-row-label">{spec.label}</span>
+        <span className="pour-dial-row-value mono">
+          {value === undefined ? '—' : `${spec.format(value)}${spec.unit}`}
+        </span>
+      </button>
+    );
+  }
+
+  const shown = value ?? spec.min;
+  const nudge = (direction: 1 | -1) => onChange(clampToDial(spec, shown + direction * spec.step));
+
+  return (
+    <div className="pour-dial">
+      <p className="pour-dial-label">{spec.label}</p>
+      <div className="pour-dial-head">
+        <p className="pour-dial-value mono">
+          {value === undefined ? '—' : spec.format(value)}
+          <span className="pour-dial-unit">{spec.unit}</span>
+        </p>
+        <div className="pour-dial-steppers">
+          <button
+            className="pour-dial-step"
+            type="button"
+            aria-label={`${spec.label}を減らす`}
+            disabled={shown <= spec.min}
+            onClick={() => nudge(-1)}
+          >
+            −
+          </button>
+          <button
+            className="pour-dial-step"
+            type="button"
+            aria-label={`${spec.label}を増やす`}
+            disabled={shown >= spec.max}
+            onClick={() => nudge(1)}
+          >
+            ＋
+          </button>
+        </div>
+      </div>
+      <div className="pour-dial-track">
+        <div
+          className="pour-dial-wheel"
+          ref={wheelRef}
+          role="slider"
+          tabIndex={0}
+          aria-label={`${spec.label}（${spec.unit}）`}
+          aria-valuemin={spec.min}
+          aria-valuemax={spec.max}
+          aria-valuenow={value}
+          onScroll={(event) => {
+            const index = Math.round(event.currentTarget.scrollLeft / TICK_WIDTH);
+            const next = clampToDial(spec, spec.min + index * spec.step);
+            if (next === value) return;
+            scrolledTo.current = next;
+            onChange(next);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              nudge(1);
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+              event.preventDefault();
+              nudge(-1);
+            }
+          }}
+        >
+          {ticksOf(spec).map((tick) => (
+            <span
+              key={tick}
+              className={tick % spec.major === 0 ? 'pour-dial-tick major' : 'pour-dial-tick'}
+              aria-hidden="true"
+            >
+              {tick % spec.major === 0 ? <em className="mono">{spec.format(tick)}</em> : null}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** 総湯量と粉量から「蒸らし→中間→全量」の3投を作る。 */
 function presetPours(defaults: RecipeDefaults): DraftPour[] {
@@ -99,6 +246,8 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  // カードをまたいで 1 つだけ拡大しているフィールド。
+  const [focus, setFocus] = useState<{ index: number; field: PourFieldKey }>({ index: 0, field: 'targetG' });
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -152,21 +301,28 @@ export function RecipeScreen() {
         },
       ],
     });
+    setFocus({ index: draft.pours.length, field: 'targetG' });
   }
 
   function removePour(index: number) {
     setDraft({ ...draft, pours: draft.pours.filter((_, i) => i !== index) });
+    setFocus((current) => ({
+      index: Math.max(0, Math.min(current.index > index ? current.index - 1 : current.index, draft.pours.length - 2)),
+      field: current.field,
+    }));
   }
 
   function startEdit(recipe: Recipe) {
     setEditingId(recipe.id);
     setDraft(draftOf(recipe));
+    setFocus({ index: 0, field: 'targetG' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function cancelEdit() {
     setEditingId(undefined);
     setDraft(emptyDraft(defaults));
+    setFocus({ index: 0, field: 'targetG' });
   }
 
   async function add() {
@@ -195,6 +351,7 @@ export function RecipeScreen() {
     await saveRecipe(recipe);
     setEditingId(undefined);
     setDraft(emptyDraft(defaults));
+    setFocus({ index: 0, field: 'targetG' });
   }
 
   return (
@@ -252,7 +409,7 @@ export function RecipeScreen() {
                       {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
                     </span>
                   </div>
-                  <div className="pour-node-card">
+                  <div className={focus.index === index ? 'pour-node-card focused' : 'pour-node-card'}>
                     <button
                       className="pour-node-remove"
                       type="button"
@@ -262,44 +419,21 @@ export function RecipeScreen() {
                     >
                       ×
                     </button>
-                    <label className="pour-node-total">
-                      <span className="pour-node-total-label">累計湯量</span>
-                      <span className="pour-node-total-input">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step={1}
-                          min={0}
-                          value={pour.targetG ?? ''}
-                          onChange={(event) => {
-                            const raw = event.target.value;
-                            setPour(index, { targetG: raw === '' ? undefined : Number(raw) });
-                          }}
+                    <div className="pour-dial-stack">
+                      {POUR_FIELDS.map((key) => (
+                        <PourDial
+                          key={key}
+                          spec={DIALS[key]}
+                          value={pour[key]}
+                          active={focus.index === index && focus.field === key}
+                          onActivate={() => setFocus({ index, field: key })}
+                          onChange={(value) => setPour(index, { [key]: value })}
                         />
-                        <span className="pour-node-unit">g</span>
-                      </span>
-                    </label>
+                      ))}
+                    </div>
                     <p className="pour-node-delta mono">
                       この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
                     </p>
-                    <div className="pour-node-sub">
-                      <NumberField
-                        label="開始"
-                        suffix="秒"
-                        step={5}
-                        min={0}
-                        value={pour.atSec}
-                        onChange={(atSec) => setPour(index, { atSec })}
-                      />
-                      <NumberField
-                        label="湯温"
-                        suffix="℃"
-                        step={1}
-                        min={0}
-                        value={pour.waterTempC}
-                        onChange={(waterTempC) => setPour(index, { waterTempC })}
-                      />
-                    </div>
                   </div>
                 </li>
               ))}
