@@ -10,6 +10,7 @@ import { LogScreen } from './screens/LogScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { FriendsScreen } from './screens/FriendsScreen';
 import { AccountScreen } from './screens/AccountScreen';
+import { UserScreen } from './screens/UserScreen';
 
 const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
@@ -45,6 +46,7 @@ export function App() {
         <Route path="/log" element={<LogScreen />} />
         <Route path="/friends" element={<FriendsScreen />} />
         <Route path="/account" element={<AccountScreen />} />
+        <Route path="/users/:userId" element={<UserScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
