@@ -507,21 +507,227 @@ th {
   opacity: 1;
 }
 
-/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
-.pour-timeline {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-m);
-  padding: 4px 10px 12px;
+/* レシピ一覧: 名前と数値だけの縦リスト。 */
+.recipe-rows {
+  list-style: none;
   margin: 0;
-  min-width: 0;
+  padding: 0;
 }
 
-.pour-timeline legend {
+.recipe-rows-head,
+.recipe-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px 52px 48px;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  text-align: right;
+}
+
+.recipe-rows-head {
+  padding: 0 2px 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.recipe-row {
+  min-height: 48px;
+  padding: 8px 2px;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.recipe-rows li:last-child .recipe-row {
+  border-bottom: none;
+}
+
+.recipe-row-name {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* 全画面シート: 下からスライドインして作成・編集に入る。 */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+  border-top-left-radius: var(--radius-l);
+  border-top-right-radius: var(--radius-l);
+  background: var(--bg);
+  animation: sheet-in 0.22s ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+.sheet-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  border-top-left-radius: var(--radius-l);
+  border-top-right-radius: var(--radius-l);
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+.sheet-head button {
+  min-height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  font-size: 14px;
+}
+
+.sheet-head-cancel {
+  justify-self: start;
+  color: var(--muted);
+}
+
+.sheet-head-save {
+  justify-self: end;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 12px 12px calc(28px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet-section {
+  margin-top: 4px;
+}
+
+.sheet-section-title {
+  margin: 0 0 6px;
   font-size: 12px;
   color: var(--muted);
-  padding: 0 4px;
 }
 
+.sheet-delete {
+  margin-top: 8px;
+}
+
+/* 数値行: 大きな数値の左右に −/＋（1刻み、長押しで連続）。 */
+.num-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.num-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.num-row-label {
+  font-size: 12px;
+}
+
+.num-row-note {
+  font-size: 12px;
+}
+
+.num-row-body {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.num-step {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 48px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.num-row-input {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+}
+
+.num-row-input input {
+  min-height: 48px;
+  padding: 0 34px 0 8px;
+  border-color: var(--line);
+  background: var(--surface-2);
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+  appearance: textfield;
+}
+
+.num-row-input input::-webkit-outer-spin-button,
+.num-row-input input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.num-row-unit {
+  position: absolute;
+  right: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で累計時間と流れを見せる。 */
 .pour-timeline-list {
   list-style: none;
   margin: 0;
@@ -530,8 +736,8 @@ th {
 
 .pour-node {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 8px;
 }
 
 .pour-node-axis {
@@ -539,7 +745,7 @@ th {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding-top: 6px;
+  padding-top: 8px;
 }
 
 /* カード間をつなぐ縦線。最後の追加カードの下では消す。 */
@@ -559,13 +765,13 @@ th {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -581,13 +787,22 @@ th {
   color: var(--muted);
 }
 
+/* シート幅いっぱいのフラットなカード。右端はシートの縁まで伸ばす。 */
 .pour-node-card {
   position: relative;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-l);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 -12px 8px 0;
   padding: 10px 12px 12px;
-  margin-bottom: 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* 先頭の行だけ右上の×を避ける。 */
+.pour-node-card > .num-row:first-of-type .num-row-head {
+  padding-right: 40px;
 }
 
 .pour-node-remove {
@@ -605,188 +820,9 @@ th {
   line-height: 1;
 }
 
-/* インラインダイヤル: 選んだ1項目だけ拡大し、残りは1行サマリーに畳む。 */
-.pour-node-card.focused {
-  border-color: var(--accent);
-}
-
-.pour-dial-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* 先頭の項目だけは右上の×を避ける。 */
-.pour-dial-stack > .pour-dial-row:first-child,
-.pour-dial-stack > .pour-dial:first-child .pour-dial-head {
-  padding-right: 44px;
-}
-
-.pour-dial-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 44px;
-  padding: 0 2px;
-  border: none;
-  border-radius: var(--radius-s);
-  background: none;
-  color: var(--text);
-  font-size: 13px;
-  text-align: left;
-}
-
-.pour-dial-row-label {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.pour-dial-row-value {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.pour-dial {
-  margin: 2px 0 6px;
-}
-
-.pour-dial-label {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.pour-dial-value {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.pour-dial-unit {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.pour-dial-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pour-dial-steppers {
-  display: flex;
-  gap: 4px;
-}
-
-.pour-dial-step {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-}
-
-.pour-dial-track {
-  position: relative;
-  margin-top: 6px;
-}
-
-/* 選択位置を示す中央の指標。 */
-.pour-dial-track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  height: 15px;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
-/* 横スクロールの目盛り。中央の指標に合った目盛りが選択値。 */
-.pour-dial-wheel {
-  position: relative;
-  display: flex;
-  height: 44px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  /* 端の目盛りも中央に来られるよう、左右に半分ずつ余白を作る。 */
-  padding: 0 calc(50% - 16px);
-}
-
-.pour-dial-wheel::-webkit-scrollbar {
-  display: none;
-}
-
-.pour-dial-wheel:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.pour-dial-tick {
-  position: relative;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 44px;
-  scroll-snap-align: center;
-}
-
-/* 目盛りの線。数字を出す位置だけ長くする。 */
-.pour-dial-tick::before {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  width: 1px;
-  height: 7px;
-  background: var(--muted);
-  opacity: 0.5;
-}
-
-.pour-dial-tick.major::before {
-  height: 11px;
-  opacity: 1;
-}
-
-.pour-dial-tick em {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  font-style: normal;
-  color: var(--muted);
-}
-
-.pour-node-delta {
-  margin: 6px 0 2px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 .pour-node-add {
   width: 100%;
+  min-height: 44px;
   margin-bottom: 4px;
   border: 1px dashed var(--line);
   background: none;
@@ -902,18 +938,6 @@ table button {
   border: 1px solid var(--line);
   text-decoration: none;
   color: var(--text);
-}
-
-/* レシピ一覧はレシピ名だけなので、行を詰める。 */
-.recipe-item {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
-.recipe-item .log-summary {
-  min-height: 0;
 }
 
 /* 記録一覧の行。タップで詳細を開く。 */
