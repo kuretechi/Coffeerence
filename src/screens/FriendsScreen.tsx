@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Banner, Card, Field } from '../ui/components';
 import { usePosts } from '../ui/data';
-import { deletePost, remoderatePosts, submitPost } from '../db/repo';
+import { deletePost, submitPost } from '../db/repo';
 
 const MAX_BODY = 500;
 
@@ -30,11 +30,6 @@ export function FriendsScreen() {
       setBusy(false);
     }
   }
-
-  // 判定はアプリ側で強制する。判定器を更新したあとでも遡って適用されるよう、開くたびに再判定する。
-  useEffect(() => {
-    void remoderatePosts();
-  }, []);
 
   return (
     <>

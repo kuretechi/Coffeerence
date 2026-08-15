@@ -12,6 +12,17 @@ describe('moderateLocally', () => {
     expect(verdict.categories).toContain('violence');
   });
 
+  it('全角・カタカナ・記号で伏せても拒否する', () => {
+    expect(moderateLocally('ｼ　ﾈ').allowed).toBe(false);
+    expect(moderateLocally('し★ね★').allowed).toBe(false);
+    expect(moderateLocally('シネェェェ').allowed).toBe(false);
+  });
+
+  it('通常のコーヒー用語は誤判定しない', () => {
+    expect(moderateLocally('浅煎りばかり飲んでいる').allowed).toBe(true);
+    expect(moderateLocally('湿気で粉が崩れる').allowed).toBe(true);
+  });
+
   it('追加のNGワードも拒否する', () => {
     expect(moderateLocally('この豆は禁止語です', ['禁止語']).categories).toContain('blocklist');
   });
