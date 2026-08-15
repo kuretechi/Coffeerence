@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { SevenSegment } from '../ui/SevenSegment';
-import { doubleBeep, useStopwatch } from '../ui/useTimer';
+import { doubleBeep, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
@@ -47,6 +47,9 @@ export function TimerScreen() {
   }, [finished, stopwatch, settings.soundEnabled]);
 
   function start() {
+    primeAudio(settings.soundEnabled);
+    // 開始時点で達している投（通常は1投目）はこの合図をそのまま使う。
+    announcedIndex.current = progress.current?.index ?? 0;
     doubleBeep(settings.soundEnabled);
     stopwatch.start();
   }
