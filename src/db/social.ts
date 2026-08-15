@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { ModerationVerdict, Post, Profile, SharedRecipe } from '../domain/types';
-import type { PostRow } from './schema';
+import type { PostRow, ProfileRow } from './schema';
 
 /**
  * 豆友（SNS）のサーバー側データ。Supabase が未設定のときは呼び出されない。
@@ -26,6 +26,10 @@ const TIMELINE_LIMIT = 100;
 function client() {
   if (!supabase) throw new SupabaseUnavailableError();
   return supabase;
+}
+
+function toProfile(row: ProfileRow): Profile {
+  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url ?? undefined };
 }
 
 export function toPost(row: PostRow): Post {
@@ -100,13 +104,21 @@ export async function fetchProfile(userId: string): Promise<Profile | undefined>
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? { id: data.id, displayName: data.display_name } : undefined;
+  return data ? toProfile(data) : undefined;
+}
+
+/** タイムラインに出ている投稿者のプロフィールをまとめて引く。 */
+export async function fetchProfiles(userIds: string[]): Promise<Profile[]> {
+  if (userIds.length === 0) return [];
+  const { data, error } = await client().from('profiles').select('*').in('id', userIds);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toProfile);
 }
 
 /** サインアップ直後にトリガーが走っていない場合もあるので、必要なら作る。 */
 export async function upsertProfile(profile: Profile): Promise<void> {
   const { error } = await client()
     .from('profiles')
-    .upsert({ id: profile.id, display_name: profile.displayName });
+    .upsert({ id: profile.id, display_name: profile.displayName, avatar_url: profile.avatarUrl ?? null });
   if (error) throw new Error(error.message);
 }

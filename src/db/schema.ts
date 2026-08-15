@@ -7,6 +7,7 @@ import type { ModerationVerdict, SharedRecipe } from '../domain/types';
 export type ProfileRow = {
   id: string;
   display_name: string;
+  avatar_url: string | null;
   created_at: string;
 };
 
@@ -25,8 +26,8 @@ export type Database = {
     Tables: {
       profiles: {
         Row: ProfileRow;
-        Insert: { id: string; display_name: string; created_at?: string };
-        Update: { display_name?: string };
+        Insert: { id: string; display_name: string; avatar_url?: string | null; created_at?: string };
+        Update: { display_name?: string; avatar_url?: string | null };
         Relationships: [];
       };
       posts: {

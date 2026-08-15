@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Banner, Field, formatSeconds } from '../ui/components';
+import { Avatar, Banner, Field, formatSeconds } from '../ui/components';
 import { useRecipes } from '../ui/data';
-import { useTimeline } from '../ui/social';
+import { useAvatars, useTimeline } from '../ui/social';
 import { useAuth } from '../ui/auth';
 import { deletePost, importSharedRecipe, submitPost, toSharedRecipe } from '../db/repo';
 import { SignInRequiredError } from '../db/social';
@@ -162,6 +162,7 @@ function PostDialog({ remote, onPosted, onClose }: { remote: boolean; onPosted: 
 /** 豆友（投稿）。Supabase を設定すると全員のタイムラインになり、未設定なら端末内に残る。 */
 export function FriendsScreen() {
   const timeline = useTimeline();
+  const avatarOf = useAvatars(timeline.posts);
   const auth = useAuth();
   const [composing, setComposing] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -200,9 +201,7 @@ export function FriendsScreen() {
           <div className="feed">
             {timeline.posts.map((post) => (
               <article key={post.id} className="feed-item">
-                <div className="account-avatar feed-avatar" aria-hidden="true">
-                  {post.author.slice(0, 1)}
-                </div>
+                <Avatar name={post.author} url={avatarOf(post)} className="feed-avatar" />
                 <div className="feed-body">
                   <div className="feed-head">
                     <strong>{post.author}</strong>

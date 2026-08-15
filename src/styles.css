@@ -405,6 +405,26 @@ textarea {
   background: var(--surface-2, transparent);
 }
 
+.account-avatar {
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.account-avatar-lg {
+  width: 64px;
+  height: 64px;
+  font-size: 26px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 .account-profile-text {
   gap: 2px;
 }

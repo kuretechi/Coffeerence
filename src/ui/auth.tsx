@@ -9,6 +9,8 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  /** プロフィール画像の data URL。未設定なら undefined。 */
+  avatarUrl?: string;
 }
 
 export interface AuthApi {
@@ -21,6 +23,8 @@ export interface AuthApi {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateDisplayName: (displayName: string) => Promise<void>;
+  /** プロフィール画像を差し替える（undefined で削除）。 */
+  updateAvatar: (avatarUrl: string | undefined) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthApi | undefined>(undefined);
@@ -46,14 +50,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function load(userId: string, email: string, metaName: unknown): Promise<void> {
       const fallback = typeof metaName === 'string' && metaName.trim() !== '' ? metaName.trim() : ANONYMOUS_NAME;
       let displayName = fallback;
+      let avatarUrl: string | undefined;
       try {
         const profile = await fetchProfile(userId);
-        if (profile) displayName = profile.displayName;
-        else await upsertProfile({ id: userId, displayName: fallback });
+        if (profile) {
+          displayName = profile.displayName;
+          avatarUrl = profile.avatarUrl;
+        } else {
+          await upsertProfile({ id: userId, displayName: fallback });
+        }
       } catch {
         // プロフィールが読めなくてもログイン自体は続行する。
       }
-      if (alive) setUser({ id: userId, email, displayName });
+      if (alive) setUser({ id: userId, email, displayName, avatarUrl });
     }
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -105,16 +114,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (displayName: string) => {
       const name = displayName.trim() === '' ? ANONYMOUS_NAME : displayName.trim();
       if (!user) throw new Error('ログインしていません');
-      await upsertProfile({ id: user.id, displayName: name });
+      await upsertProfile({ id: user.id, displayName: name, avatarUrl: user.avatarUrl });
       await requireClient().auth.updateUser({ data: { display_name: name } });
       setUser({ ...user, displayName: name });
     },
     [user],
   );
 
+  const updateAvatar = useCallback(
+    async (avatarUrl: string | undefined) => {
+      if (!user) throw new Error('ログインしていません');
+      await upsertProfile({ id: user.id, displayName: user.displayName, avatarUrl });
+      setUser({ ...user, avatarUrl });
+    },
+    [user],
+  );
+
   const value = useMemo<AuthApi>(
-    () => ({ enabled: isSupabaseConfigured, ready, user, signUp, signIn, signOut, updateDisplayName }),
-    [ready, user, signUp, signIn, signOut, updateDisplayName],
+    () => ({
+      enabled: isSupabaseConfigured,
+      ready,
+      user,
+      signUp,
+      signIn,
+      signOut,
+      updateDisplayName,
+      updateAvatar,
+    }),
+    [ready, user, signUp, signIn, signOut, updateDisplayName, updateAvatar],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

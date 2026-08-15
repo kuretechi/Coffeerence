@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { fetchTimeline, subscribeTimeline } from '../db/social';
+import { fetchProfiles, fetchTimeline, subscribeTimeline } from '../db/social';
 import type { Post } from '../domain/types';
-import { usePosts } from './data';
+import { usePosts, useSettings } from './data';
 
 export interface Timeline {
   /** remote = Supabase のタイムライン。local = 端末内（Supabase 未設定）。 */
@@ -56,4 +56,39 @@ export function useTimeline(): Timeline {
     return { mode: 'local', posts: localPosts, loading: false, reload };
   }
   return { mode: 'remote', posts: remotePosts, loading, error, reload };
+}
+
+/**
+ * 投稿者のプロフィール画像。remote の投稿は profiles から引き、
+ * 端末内の投稿は自分の設定（settings.avatarUrl）を使う。
+ */
+export function useAvatars(posts: Post[]): (post: Post) => string | undefined {
+  const localAvatar = useSettings().avatarUrl;
+  const [avatars, setAvatars] = useState<Record<string, string>>({});
+  const userIds = [...new Set(posts.map((post) => post.userId).filter((id): id is string => id !== undefined))];
+  const key = userIds.join(',');
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || key === '') return;
+    let alive = true;
+    fetchProfiles(key.split(','))
+      .then((profiles) => {
+        if (!alive) return;
+        setAvatars(
+          Object.fromEntries(
+            profiles
+              .filter((profile) => profile.avatarUrl !== undefined)
+              .map((profile) => [profile.id, profile.avatarUrl as string]),
+          ),
+        );
+      })
+      .catch(() => {
+        // 画像が引けなくても頭文字で表示できるので黙って諦める。
+      });
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+
+  return (post: Post) => (post.userId === undefined ? localAvatar : avatars[post.userId]);
 }

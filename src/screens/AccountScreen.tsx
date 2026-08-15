@@ -1,8 +1,87 @@
-import { useState } from 'react';
-import { Banner, Card, Field, Segmented } from '../ui/components';
+import { useRef, useState } from 'react';
+import { Avatar, Banner, Card, Field, Segmented } from '../ui/components';
 import { ANONYMOUS_NAME, useAuth } from '../ui/auth';
+import { useSettings } from '../ui/data';
+import { saveSettings } from '../db/repo';
+import { toAvatarDataUrl } from '../lib/avatar';
 
 type Mode = 'login' | 'signup';
+
+/**
+ * プロフィール画像の選択。端末内に必ず保存し、
+ * ログイン中は Supabase の profiles にも反映する。
+ */
+function AvatarPicker({ name }: { name: string }) {
+  const auth = useAuth();
+  const settings = useSettings();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [notice, setNotice] = useState<{ tone: 'ok' | 'danger'; text: string } | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+
+  async function store(avatarUrl: string | undefined, done: string) {
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      await saveSettings({ ...settings, avatarUrl });
+      if (auth.user) await auth.updateAvatar(avatarUrl);
+      setNotice({ tone: 'ok', text: done });
+    } catch (cause) {
+      setNotice({ tone: 'danger', text: cause instanceof Error ? cause.message : '保存できませんでした。' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pick(file: File) {
+    setBusy(true);
+    setNotice(undefined);
+    try {
+      const dataUrl = await toAvatarDataUrl(file);
+      await store(dataUrl, 'プロフィール画像を保存しました。');
+    } catch (cause) {
+      setNotice({ tone: 'danger', text: cause instanceof Error ? cause.message : '画像を読めませんでした。' });
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="stack">
+      <div className="row account-profile">
+        <Avatar name={name} url={settings.avatarUrl} className="account-avatar-lg" />
+        <div className="stack account-profile-text">
+          <strong>{name}</strong>
+          <span className="muted">{auth.user?.email ?? '未ログイン'}</span>
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        className="visually-hidden"
+        type="file"
+        accept="image/*"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = '';
+          if (file) void pick(file);
+        }}
+      />
+      {notice ? <Banner tone={notice.tone}>{notice.text}</Banner> : null}
+      <div className="row">
+        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}>
+          {settings.avatarUrl ? '画像を変更' : '画像を選ぶ'}
+        </button>
+        {settings.avatarUrl ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void store(undefined, 'プロフィール画像を削除しました。')}
+          >
+            画像を削除
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 /** ログイン済みのプロフィール。表示名を変えると以後の投稿名に反映される。 */
 function Profile() {
@@ -27,15 +106,7 @@ function Profile() {
     <>
       <Card title="プロフィール">
         <div className="stack">
-          <div className="row account-profile">
-            <div className="account-avatar" aria-hidden="true">
-              豆
-            </div>
-            <div className="stack account-profile-text">
-              <strong>{auth.user?.displayName}</strong>
-              <span className="muted">{auth.user?.email}</span>
-            </div>
-          </div>
+          <AvatarPicker name={auth.user?.displayName ?? ANONYMOUS_NAME} />
           <Field label="表示名">
             <input
               value={displayName}
@@ -163,15 +234,7 @@ export function AccountScreen() {
         </Card>
         <Card title="プロフィール">
           <div className="stack">
-            <div className="row account-profile">
-              <div className="account-avatar" aria-hidden="true">
-                豆
-              </div>
-              <div className="stack account-profile-text">
-                <strong>ゲスト</strong>
-                <span className="muted">未ログイン</span>
-              </div>
-            </div>
+            <AvatarPicker name="ゲスト" />
             <p className="muted">豆友の投稿は端末内にだけ保存されます。</p>
           </div>
         </Card>
