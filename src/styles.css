@@ -605,24 +605,27 @@ th {
   line-height: 1;
 }
 
-/* インラインダイヤル: 選んだ1項目だけ拡大し、残りは1行サマリーに畳む。 */
+/* 選択中の投カードだけ枠を強調する。値は下部ホイールで詰める。 */
 .pour-node-card.focused {
   border-color: var(--accent);
 }
 
-.pour-dial-stack {
+/* 数値行: ラベル＋値だけ。タップで下部ホイールの担当を切り替える。 */
+.value-rows {
   display: flex;
   flex-direction: column;
-  gap: 2px;
 }
 
-/* 先頭の項目だけは右上の×を避ける。 */
-.pour-dial-stack > .pour-dial-row:first-child,
-.pour-dial-stack > .pour-dial:first-child .pour-dial-head {
+.value-rows > .value-row + .value-row {
+  border-top: 1px solid var(--line);
+}
+
+/* 先頭行だけは右上の×を避ける。 */
+.pour-node-card .value-rows > .value-row:first-child {
   padding-right: 44px;
 }
 
-.pour-dial-row {
+.value-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -631,151 +634,36 @@ th {
   min-height: 44px;
   padding: 0 2px;
   border: none;
-  border-radius: var(--radius-s);
+  border-radius: 0;
   background: none;
   color: var(--text);
-  font-size: 13px;
   text-align: left;
 }
 
-.pour-dial-row-label {
+.value-row.active {
+  color: var(--accent);
+}
+
+.value-row-label {
   color: var(--muted);
   font-size: 12px;
 }
 
-.pour-dial-row-value {
-  font-size: 16px;
+.value-row.active .value-row-label {
+  color: var(--accent);
+}
+
+.value-row-value {
+  font-size: 18px;
   font-weight: 700;
 }
 
-.pour-dial {
-  margin: 2px 0 6px;
-}
-
-.pour-dial-label {
-  margin: 0;
-  color: var(--muted);
+.value-row-unit {
+  margin-left: 2px;
+  font-family: var(--font-ui);
   font-size: 12px;
-}
-
-.pour-dial-value {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  margin: 0;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-.pour-dial-unit {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.pour-dial-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pour-dial-steppers {
-  display: flex;
-  gap: 4px;
-}
-
-.pour-dial-step {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 20px;
-  line-height: 1;
-}
-
-.pour-dial-track {
-  position: relative;
-  margin-top: 6px;
-}
-
-/* 選択位置を示す中央の指標。 */
-.pour-dial-track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  height: 15px;
-  left: 50%;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--accent);
-  pointer-events: none;
-}
-
-/* 横スクロールの目盛り。中央の指標に合った目盛りが選択値。 */
-.pour-dial-wheel {
-  position: relative;
-  display: flex;
-  height: 44px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  border-radius: var(--radius-s);
-  background: var(--surface);
-  /* 端の目盛りも中央に来られるよう、左右に半分ずつ余白を作る。 */
-  padding: 0 calc(50% - 16px);
-}
-
-.pour-dial-wheel::-webkit-scrollbar {
-  display: none;
-}
-
-.pour-dial-wheel:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.pour-dial-tick {
-  position: relative;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 44px;
-  scroll-snap-align: center;
-}
-
-/* 目盛りの線。数字を出す位置だけ長くする。 */
-.pour-dial-tick::before {
-  content: '';
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  width: 1px;
-  height: 7px;
-  background: var(--muted);
-  opacity: 0.5;
-}
-
-.pour-dial-tick.major::before {
-  height: 11px;
-  opacity: 1;
-}
-
-.pour-dial-tick em {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
   font-style: normal;
+  font-weight: 400;
   color: var(--muted);
 }
 
@@ -902,18 +790,6 @@ table button {
   border: 1px solid var(--line);
   text-decoration: none;
   color: var(--text);
-}
-
-/* レシピ一覧はレシピ名だけなので、行を詰める。 */
-.recipe-item {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
-.recipe-item .log-summary {
-  min-height: 0;
 }
 
 /* 記録一覧の行。タップで詳細を開く。 */
@@ -1209,4 +1085,248 @@ table button {
   .finish-character {
     display: none;
   }
+}
+
+/* レシピ一覧: カードを重ねず罫線だけで区切る。 */
+.recipe-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.recipe-add {
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.recipe-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.recipe-rule {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}
+
+.recipe-rule-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.recipe-rule-meta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ボトムシート: 高さ85%。背景タップ・ハンドルを下に引く・×で閉じる。 */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 85vh;
+  max-height: 85vh;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  background: var(--surface);
+  animation: sheet-rise 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.sheet-grip {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  flex: 0 0 auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet-grip-bar {
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 0 12px 6px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sheet-close {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.sheet-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+}
+
+.sheet-body > label.field {
+  flex: 0 0 auto;
+}
+
+.sheet-foot {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.sheet-save {
+  min-height: 48px;
+}
+
+/* iOS 風の縦ホイール。中央の帯に来た値が選択値。 */
+.wheel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wheel-label {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.wheel-input {
+  flex: 0 0 72px;
+  width: 72px;
+  min-height: 44px;
+  text-align: right;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.wheel-steppers {
+  display: flex;
+  gap: 4px;
+}
+
+.wheel-step {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.wheel-track {
+  position: relative;
+  margin-top: 6px;
+}
+
+/* 選択位置の帯。 */
+.wheel-track::after {
+  content: '';
+  position: absolute;
+  inset: 40px 0;
+  height: 40px;
+  border-top: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+.wheel-list {
+  height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  /* 端の値も中央に来られるよう、上下に1行分ずつ余白を作る。 */
+  padding: 40px 0;
+  /* 上下端をぼかして輪っかに見せる。 */
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+
+.wheel-list::-webkit-scrollbar {
+  display: none;
+}
+
+.wheel-list:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.wheel-item {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  scroll-snap-align: center;
+  font-size: 17px;
+  color: var(--muted);
+}
+
+.wheel-item.current {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
 }
