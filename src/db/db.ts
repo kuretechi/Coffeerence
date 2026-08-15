@@ -7,6 +7,8 @@ import type {
   ExternalLabel,
   FlavorDescriptorSet,
   Gear,
+  LoopSound,
+  MixerBoard,
   Post,
   Recipe,
   RehearsalRecord,
@@ -32,6 +34,8 @@ export class CoffeerenceDb extends Dexie {
   audit!: Table<AuditEntry, string>;
   posts!: Table<Post, string>;
   sounds!: Table<StoredSound, string>;
+  loopSounds!: Table<LoopSound, string>;
+  mixerBoards!: Table<MixerBoard, string>;
 
   constructor(name = 'coffeerence') {
     super(name);
@@ -81,6 +85,11 @@ export class CoffeerenceDb extends Dexie {
             settings.finishSoundId ??= 'tururu';
           }),
       );
+    // 音重ねタブのループ素材と盤面。
+    this.version(8).stores({
+      loopSounds: 'id, createdAt',
+      mixerBoards: 'id',
+    });
   }
 }
 

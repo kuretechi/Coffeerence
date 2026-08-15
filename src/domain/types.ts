@@ -401,6 +401,33 @@ export interface Settings {
   targetLine: number; // F-13 目標ライン（合計点）
 }
 
+// ─── 音重ね（ループを重ねて演奏する）───────
+/** アップロードしたループ素材。音源は Blob のまま端末内に置く。 */
+export interface LoopSound {
+  id: string;
+  name: string;
+  blob: Blob;
+  /** 読み込み時に測った長さ（秒）。表示とループ長の自動決定に使う。 */
+  durationSec: number;
+  createdAt: string;
+}
+
+/** 1枠の状態。素材が入っていない枠は soundId を持たない。 */
+export interface MixerSlot {
+  soundId?: string;
+  muted: boolean;
+}
+
+/** 音重ねの盤面。端末内に1つだけ持つ。 */
+export interface MixerBoard {
+  id: 'board';
+  bpm: number;
+  bars: number;
+  slots: MixerSlot[];
+  /** 全体音量（0〜1）。 */
+  volume: number;
+}
+
 /** アップロード音の置き場。合図音と終了音で別のファイルを持てる。 */
 export type SoundSlot = 'custom' | 'custom-finish';
 

@@ -1752,3 +1752,276 @@ table button {
   background: var(--surface-2);
   color: var(--accent-strong);
 }
+
+/* 音重ねタブ: 素材を枠に入れて重ねて鳴らす */
+.mixer-transport {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mixer-play {
+  flex: none;
+  width: 84px;
+  height: 84px;
+  min-height: 84px;
+  padding: 0;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--accent-strong);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.mixer-play.playing {
+  border-color: var(--accent-strong);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mixer-loop {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  min-width: 0;
+}
+
+.mixer-loop > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mixer-loop dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mixer-loop dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+.mixer-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mixer-stepper button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.mixer-stepper input {
+  width: 56px;
+  padding: 4px 2px;
+  text-align: center;
+  font-size: 16px;
+}
+
+.mixer-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mixer-volume input {
+  flex: 1;
+}
+
+.mixer-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 0 0 12px;
+}
+
+.mixer-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.mixer-slot.sounding {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.mixer-slot-label {
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.mixer-slot-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-height: 62px;
+  padding: 4px 2px;
+  border: none;
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.mixer-slot.sounding .mixer-slot-main {
+  background: var(--accent);
+  color: var(--on-accent);
+  animation: mixer-bounce 0.6s ease-in-out infinite alternate;
+}
+
+.mixer-slot-main.empty {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.mixer-slot-name {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mixer-slot-state {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.mixer-slot-plus {
+  font-size: 18px;
+}
+
+.mixer-slot-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.mixer-slot-actions button {
+  flex: 1;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+@keyframes mixer-bounce {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mixer-slot.sounding .mixer-slot-main {
+    animation: none;
+  }
+}
+
+.mixer-add {
+  margin-bottom: 10px;
+}
+
+.mixer-add button {
+  width: 100%;
+}
+
+.mixer-library,
+.mixer-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mixer-library > li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mixer-library > li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.mixer-library-name {
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 14px;
+}
+
+.mixer-library-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 6px;
+}
+
+.mixer-library-actions button {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.mixer-library-actions button.danger {
+  color: var(--danger);
+}
+
+.mixer-picker > li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mixer-picker-row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+}

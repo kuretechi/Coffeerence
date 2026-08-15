@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 
-export type TabIconName = 'recipe' | 'timer' | 'log' | 'stats' | 'friends' | 'account' | 'settings';
+export type TabIconName = 'recipe' | 'timer' | 'log' | 'stats' | 'mixer' | 'friends' | 'account' | 'settings';
 
 /** タブ用の線画アイコン。色は currentColor に追従する。 */
 export function TabIcon({ name }: { name: TabIconName }) {
@@ -60,6 +60,15 @@ const PATHS: Record<TabIconName, ReactElement> = {
       <circle cx="8" cy="13" r="1.4" />
       <circle cx="13" cy="11" r="1.4" />
       <circle cx="18" cy="9" r="1.4" />
+    </>
+  ),
+  // 重なる波形
+  mixer: (
+    <>
+      <path d="M5 20V10" />
+      <path d="M9.5 20V4" />
+      <path d="M14 20v-8" />
+      <path d="M18.5 20V7" />
     </>
   ),
   // 豆と人

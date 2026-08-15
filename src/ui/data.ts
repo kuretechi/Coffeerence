@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
 import { DEFAULT_COMPETITION, DEFAULT_SETTINGS } from '../domain/defaults';
 import { THEME_NAMES } from '../domain/types';
+import { DEFAULT_BOARD, normalizeBoard } from '../lib/loopMixer';
 import type {
   Bean,
   BrewRecord,
   Competition,
   Gear,
   GearKind,
+  LoopSound,
+  MixerBoard,
   Post,
   Recipe,
   Session,
@@ -70,6 +74,18 @@ export function usePosts(): Post[] {
 /** アップロードした合図音（未設定なら undefined）。 */
 export function useCustomSound(slot: SoundSlot = 'custom'): StoredSound | undefined {
   return useLiveQuery(() => db.sounds.get(slot), [slot], undefined);
+}
+
+/** 音重ねタブに登録したループ素材。 */
+export function useLoopSounds(): LoopSound[] {
+  return useLiveQuery(() => db.loopSounds.orderBy('createdAt').toArray(), [], []) ?? [];
+}
+
+/** 音重ねの盤面。未保存なら既定の盤面。 */
+export function useMixerBoard(): MixerBoard {
+  const stored = useLiveQuery(() => db.mixerBoards.get('board'), [], undefined);
+  // 再生中の装置は盤面の同一性で差分を見るので、内容が変わらない限り同じ参照を返す。
+  return useMemo(() => (stored ? normalizeBoard({ ...DEFAULT_BOARD, ...stored }) : DEFAULT_BOARD), [stored]);
 }
 
 export function useBeans(): Bean[] {
