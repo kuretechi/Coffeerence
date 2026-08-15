@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Banner, formatSeconds } from '../ui/components';
 import { useRecipes, useSettings } from '../ui/data';
 import { FinishCharacter } from '../ui/FinishCharacter';
+import { SevenSegment } from '../ui/SevenSegment';
 import { SAME_AS_CHIME_ID, chime, doubleChime, primeAudio, useStopwatch } from '../ui/useTimer';
 import { saveBrew } from '../db/repo';
 import { uid } from '../lib/random';
@@ -142,12 +143,8 @@ export function TimerScreen() {
       )}
 
       <div className="timer-gauge">
-        <div
-          className="timer-gauge-cell timer-gauge-cell-wide"
-          role="timer"
-          aria-label={formatSeconds(stopwatch.elapsed)}
-        >
-          <span className="timer-gauge-value mono">{formatSeconds(stopwatch.elapsed)}</span>
+        <div className="timer-gauge-cell timer-gauge-cell-wide">
+          <SevenSegment className="timer-gauge-seg" value={formatSeconds(stopwatch.elapsed)} />
         </div>
         <div className="timer-gauge-cell" aria-label="累計">
           <span className="timer-gauge-sym mono" aria-hidden="true">

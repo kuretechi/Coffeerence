@@ -658,7 +658,14 @@ table button {
 .timer-gauge-cell-wide {
   grid-column: 1 / -1;
   min-height: 88px;
+  padding: 12px;
   border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.timer-gauge-seg {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .timer-gauge-value {
