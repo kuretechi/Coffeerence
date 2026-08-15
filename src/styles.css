@@ -498,8 +498,8 @@ th {
   opacity: 1;
 }
 
-/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
-.pour-timeline {
+/* 注湯エディタ: 上の積み上げバーで配分、下のカードで数値を微調整する。 */
+.pour-ratio {
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
   padding: 4px 10px 12px;
@@ -507,84 +507,178 @@ th {
   min-width: 0;
 }
 
-.pour-timeline legend {
+.pour-ratio legend {
   font-size: 12px;
   color: var(--muted);
   padding: 0 4px;
 }
 
-.pour-timeline-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.pour-node {
+.pour-ratio-head {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: 10px;
+  align-items: end;
 }
 
-.pour-node-axis {
+.pour-ratio-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pour-ratio-presets button {
+  padding: 0 4px;
+  min-height: 44px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pour-ratio-bar-wrap {
+  margin-top: 14px;
+}
+
+/* セグメント＝1投。flex-grow にその投の湯量を入れて配分を見せる。 */
+.pour-ratio-bar {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding-top: 6px;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  overflow: hidden;
 }
 
-/* カード間をつなぐ縦線。最後の追加カードの下では消す。 */
-.pour-node-axis::after {
-  content: '';
-  flex: 1;
-  width: 2px;
-  min-height: 12px;
-  background: var(--line);
-}
-
-.pour-node-last .pour-node-axis::after {
-  display: none;
-}
-
-.pour-node-badge {
+.pour-ratio-seg {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-family: var(--font-mono);
-  font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset -1px 0 0 var(--line);
+}
+
+.pour-ratio-seg:nth-child(even) {
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.pour-ratio-seg:last-of-type {
+  box-shadow: none;
+}
+
+.pour-ratio-seg-label {
+  font-size: 12px;
   font-weight: 700;
+  color: var(--text);
 }
 
-.pour-node-badge.ghost {
-  background: transparent;
-  border: 1px dashed var(--line);
-  color: var(--muted);
-  font-weight: 400;
+/* 境界のつまみ。見た目は細い線、当たり判定は 44px 幅で取る。 */
+.pour-ratio-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  margin-left: -22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  touch-action: none;
+  cursor: ew-resize;
 }
 
-.pour-node-time {
+.pour-ratio-handle-grip {
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--accent-strong);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.pour-ratio-handle.dragging .pour-ratio-handle-grip,
+.pour-ratio-handle:focus-visible .pour-ratio-handle-grip {
+  width: 6px;
+  height: 40px;
+}
+
+.pour-ratio-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 6px 0 0;
+  padding: 0;
   font-size: 12px;
   color: var(--muted);
 }
 
-.pour-node-card {
-  position: relative;
+.pour-ratio-legend li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pour-ratio-legend-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pour-ratio-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-ratio-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.pour-ratio-card {
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-l);
-  padding: 10px 12px 12px;
-  margin-bottom: 12px;
+  padding: 4px 4px 10px 10px;
 }
 
-.pour-node-remove {
-  position: absolute;
-  top: 0;
-  right: 0;
+.pour-ratio-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pour-ratio-card-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pour-ratio-card-delta {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-ratio-remove {
   width: 44px;
   height: 44px;
   min-height: 44px;
@@ -596,72 +690,36 @@ th {
   line-height: 1;
 }
 
-.pour-node-total {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pour-node-total-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.pour-node-total-input {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  padding-right: 40px;
-}
-
-.pour-node-total-input input {
-  min-height: 44px;
-  padding: 0;
-  border: none;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-  background: none;
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.pour-node-unit {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.pour-node-delta {
-  margin: 2px 0 10px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.pour-node-sub {
+.pour-ratio-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding-right: 6px;
 }
 
-.pour-node-sub .field span {
+.pour-ratio-card-body .field span {
   font-size: 11px;
 }
 
-.pour-node-add {
+.pour-ratio-card-body input {
+  font-family: var(--font-mono);
+  padding: 0 6px;
+}
+
+.pour-ratio-add {
   width: 100%;
-  margin-bottom: 4px;
+  margin-top: 10px;
   border: 1px dashed var(--line);
   background: none;
   color: var(--accent);
 }
 
-.pour-timeline-total {
+.pour-ratio-total {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin: 4px 0 0;
+  margin: 10px 0 0;
   padding-top: 8px;
   border-top: 1px solid var(--line);
   font-size: 13px;

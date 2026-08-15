@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, formatSeconds } from '../ui/components';
 import { useBeans, useRecipes, useSettings } from '../ui/data';
 import { deleteRecipe, saveRecipe } from '../db/repo';
@@ -24,6 +24,29 @@ interface Draft {
 }
 
 const PRESET_INTERVAL_SEC = 45;
+
+/** バーで境界をドラッグするときに、隣の投との間に必ず残す湯量。 */
+const MIN_SEGMENT_G = 1;
+
+type RatioPreset = 'even' | 'front' | 'back';
+
+/** 配分プリセットの重み。前多め＝先の投を厚く、後多め＝後の投を厚く。 */
+function presetWeights(preset: RatioPreset, count: number): number[] {
+  return Array.from({ length: count }, (_, index) => {
+    if (preset === 'even') return 1;
+    return preset === 'front' ? count - index : index + 1;
+  });
+}
+
+/** 重みと総湯量から累計湯量の列を作る。最後は必ず総湯量に一致させる。 */
+function cumulativeFromWeights(weights: readonly number[], totalG: number): number[] {
+  const sum = weights.reduce((acc, weight) => acc + weight, 0);
+  let running = 0;
+  return weights.map((weight, index) => {
+    running += weight;
+    return index === weights.length - 1 ? totalG : Math.round((totalG * running) / sum);
+  });
+}
 
 /** 総湯量と粉量から「蒸らし→中間→全量」の3投を作る。 */
 function presetPours(defaults: RecipeDefaults): DraftPour[] {
@@ -99,6 +122,8 @@ export function RecipeScreen() {
   const [draft, setDraft] = useState<Draft>(() => emptyDraft(DEFAULT_SETTINGS.recipeDefaults));
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [openId, setOpenId] = useState<string | undefined>(undefined);
+  const [draggingBoundary, setDraggingBoundary] = useState<number | undefined>(undefined);
+  const barRef = useRef<HTMLDivElement | null>(null);
   const editing = recipes.find((recipe) => recipe.id === editingId);
 
   // 設定の初期値が読み込まれた（または変えられた）ら、未入力のフォームに反映させる。
@@ -139,17 +164,25 @@ export function RecipeScreen() {
     return `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)}`;
   }
 
+  /** 追加した投にも配分を分けるため、最後の投を半分に割ってから足す（総湯量は保つ）。 */
   function addPour() {
-    const last = draft.pours[draft.pours.length - 1];
+    const pours = draft.pours;
+    const last = pours[pours.length - 1];
+    const previous = pours.length >= 2 ? pours[pours.length - 2]?.targetG : 0;
+    const splitG =
+      last?.targetG === undefined || previous === undefined ? undefined : Math.round((previous + last.targetG) / 2);
+    const appended: DraftPour = {
+      targetG: last?.targetG,
+      atSec: last?.atSec === undefined ? undefined : last.atSec + PRESET_INTERVAL_SEC,
+      waterTempC: draft.waterTempC,
+    };
     setDraft({
       ...draft,
       pours: [
-        ...draft.pours,
-        {
-          targetG: last?.targetG,
-          atSec: last?.atSec === undefined ? undefined : last.atSec + PRESET_INTERVAL_SEC,
-          waterTempC: draft.waterTempC,
-        },
+        ...pours.map((pour, index) =>
+          index === pours.length - 1 && splitG !== undefined ? { ...pour, targetG: splitG } : pour,
+        ),
+        appended,
       ],
     });
   }
@@ -157,6 +190,60 @@ export function RecipeScreen() {
   function removePour(index: number) {
     setDraft({ ...draft, pours: draft.pours.filter((_, i) => i !== index) });
   }
+
+  /** 総湯量を変えたら、いまの配分比率を保ったまま各投の累計湯量を伸縮させる。 */
+  function setTotalWater(next: number | undefined) {
+    const pours = draft.pours;
+    const lastIndex = pours.length - 1;
+    if (lastIndex < 0) return;
+    if (next === undefined) {
+      setPour(lastIndex, { targetG: undefined });
+      return;
+    }
+    const scalable = totalWaterG > 0 && pours.every((pour) => pour.targetG !== undefined);
+    setDraft({
+      ...draft,
+      pours: pours.map((pour, index) => {
+        if (index === lastIndex) return { ...pour, targetG: next };
+        const scaled = scalable
+          ? Math.round(((pour.targetG ?? 0) * next) / totalWaterG)
+          : Math.round((next * (index + 1)) / pours.length);
+        return { ...pour, targetG: scaled };
+      }),
+    });
+  }
+
+  /** プリセット比率をいまの投数に当てて、総湯量はそのままで配分だけ作り直す。 */
+  function applyPreset(preset: RatioPreset) {
+    if (totalWaterG <= 0) return;
+    const applied = cumulativeFromWeights(presetWeights(preset, draft.pours.length), totalWaterG);
+    setDraft({ ...draft, pours: draft.pours.map((pour, index) => ({ ...pour, targetG: applied[index] })) });
+  }
+
+  /** バーの境界（index 投目と index+1 投目の間）を動かす。隣を追い越さないように丸める。 */
+  function moveBoundary(index: number, targetG: number) {
+    const lower = (index === 0 ? 0 : draft.pours[index - 1]?.targetG ?? 0) + MIN_SEGMENT_G;
+    const upper = (draft.pours[index + 1]?.targetG ?? totalWaterG) - MIN_SEGMENT_G;
+    if (upper < lower) return;
+    setPour(index, { targetG: Math.min(Math.max(Math.round(targetG), lower), upper) });
+  }
+
+  function boundaryFromClientX(index: number, clientX: number) {
+    const rect = barRef.current?.getBoundingClientRect();
+    if (rect === undefined || rect.width === 0) return;
+    moveBoundary(index, ((clientX - rect.left) / rect.width) * totalWaterG);
+  }
+
+  const cumulative = draft.pours.map((pour) => pour.targetG);
+  // 累計湯量がすべて入っていて単調増加のときだけ、バーで配分を編集できる。
+  const barReady =
+    totalWaterG > 0 &&
+    cumulative.length > 0 &&
+    cumulative.every(
+      (value, index) => value !== undefined && value >= (index === 0 ? 0 : cumulative[index - 1] ?? 0),
+    ) &&
+    cumulative[cumulative.length - 1] === totalWaterG;
+  const deltas = draft.pours.map((pour, index) => (pour.targetG ?? 0) - (index === 0 ? 0 : cumulative[index - 1] ?? 0));
 
   function startEdit(recipe: Recipe) {
     setEditingId(recipe.id);
@@ -241,20 +328,108 @@ export function RecipeScreen() {
               <input value={draft.brewer} onChange={(event) => setDraft({ ...draft, brewer: event.target.value })} />
             </Field>
           </div>
-          <fieldset className="pour-timeline">
-            <legend>注湯（上から下へ時間が流れます）</legend>
-            <ol className="pour-timeline-list">
+          <fieldset className="pour-ratio">
+            <legend>注湯（バーで配分・カードで微調整）</legend>
+            <div className="pour-ratio-head">
+              <NumberField
+                label="総湯量"
+                suffix="g"
+                step={5}
+                min={0}
+                value={draft.pours[draft.pours.length - 1]?.targetG}
+                onChange={setTotalWater}
+              />
+              <div className="pour-ratio-presets" role="group" aria-label="配分プリセット">
+                {(
+                  [
+                    ['even', '均等'],
+                    ['front', '前多め'],
+                    ['back', '後多め'],
+                  ] as const
+                ).map(([preset, label]) => (
+                  <button key={preset} type="button" disabled={totalWaterG <= 0} onClick={() => applyPreset(preset)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {barReady ? (
+              <div className="pour-ratio-bar-wrap">
+                <div className="pour-ratio-bar" ref={barRef}>
+                  {draft.pours.map((_pour, index) => (
+                    <div className="pour-ratio-seg" key={index} style={{ flexGrow: Math.max(deltas[index] ?? 0, 0) }}>
+                      {/* 細いセグメントに番号を書くとつまみと重なるので、下の凡例に任せる。 */}
+                      {(deltas[index] ?? 0) / totalWaterG >= 0.12 ? (
+                        <span className="pour-ratio-seg-label mono">{index + 1}</span>
+                      ) : null}
+                    </div>
+                  ))}
+                  {draft.pours.slice(0, -1).map((pour, index) => (
+                    <div
+                      className={`pour-ratio-handle${draggingBoundary === index ? ' dragging' : ''}`}
+                      key={index}
+                      role="slider"
+                      tabIndex={0}
+                      aria-label={`${index + 1}投目と${index + 2}投目の境界（累計湯量）`}
+                      aria-valuemin={0}
+                      aria-valuemax={totalWaterG}
+                      aria-valuenow={pour.targetG ?? 0}
+                      aria-valuetext={`${pour.targetG ?? 0}g`}
+                      style={{ left: `${((pour.targetG ?? 0) / totalWaterG) * 100}%` }}
+                      onPointerDown={(event) => {
+                        event.currentTarget.setPointerCapture(event.pointerId);
+                        setDraggingBoundary(index);
+                      }}
+                      onPointerMove={(event) => {
+                        if (draggingBoundary !== index) return;
+                        boundaryFromClientX(index, event.clientX);
+                      }}
+                      onPointerUp={() => setDraggingBoundary(undefined)}
+                      onPointerCancel={() => setDraggingBoundary(undefined)}
+                      onKeyDown={(event) => {
+                        const step = event.key === 'PageUp' || event.key === 'PageDown' ? 5 : 1;
+                        const sign =
+                          event.key === 'ArrowLeft' || event.key === 'ArrowDown' || event.key === 'PageDown'
+                            ? -1
+                            : event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'PageUp'
+                              ? 1
+                              : 0;
+                        if (sign === 0) return;
+                        event.preventDefault();
+                        moveBoundary(index, (pour.targetG ?? 0) + sign * step);
+                      }}
+                    >
+                      <span className="pour-ratio-handle-grip" aria-hidden="true" />
+                    </div>
+                  ))}
+                </div>
+                <ol className="pour-ratio-legend">
+                  {draft.pours.map((_pour, index) => (
+                    <li key={index}>
+                      <span className="pour-ratio-legend-no mono">{index + 1}</span>
+                      <span className="mono">{deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : (
+              <p className="pour-ratio-hint">
+                累計湯量を小さい順にすべて入れると、バーで配分を編集できます。総湯量は最後の投の累計湯量です。
+              </p>
+            )}
+
+            <ol className="pour-ratio-list">
               {draft.pours.map((pour, index) => (
-                <li className="pour-node" key={index}>
-                  <div className="pour-node-axis">
-                    <span className="pour-node-badge">{index + 1}</span>
-                    <span className="pour-node-time mono">
-                      {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)}
+                <li className="pour-ratio-card" key={index}>
+                  <div className="pour-ratio-card-head">
+                    <span className="pour-ratio-card-badge mono">{index + 1}</span>
+                    <span className="pour-ratio-card-delta mono">
+                      {pour.atSec === undefined ? '—' : formatSeconds(pour.atSec)} / この投{' '}
+                      {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
                     </span>
-                  </div>
-                  <div className="pour-node-card">
                     <button
-                      className="pour-node-remove"
+                      className="pour-ratio-remove"
                       type="button"
                       aria-label={`${index + 1}投目を削除`}
                       disabled={draft.pours.length <= 1}
@@ -262,57 +437,40 @@ export function RecipeScreen() {
                     >
                       ×
                     </button>
-                    <label className="pour-node-total">
-                      <span className="pour-node-total-label">累計湯量</span>
-                      <span className="pour-node-total-input">
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step={1}
-                          min={0}
-                          value={pour.targetG ?? ''}
-                          onChange={(event) => {
-                            const raw = event.target.value;
-                            setPour(index, { targetG: raw === '' ? undefined : Number(raw) });
-                          }}
-                        />
-                        <span className="pour-node-unit">g</span>
-                      </span>
-                    </label>
-                    <p className="pour-node-delta mono">
-                      この投 {deltaOf(index) === undefined ? '—' : `${deltaOf(index)}g`}
-                    </p>
-                    <div className="pour-node-sub">
-                      <NumberField
-                        label="開始"
-                        suffix="秒"
-                        step={5}
-                        min={0}
-                        value={pour.atSec}
-                        onChange={(atSec) => setPour(index, { atSec })}
-                      />
-                      <NumberField
-                        label="湯温"
-                        suffix="℃"
-                        step={1}
-                        min={0}
-                        value={pour.waterTempC}
-                        onChange={(waterTempC) => setPour(index, { waterTempC })}
-                      />
-                    </div>
+                  </div>
+                  <div className="pour-ratio-card-body">
+                    <NumberField
+                      label="累計"
+                      suffix="g"
+                      step={1}
+                      min={0}
+                      value={pour.targetG}
+                      onChange={(targetG) => setPour(index, { targetG })}
+                    />
+                    <NumberField
+                      label="開始"
+                      suffix="秒"
+                      step={5}
+                      min={0}
+                      value={pour.atSec}
+                      onChange={(atSec) => setPour(index, { atSec })}
+                    />
+                    <NumberField
+                      label="湯温"
+                      suffix="℃"
+                      step={1}
+                      min={0}
+                      value={pour.waterTempC}
+                      onChange={(waterTempC) => setPour(index, { waterTempC })}
+                    />
                   </div>
                 </li>
               ))}
-              <li className="pour-node pour-node-last">
-                <div className="pour-node-axis">
-                  <span className="pour-node-badge ghost">＋</span>
-                </div>
-                <button className="pour-node-add" type="button" onClick={addPour}>
-                  ＋ この投を追加
-                </button>
-              </li>
             </ol>
-            <p className="pour-timeline-total">
+            <button className="pour-ratio-add" type="button" onClick={addPour}>
+              ＋ 投を追加
+            </button>
+            <p className="pour-ratio-total">
               <span className="muted">総湯量</span>
               <strong className="mono">{totalWaterG}g</strong>
             </p>
