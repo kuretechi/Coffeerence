@@ -9,21 +9,33 @@ import { uid } from '../lib/random';
 import { pourProgress, toSteps } from '../lib/pours';
 import type { BrewRecord, Pour } from '../domain/types';
 
-const RING_R = 132;
-const RING_C = 2 * Math.PI * RING_R;
-/** デッキで背面に覗かせる枚数。これより奥のカードは描かない。 */
-const DECK_PEEK = 2;
-/** スワイプと見なす横移動量(px)。 */
-const SWIPE_PX = 40;
+/** アークは下側を 60° 空けた 300° 分だけ描き、空けた側に数字ラベルを置く。 */
+const ARC_SWEEP = 300 / 360;
+/** 0° = 真上、時計回り。300° 分の開始角。 */
+const ARC_START_DEG = 210;
+/** 数字ラベルを置く角度（下の切れ目の中）。 */
+const ARC_LABEL_DEG = 164;
+/** 内側（1投目）のアーク半径と、外側へ向かう間隔。 */
+const ARC_INNER_R = 72;
+const ARC_GAP = 16;
+/** アークを円内に収める外側の限界。 */
+const ARC_OUTER_R = 138;
 
-/** デッキ1枚ぶんの表示内容。注湯の投と、落ち切りの終了札を同じ形で扱う。 */
-interface DeckCard {
+/** 同心アーク1本ぶん。半径は投の順番で決まる。 */
+interface DialArc {
   key: string;
-  startSec: number;
-  index?: number;
-  waterG?: number;
-  targetG?: number;
-  tempC?: number;
+  radius: number;
+  /** 0=未着手、1=塗り切り。 */
+  fill: number;
+  done: boolean;
+  active: boolean;
+  label: string;
+}
+
+/** 中心 (150,150) から見た点。0° = 真上、時計回り。 */
+function polar(radius: number, deg: number): { x: number; y: number } {
+  const rad = (deg * Math.PI) / 180;
+  return { x: 150 + radius * Math.sin(rad), y: 150 - radius * Math.cos(rad) };
 }
 
 export function TimerScreen() {
@@ -101,46 +113,33 @@ export function TimerScreen() {
     navigate('/log');
   }
 
-  const headline = finished
-    ? '終了'
-    : pours.length === 0
-    ? ''
-    : progress.current
-    ? `${progress.current.index}投目 ${progress.current.targetG}g`
-    : `1投目 ${pours[0]?.targetG ?? 0}g`;
-
-  // 投カードに落ち切りの終了札を足したものがデッキ。並びはそのまま時系列。
-  const deck: DeckCard[] = pours.map((pour, position) => ({
-    key: `pour-${pour.index}`,
-    startSec: pour.startSec,
-    index: pour.index,
-    waterG: steps[position]?.waterG ?? 0,
-    targetG: pour.targetG,
-    tempC: tempOf(pour),
-  }));
-  if (finishSec !== undefined) deck.push({ key: 'finish', startSec: finishSec });
-
-  // 前面に来るのは「いま注ぐ投」。注ぎ切ったら終了札が前面に出る。
-  const focusIndex = progress.current
-    ? pours.findIndex((pour) => pour.index === progress.current?.index)
+  // いま見せる投。開始前は1投目、注ぎ切ったあとも最後の投の数値を残す。
+  const activeIndex = progress.current
+    ? Math.max(
+        pours.findIndex((pour) => pour.index === progress.current?.index),
+        0,
+      )
     : 0;
-  const poured = progress.current !== undefined && progress.next === undefined;
-  const activeIndex =
-    deck.length === 0 ? 0 : finishSec !== undefined && (finished || poured) ? deck.length - 1 : Math.max(focusIndex, 0);
+  const activePour = pours[activeIndex];
+  const activeStep = steps[activeIndex];
 
-  // 手前/奥を手で覗くためのずれ。計測が次の投に進んだら自動で解除する。
-  const [peek, setPeek] = useState(0);
-  useEffect(() => {
-    setPeek(0);
-  }, [activeIndex]);
-  const viewIndex = Math.min(Math.max(activeIndex + peek, 0), Math.max(deck.length - 1, 0));
-  const peeking = viewIndex !== activeIndex;
-  const touchX = useRef<number | undefined>(undefined);
-
-  function movePeek(delta: number) {
-    const next = Math.min(Math.max(viewIndex + delta, 0), Math.max(deck.length - 1, 0));
-    setPeek(next - activeIndex);
-  }
+  // 内側=1投目、外側=最後の投。本数が多いときは間隔を詰めて円内に収める。
+  const gap =
+    pours.length > 1 ? Math.min(ARC_GAP, (ARC_OUTER_R - ARC_INNER_R) / (pours.length - 1)) : ARC_GAP;
+  const arcs: DialArc[] = pours.map((pour, position) => {
+    const startSec = pour.startSec;
+    const endSec = pours[position + 1]?.startSec ?? finishSec ?? startSec;
+    const span = Math.max(endSec - startSec, 1);
+    const done = finished || stopwatch.elapsed >= endSec;
+    return {
+      key: `arc-${pour.index}`,
+      radius: ARC_INNER_R + gap * position,
+      fill: done ? 1 : Math.min(Math.max((stopwatch.elapsed - startSec) / span, 0), 1),
+      done,
+      active: !done && position === activeIndex && progress.current !== undefined,
+      label: `${pour.targetG}`,
+    };
+  });
 
   return (
     <div className="timer-stage">
@@ -161,22 +160,54 @@ export function TimerScreen() {
         </select>
       )}
 
-      <div className="timer-stage-ring timer-deck-ring">
+      <div className="timer-dial">
         <svg viewBox="0 0 300 300" role="timer" aria-label={formatSeconds(stopwatch.elapsed)}>
-          <circle className="ring-track" cx="150" cy="150" r={RING_R} />
-          <circle
-            className="ring-value"
-            cx="150"
-            cy="150"
-            r={RING_R}
-            strokeDasharray={RING_C}
-            strokeDashoffset={RING_C * (1 - ratio)}
-            transform="rotate(-90 150 150)"
-          />
+          {arcs.map((arc) => {
+            const circumference = 2 * Math.PI * arc.radius;
+            const visible = circumference * ARC_SWEEP;
+            const rotate = `rotate(${ARC_START_DEG - 90} 150 150)`;
+            return (
+              <g key={arc.key}>
+                <circle
+                  className="dial-arc-track"
+                  cx="150"
+                  cy="150"
+                  r={arc.radius}
+                  strokeDasharray={`${visible} ${circumference}`}
+                  transform={rotate}
+                />
+                {arc.fill > 0 ? (
+                  <circle
+                    className={`dial-arc-value${arc.done ? ' done' : ''}${arc.active ? ' active' : ''}`}
+                    cx="150"
+                    cy="150"
+                    r={arc.radius}
+                    strokeDasharray={`${visible * arc.fill} ${circumference}`}
+                    transform={rotate}
+                  />
+                ) : null}
+              </g>
+            );
+          })}
+          {arcs.map((arc) => {
+            const at = polar(arc.radius, ARC_LABEL_DEG);
+            return (
+              <text
+                key={`${arc.key}-label`}
+                className={`dial-arc-label${arc.done ? ' done' : ''}${arc.active ? ' active' : ''}`}
+                x={at.x}
+                y={at.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {arc.label}
+              </text>
+            );
+          })}
         </svg>
-        <div className="timer-stage-center">
-          <span className="timer-stage-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
-          <span className="timer-stage-headline">{headline}</span>
+        <div className="timer-dial-center">
+          <span className="timer-dial-elapsed mono">{formatSeconds(stopwatch.elapsed)}</span>
+          <span className="timer-dial-target mono">{activePour ? `${activePour.targetG}g` : '—'}</span>
         </div>
       </div>
 
@@ -184,125 +215,39 @@ export function TimerScreen() {
         <Banner>このレシピには注湯の内訳が未登録です。レシピ画面で何投目に何g注ぐかを登録できます。</Banner>
       ) : null}
 
-      {deck.length === 0 ? null : (
-        <>
-          <div
-            className="timer-deck"
-            onTouchStart={(event) => {
-              touchX.current = event.touches[0]?.clientX;
-            }}
-            onTouchEnd={(event) => {
-              const from = touchX.current;
-              const to = event.changedTouches[0]?.clientX;
-              touchX.current = undefined;
-              if (from === undefined || to === undefined) return;
-              if (Math.abs(to - from) < SWIPE_PX) return;
-              movePeek(to > from ? -1 : 1);
-            }}
-          >
-            {deck.map((card, position) => {
-              const depth = position - viewIndex;
-              if (depth < 0 || depth > DECK_PEEK) return null;
-              const front = depth === 0;
-              const isActive = position === activeIndex;
-              const done = position < activeIndex;
-              return (
-                <article
-                  key={card.key}
-                  className={`timer-deck-card${front ? ' front' : ''}${done ? ' done' : ''}${
-                    front && !isActive ? ' peek' : ''
-                  }`}
-                  data-depth={depth}
-                  aria-hidden={front ? undefined : true}
-                  aria-live={front ? 'polite' : undefined}
-                >
-                  {front ? (
-                    <span
-                      className="timer-deck-edge"
-                      style={{ transform: `scaleX(${isActive ? ratio : 0})` }}
-                    />
-                  ) : null}
-                  <header className="timer-deck-head">
-                    <span className="timer-deck-label">
-                      {card.index === undefined
-                        ? finished
-                          ? '終了'
-                          : '落ち切り'
-                        : done
-                        ? '済'
-                        : isActive
-                        ? ''
-                        : '予定'}
-                    </span>
-                    <span className="timer-deck-at mono muted">{formatSeconds(card.startSec)}〜</span>
-                  </header>
-                  {card.index === undefined ? (
-                    <p className="timer-deck-done mono">
-                      {finished ? formatSeconds(card.startSec) : formatSeconds(isActive ? remainSec : card.startSec)}
-                    </p>
-                  ) : (
-                    <>
-                      <p className="timer-deck-title">
-                        <strong className="timer-deck-index">{card.index}</strong>投目
-                      </p>
-                      <dl className="timer-deck-grid">
-                        <div>
-                          <dt>この投</dt>
-                          <dd className="mono">{card.waterG}g</dd>
-                        </div>
-                        <div>
-                          <dt>累計まで</dt>
-                          <dd className="mono">{card.targetG}g</dd>
-                        </div>
-                        <div>
-                          <dt>湯温</dt>
-                          <dd className="mono">{card.tempC}℃</dd>
-                        </div>
-                        <div>
-                          <dt>{isActive ? (progress.next ? '次まで' : '終了まで') : '開始'}</dt>
-                          <dd className="mono">
-                            {isActive ? formatSeconds(remainSec) : formatSeconds(card.startSec)}
-                          </dd>
-                        </div>
-                      </dl>
-                    </>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-
-          <div className="timer-deck-nav">
-            <button
-              type="button"
-              className="timer-deck-arrow"
-              aria-label="1枚前を見る"
-              disabled={viewIndex === 0}
-              onClick={() => movePeek(-1)}
-            >
-              ‹
-            </button>
-            <span className="timer-deck-count mono muted">
-              {peeking ? (
-                <button type="button" className="timer-deck-back" onClick={() => setPeek(0)}>
-                  現在
-                </button>
-              ) : (
-                `${viewIndex + 1} / ${deck.length}`
-              )}
+      {activePour ? (
+        <article className="timer-now" aria-live="polite">
+          <span className="timer-now-edge" style={{ transform: `scaleX(${finished ? 1 : ratio})` }} />
+          <header className="timer-now-head">
+            <span className="timer-now-index mono">
+              <strong>{activePour.index}</strong>
+              <span className="timer-now-slash">/</span>
+              {pours.length}
             </span>
-            <button
-              type="button"
-              className="timer-deck-arrow"
-              aria-label="1枚先を見る"
-              disabled={viewIndex >= deck.length - 1}
-              onClick={() => movePeek(1)}
-            >
-              ›
-            </button>
-          </div>
-        </>
-      )}
+            <span className="timer-now-mark mono muted">
+              {finished ? '済' : progress.current ? formatSeconds(activePour.startSec) : '予定'}
+            </span>
+          </header>
+          <dl className="timer-now-grid">
+            <div>
+              <dt>この投</dt>
+              <dd className="mono">{activeStep?.waterG ?? 0}g</dd>
+            </div>
+            <div>
+              <dt>累計</dt>
+              <dd className="mono">{activePour.targetG}g</dd>
+            </div>
+            <div>
+              <dt>湯温</dt>
+              <dd className="mono">{tempOf(activePour)}℃</dd>
+            </div>
+            <div>
+              <dt>{finished ? '終了' : progress.next ? '次まで' : '終了まで'}</dt>
+              <dd className="mono">{finished ? formatSeconds(finishSec ?? 0) : formatSeconds(remainSec)}</dd>
+            </div>
+          </dl>
+        </article>
+      ) : null}
 
       <div className="timer-stage-actions">
         {stopwatch.running ? (
