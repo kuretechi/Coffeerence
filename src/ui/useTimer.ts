@@ -101,7 +101,11 @@ export const CHIME_SOUNDS: { id: string; label: string; file: string }[] = [
   { id: 'high', label: '高い鈴', file: 'chime-high.mp3' },
   { id: 'low', label: '低い鐘', file: 'chime-low.mp3' },
   { id: 'beep', label: '電子音', file: 'chime-beep.mp3' },
+  { id: 'tururu', label: 'トゥルル', file: 'chime-tururu.mp3' },
 ];
+
+/** 抽出終了の音を合図音に揃えるときの選択値。 */
+export const SAME_AS_CHIME_ID = 'same';
 
 /** アップロードした音を指すID（= 置き場の ID）。 */
 export const CUSTOM_SOUND_ID: SoundSlot = 'custom';

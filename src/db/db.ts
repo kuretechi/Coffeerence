@@ -70,6 +70,17 @@ export class CoffeerenceDb extends Dexie {
             if (settings.soundId === undefined || settings.soundId === 'bell') settings.soundId = 'desk';
           }),
       );
+    // 抽出終了の2回鳴らしを既定でトゥルルにする（未設定の端末だけ）。
+    this.version(7)
+      .stores({})
+      .upgrade((tx) =>
+        tx
+          .table<Settings>('settings')
+          .toCollection()
+          .modify((settings) => {
+            settings.finishSoundId ??= 'tururu';
+          }),
+      );
   }
 }
 

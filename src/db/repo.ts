@@ -122,9 +122,8 @@ export async function deleteCustomSound(slot: SoundSlot = 'custom'): Promise<voi
     await saveSettings({ ...rest, soundId: DEFAULT_SETTINGS.soundId });
     return;
   }
-  // 終了音は未設定＝合図音と同じなので、項目ごと落とす。
-  const { finishSoundId: _id, finishCustomSoundName: _name, ...rest } = settings;
-  await saveSettings(rest);
+  const { finishCustomSoundName: _dropped, ...rest } = settings;
+  await saveSettings({ ...rest, finishSoundId: DEFAULT_SETTINGS.finishSoundId });
 }
 
 export async function getActiveCompetition(): Promise<Competition> {

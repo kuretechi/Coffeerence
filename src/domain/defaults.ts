@@ -119,6 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   ],
   soundEnabled: true,
   soundId: 'desk',
+  finishSoundId: 'tururu',
   targetLine: 168,
 };
 
