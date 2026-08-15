@@ -24,11 +24,18 @@ function chunk(name: string, body: number[]): number[] {
   ];
 }
 
-/** 四分音符 = ticksPerQuarter の MIDI を組む。 */
-function midiFile(events: number[], ticksPerQuarter = 480, trackCount = 1): ArrayBuffer {
-  const header = chunk('MThd', [0, 1, 0, trackCount, (ticksPerQuarter >> 8) & 0xff, ticksPerQuarter & 0xff]);
-  const track = chunk('MTrk', [...events, ...varint(0), 0xff, 0x2f, 0x00]);
-  return new Uint8Array([...header, ...track]).buffer;
+/** 四分音符 = ticksPerQuarter の MIDI を組む。トラックを複数渡すとマルチトラックになる。 */
+function midiFile(events: number[] | number[][], ticksPerQuarter = 480): ArrayBuffer {
+  const trackEvents = Array.isArray(events[0]) ? (events as number[][]) : [events as number[]];
+  const header = chunk('MThd', [0, 1, 0, trackEvents.length, (ticksPerQuarter >> 8) & 0xff, ticksPerQuarter & 0xff]);
+  const tracks = trackEvents.flatMap((body) => chunk('MTrk', [...body, ...varint(0), 0xff, 0x2f, 0x00]));
+  return new Uint8Array([...header, ...tracks]).buffer;
+}
+
+/** トラック名のメタイベント。 */
+function trackName(name: string): number[] {
+  const bytes = [...new TextEncoder().encode(name)];
+  return [...varint(0), 0xff, 0x03, bytes.length, ...bytes];
 }
 
 describe('parseMidi', () => {
@@ -41,9 +48,10 @@ describe('parseMidi', () => {
     const song = parseMidi(data);
     expect(song.notes).toEqual([
       // note off が来た音は 1 秒、来なかった音は既定の長さ。
-      { semitone: 0, startSec: 0, holdSec: 1, velocity: 1 },
-      { semitone: 12, startSec: 0.5, holdSec: 0.5, velocity: 64 / 127 },
+      { semitone: 0, startSec: 0, holdSec: 1, velocity: 1, track: 0 },
+      { semitone: 12, startSec: 0.5, holdSec: 0.5, velocity: 64 / 127, track: 0 },
     ]);
+    expect(song.tracks).toEqual([{ index: 0, name: 'トラック 1', notes: 2 }]);
     expect(song.seconds).toBeCloseTo(1);
     expect(song.truncated).toBe(false);
   });
@@ -80,12 +88,25 @@ describe('parseMidi', () => {
     expect(song.notes[0].semitone).toBe(0);
   });
 
+  it('トラックごとに音を分け、トラック名を拾う', () => {
+    const data = midiFile([
+      [...trackName('主旋律'), ...varint(0), 0x90, 72, 100],
+      [...varint(0), 0x90, 48, 100, ...varint(480), 0x90, 55, 100],
+    ]);
+    const song = parseMidi(data);
+    expect(song.tracks).toEqual([
+      { index: 0, name: '主旋律', notes: 1 },
+      { index: 1, name: 'トラック 2', notes: 2 },
+    ]);
+    expect(song.notes.filter((note) => note.track === 1).map((note) => note.semitone)).toEqual([-12, -5]);
+  });
+
   it('音域の中心を半音で返す', () => {
     expect(
       centerSemitone([
-        { semitone: 12, startSec: 0, holdSec: 1, velocity: 1 },
-        { semitone: 24, startSec: 0, holdSec: 1, velocity: 1 },
-        { semitone: 30, startSec: 0, holdSec: 1, velocity: 1 },
+        { semitone: 12, startSec: 0, holdSec: 1, velocity: 1, track: 0 },
+        { semitone: 24, startSec: 0, holdSec: 1, velocity: 1, track: 0 },
+        { semitone: 30, startSec: 0, holdSec: 1, velocity: 1, track: 1 },
       ]),
     ).toBe(24);
     expect(centerSemitone([])).toBe(0);
