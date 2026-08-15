@@ -1,10 +1,16 @@
-import type { ModerationSettings, ModerationVerdict } from '../domain/types';
+import type { ModerationVerdict } from '../domain/types';
 
 /**
- * 投稿の不適切判定。
- * 既定はオフラインで動くローカル判定。設定でAPIキーを入れると外部モデルに切り替わり、
- * 呼び出しに失敗したときはローカル判定にフォールバックする。
+ * 投稿の不適切判定。アプリ側で必ず実行するもので、利用者は設定も無効化もできない。
+ * 常にオフラインの規則判定を通し、ビルド時に moderation API が設定されていれば
+ * さらに外部モデルにも問い合わせる（失敗時は規則判定の結果に従う）。
  */
+
+const REMOTE = {
+  endpoint: import.meta.env.VITE_MODERATION_ENDPOINT ?? '',
+  model: import.meta.env.VITE_MODERATION_MODEL ?? 'omni-moderation-latest',
+  apiKey: import.meta.env.VITE_MODERATION_API_KEY ?? '',
+};
 
 interface Rule {
   category: string;
@@ -12,7 +18,7 @@ interface Rule {
   pattern: RegExp;
 }
 
-// 語彙は最小限にとどめ、運用しながら設定側で足せるようにしている。
+// 語彙は最小限にとどめ、運用しながら足していく。
 const RULES: Rule[] = [
   {
     category: 'violence',
@@ -67,14 +73,14 @@ interface OpenAiModerationResponse {
 }
 
 /** OpenAI 互換の moderation エンドポイントに問い合わせる。 */
-async function moderateRemotely(text: string, settings: ModerationSettings): Promise<ModerationVerdict> {
-  const response = await fetch(settings.endpoint, {
+async function moderateRemotely(text: string): Promise<ModerationVerdict> {
+  const response = await fetch(REMOTE.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${settings.apiKey}`,
+      Authorization: `Bearer ${REMOTE.apiKey}`,
     },
-    body: JSON.stringify({ model: settings.model, input: text }),
+    body: JSON.stringify({ model: REMOTE.model, input: text }),
   });
   if (!response.ok) throw new Error(`moderation API ${response.status}`);
   const body: OpenAiModerationResponse = await response.json();
@@ -97,12 +103,12 @@ async function moderateRemotely(text: string, settings: ModerationSettings): Pro
  * 投稿本文を判定する。外部モデルが使えないときはローカル判定の結果を返すので、
  * オフラインでも判定機構そのものは必ず働く。
  */
-export async function moderate(text: string, settings: ModerationSettings): Promise<ModerationVerdict> {
-  const local = moderateLocally(text, settings.blocklist);
+export async function moderate(text: string): Promise<ModerationVerdict> {
+  const local = moderateLocally(text);
   if (!local.allowed) return local;
-  if (settings.provider !== 'remote' || settings.apiKey.trim() === '') return local;
+  if (REMOTE.endpoint === '' || REMOTE.apiKey === '') return local;
   try {
-    return await moderateRemotely(text, settings);
+    return await moderateRemotely(text);
   } catch {
     // 判定できないときは投稿を止めず、ローカル判定の結果に従う。
     return { ...local, provider: 'local' };

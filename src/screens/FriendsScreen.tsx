@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Banner, Card, Field } from '../ui/components';
-import { usePosts, useSettings } from '../ui/data';
+import { usePosts } from '../ui/data';
 import { deletePost, remoderatePosts, submitPost } from '../db/repo';
 
 const MAX_BODY = 500;
@@ -8,7 +8,6 @@ const MAX_BODY = 500;
 /** 豆友（投稿）。中身は仮で、書き込みと不適切判定の機構だけ先に入れている。 */
 export function FriendsScreen() {
   const posts = usePosts();
-  const moderation = useSettings().moderation;
   const [author, setAuthor] = useState('');
   const [body, setBody] = useState('');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'danger'; text: string } | undefined>(undefined);
@@ -25,20 +24,17 @@ export function FriendsScreen() {
       } else {
         setNotice({ tone: 'danger', text: `投稿できません: ${verdict.reason ?? '不適切な内容と判定されました。'}` });
       }
+    } catch {
+      setNotice({ tone: 'danger', text: '投稿に失敗しました。もう一度お試しください。' });
     } finally {
       setBusy(false);
     }
   }
 
-  async function recheck() {
-    setBusy(true);
-    try {
-      const removed = await remoderatePosts();
-      setNotice({ tone: removed > 0 ? 'danger' : 'ok', text: `再判定しました（削除 ${removed} 件）。` });
-    } finally {
-      setBusy(false);
-    }
-  }
+  // 判定はアプリ側で強制する。判定器を更新したあとでも遡って適用されるよう、開くたびに再判定する。
+  useEffect(() => {
+    void remoderatePosts();
+  }, []);
 
   return (
     <>
@@ -61,14 +57,8 @@ export function FriendsScreen() {
             <button className="primary" type="button" disabled={body.trim() === '' || busy} onClick={() => void post()}>
               投稿する
             </button>
-            <button type="button" disabled={posts.length === 0 || busy} onClick={() => void recheck()}>
-              全投稿を再判定
-            </button>
           </div>
-          <p className="muted">
-            判定: {moderation.provider === 'remote' && moderation.apiKey !== '' ? 'AI判定（設定のAPI）' : 'ローカル判定'}
-            。設定画面で切り替えられます。
-          </p>
+          <p className="muted">投稿は必ず自動判定を通ります（利用者側での設定はありません）。</p>
         </div>
       </Card>
 

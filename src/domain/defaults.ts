@@ -90,13 +90,6 @@ export const DEFAULT_SETTINGS: Settings = {
     grindSetting: '',
     brewer: 'V60 02',
   },
-  moderation: {
-    provider: 'local',
-    endpoint: 'https://api.openai.com/v1/moderations',
-    model: 'omni-moderation-latest',
-    apiKey: '',
-    blocklist: [],
-  },
   theme: 'classic',
   activeCompetitionId: DEFAULT_COMPETITION.id,
   weights: {

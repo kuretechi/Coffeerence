@@ -72,7 +72,9 @@ export async function seedIfEmpty(): Promise<void> {
 }
 
 export async function getSettings(): Promise<Settings> {
-  return (await db.settings.get('settings')) ?? DEFAULT_SETTINGS;
+  // 後から追加した項目が欠けた古いレコードでも壊れないよう、既定値で埋める。
+  const stored = await db.settings.get('settings');
+  return stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
@@ -211,8 +213,7 @@ export async function consumeBeans(beanId: string, grams: number): Promise<void>
  * 判定結果を監査ログに残して呼び出し側に返す。
  */
 export async function submitPost(author: string, body: string): Promise<ModerationVerdict> {
-  const settings = await getSettings();
-  const verdict = await moderate(body, settings.moderation);
+  const verdict = await moderate(body);
   if (!verdict.allowed) {
     await recordAudit({
       kind: 'moderation',
@@ -237,11 +238,10 @@ export async function submitPost(author: string, body: string): Promise<Moderati
  * 判定器を差し替えた（APIキーを設定した）あとの遡り適用に使う。
  */
 export async function remoderatePosts(): Promise<number> {
-  const settings = await getSettings();
   const posts = await db.posts.toArray();
   let removed = 0;
   for (const post of posts) {
-    const verdict = await moderate(post.body, settings.moderation);
+    const verdict = await moderate(post.body);
     if (verdict.allowed) {
       await db.posts.put({ ...post, moderation: verdict });
       continue;
