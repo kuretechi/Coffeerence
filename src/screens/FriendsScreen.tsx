@@ -22,53 +22,46 @@ function relativeTime(iso: string): string {
 /** 投稿に添付されたレシピ。取り込むと自分のレシピ一覧に追加される。 */
 function AttachedRecipe({ recipe }: { recipe: SharedRecipe }) {
   const [imported, setImported] = useState(false);
-  const [open, setOpen] = useState(false);
 
   return (
     <div className="stack post-recipe">
-      <button className="log-summary" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <strong>{recipe.name}</strong>
-      </button>
-      {open ? (
-        <>
-        <dl className="brew-detail">
-          <dt>粉量 / 総湯量</dt>
-          <dd className="mono">
-            {recipe.doseG}g / {recipe.totalWaterG}g
-          </dd>
-          <dt>挽き目 / ドリッパー</dt>
-          <dd>
-            {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
-          </dd>
-          <dt>初期湯温</dt>
-          <dd className="mono">{recipe.waterTempC}℃</dd>
-          <dt>注湯</dt>
-          <dd className="mono">
-            {recipe.pours.length === 0
-              ? '—'
-              : recipe.pours
-                  .map(
-                    (pour) =>
-                      `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
-                  )
-                  .join(' / ')}
-          </dd>
-          <dt>抽出終了</dt>
-          <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
-        </dl>
-        <div className="row">
-          <button
-            type="button"
-            disabled={imported}
-            onClick={() => {
-              void importSharedRecipe(recipe).then(() => setImported(true));
-            }}
-          >
-            {imported ? '取り込み済み' : '自分のレシピに取り込む'}
-          </button>
-        </div>
-        </>
-      ) : null}
+      <strong>{recipe.name}</strong>
+      <dl className="brew-detail">
+        <dt>粉量 / 総湯量</dt>
+        <dd className="mono">
+          {recipe.doseG}g / {recipe.totalWaterG}g
+        </dd>
+        <dt>挽き目 / ドリッパー</dt>
+        <dd>
+          {recipe.grindSetting || '—'} / {recipe.brewer || '—'}
+        </dd>
+        <dt>初期湯温</dt>
+        <dd className="mono">{recipe.waterTempC}℃</dd>
+        <dt>注湯</dt>
+        <dd className="mono">
+          {recipe.pours.length === 0
+            ? '—'
+            : recipe.pours
+                .map(
+                  (pour) =>
+                    `${formatSeconds(pour.startSec)} 累計${pour.targetG}g ${pour.waterTempC ?? recipe.waterTempC}℃`,
+                )
+                .join(' / ')}
+        </dd>
+        <dt>抽出終了</dt>
+        <dd className="mono">{recipe.finishSec === undefined ? '—' : formatSeconds(recipe.finishSec)}</dd>
+      </dl>
+      <div className="row">
+        <button
+          type="button"
+          disabled={imported}
+          onClick={() => {
+            void importSharedRecipe(recipe).then(() => setImported(true));
+          }}
+        >
+          {imported ? '取り込み済み' : '自分のレシピに取り込む'}
+        </button>
+      </div>
     </div>
   );
 }
