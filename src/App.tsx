@@ -9,6 +9,7 @@ import { RecipeScreen } from './screens/RecipeScreen';
 import { RecipeViewScreen } from './screens/RecipeViewScreen';
 import { TimerScreen } from './screens/TimerScreen';
 import { LogScreen } from './screens/LogScreen';
+import { StatsScreen } from './screens/StatsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { FriendsScreen } from './screens/FriendsScreen';
 import { AccountScreen } from './screens/AccountScreen';
@@ -18,6 +19,7 @@ const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
   { to: '/timer', label: 'タイマー', icon: 'timer' },
   { to: '/log', label: '記録', icon: 'log' },
+  { to: '/stats', label: '分析', icon: 'stats' },
   { to: '/friends', label: '豆友', icon: 'friends' },
   { to: '/account', label: 'アカウント', icon: 'account' },
   { to: '/settings', label: '設定', icon: 'settings' },
@@ -49,6 +51,7 @@ export function App() {
         <Route path="/recipes/:recipeId" element={<RecipeViewScreen />} />
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
+        <Route path="/stats" element={<StatsScreen />} />
         <Route path="/friends" element={<FriendsScreen />} />
         <Route path="/account" element={<AccountScreen />} />
         <Route path="/users/:userId" element={<UserScreen />} />
