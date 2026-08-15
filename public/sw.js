@@ -3,7 +3,19 @@ const CACHE = 'coffeerence-v1';
 // サブパス配信（GitHub Pages 等）でも動くよう、スコープ基準の相対パスで持つ。
 const BASE = new URL('./', self.location.href).pathname;
 const SHELL_DOCUMENT = `${BASE}index.html`;
-const APP_SHELL = [BASE, SHELL_DOCUMENT, `${BASE}manifest.webmanifest`, `${BASE}icon.svg`];
+const APP_SHELL = [
+  BASE,
+  SHELL_DOCUMENT,
+  `${BASE}manifest.webmanifest`,
+  `${BASE}icon.svg`,
+  `${BASE}finish-character.png`,
+  `${BASE}bell.mp3`,
+  `${BASE}chime-desk.mp3`,
+  `${BASE}chime-high.mp3`,
+  `${BASE}chime-low.mp3`,
+  `${BASE}chime-beep.mp3`,
+  `${BASE}chime-tururu.mp3`,
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));

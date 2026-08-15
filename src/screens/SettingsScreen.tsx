@@ -1,11 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { Banner, Card, Field, NumberField, Switch } from '../ui/components';
-import { useAudit, useBrews, useGear, useLoadedSettings, useRecipes, useSettings } from '../ui/data';
-import { deleteGear, saveGear, saveSettings } from '../db/repo';
+import {
+  useAudit,
+  useBrews,
+  useCustomSound,
+  useGear,
+  useLoadedSettings,
+  useRecipes,
+  useSettings,
+} from '../ui/data';
+import { deleteCustomSound, deleteGear, saveCustomSound, saveGear, saveSettings } from '../db/repo';
+import {
+  CHIME_SOUNDS,
+  CUSTOM_FINISH_SOUND_ID,
+  CUSTOM_SOUND_ID,
+  SAME_AS_CHIME_ID,
+  canDecodeChime,
+  chime,
+  doubleChime,
+  primeAudio,
+  setCustomChime,
+} from '../ui/useTimer';
 import { brewsToCsv, downloadFile, exportAll, importAll } from '../db/exportData';
 import { uid } from '../lib/random';
 import { useAuth } from '../ui/auth';
-import type { GearKind, RecipeDefaults, ThemeName } from '../domain/types';
+import type { GearKind, RecipeDefaults, SoundSlot, ThemeName } from '../domain/types';
 
 const THEMES: { value: ThemeName; label: string }[] = [
   { value: 'classic', label: '既定' },
@@ -128,6 +147,22 @@ export function SettingsScreen() {
           checked={settings.soundEnabled}
           onChange={(soundEnabled) => void saveSettings({ ...settings, soundEnabled })}
         />
+        <SoundPicker
+          label="合図音"
+          slot={CUSTOM_SOUND_ID}
+          selected={settings.soundId}
+          fallbackId={settings.soundId}
+          onSelect={(soundId) => void saveSettings({ ...settings, soundId })}
+        />
+        <SoundPicker
+          label="抽出終了の音"
+          hint="抽出終了で2回鳴らす音だけを別にできます。"
+          slot={CUSTOM_FINISH_SOUND_ID}
+          selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
+          fallbackId={settings.soundId}
+          sameLabel="合図音と同じ"
+          onSelect={(finishSoundId) => void saveSettings({ ...settings, finishSoundId })}
+        />
       </Card>
 
       <Card title="データ" hint="すべてこの端末の IndexedDB に保存されています。アカウントもクラウド同期もありません。">
@@ -248,5 +283,123 @@ function GearCard({
         追加
       </button>
     </Card>
+  );
+}
+
+/**
+ * 合図音の選択。内蔵音に加えて、この置き場にアップロードした音を選べる。
+ * sameLabel を渡すと「未選択＝別の音を使わない」も選べる。
+ */
+function SoundPicker({
+  label,
+  hint,
+  slot,
+  selected,
+  fallbackId,
+  sameLabel,
+  onSelect,
+}: {
+  label: string;
+  hint?: string;
+  slot: SoundSlot;
+  selected: string;
+  /** 「合図音と同じ」のときに実際に鳴る音。 */
+  fallbackId: string;
+  sameLabel?: string;
+  onSelect: (soundId: string) => void;
+}) {
+  const custom = useCustomSound(slot);
+  const input = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState<string | undefined>();
+  const isFinish = slot === CUSTOM_FINISH_SOUND_ID;
+
+  /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
+  function playPreview(soundId: string) {
+    primeAudio(true, soundId);
+    if (isFinish) doubleChime(true, soundId);
+    else chime(true, soundId);
+  }
+
+  function select(soundId: string) {
+    onSelect(soundId);
+    playPreview(soundId === SAME_AS_CHIME_ID ? fallbackId : soundId);
+  }
+
+  async function upload(file: File) {
+    // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
+    if (!(await canDecodeChime(file))) {
+      setMessage(`${file.name} はこの端末で再生できません。別の mp3 / wav を選んでください。`);
+      return;
+    }
+    await saveCustomSound(file, slot);
+    // 保存の反映を待たずに鳴らせるよう、この場でも登録しておく。
+    setCustomChime(slot, file, `${file.name}:${file.size}`);
+    setMessage(`${file.name} を${label}にしました。`);
+    playPreview(slot);
+  }
+
+  return (
+    <>
+      {hint ? <p className="hint">{hint}</p> : null}
+      <Field label={label}>
+        <div className="segmented">
+          {sameLabel ? (
+            <button
+              type="button"
+              className={selected === SAME_AS_CHIME_ID ? 'selected' : ''}
+              onClick={() => select(SAME_AS_CHIME_ID)}
+            >
+              {sameLabel}
+            </button>
+          ) : null}
+          {CHIME_SOUNDS.map((sound) => (
+            <button
+              key={sound.id}
+              type="button"
+              className={selected === sound.id ? 'selected' : ''}
+              onClick={() => select(sound.id)}
+            >
+              {sound.label}
+            </button>
+          ))}
+          {custom ? (
+            <button type="button" className={selected === slot ? 'selected' : ''} onClick={() => select(slot)}>
+              {custom.name}
+            </button>
+          ) : null}
+        </div>
+      </Field>
+      {message ? <Banner>{message}</Banner> : null}
+      <div className="row">
+        <button type="button" onClick={() => input.current?.click()}>
+          mp3 / wav をアップロード
+        </button>
+        <button type="button" onClick={() => playPreview(selected === SAME_AS_CHIME_ID ? fallbackId : selected)}>
+          試聴
+        </button>
+        {custom ? (
+          <button
+            type="button"
+            onClick={() => {
+              void deleteCustomSound(slot);
+              setMessage('アップロードした音を削除しました。');
+            }}
+          >
+            アップロードした音を削除
+          </button>
+        ) : null}
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg"
+        hidden
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void upload(file);
+          event.target.value = '';
+        }}
+      />
+    </>
   );
 }

@@ -118,6 +118,8 @@ export const DEFAULT_SETTINGS: Settings = {
     'タイマーとスケールをゼロにする',
   ],
   soundEnabled: true,
+  soundId: 'desk',
+  finishSoundId: 'tururu',
   targetLine: 168,
 };
 
