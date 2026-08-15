@@ -507,43 +507,301 @@ th {
   opacity: 1;
 }
 
-.pour-editor {
+/* 注湯エディタ: 1投=1カードを縦に積み、左の軸で時間の流れを見せる。 */
+.pour-timeline {
   border: 1px solid var(--line);
   border-radius: var(--radius-m);
-  padding: 8px 10px 12px;
+  padding: 4px 10px 12px;
   margin: 0;
+  min-width: 0;
 }
 
-.pour-editor legend {
+.pour-timeline legend {
   font-size: 12px;
   color: var(--muted);
   padding: 0 4px;
 }
 
-.pour-row {
+.pour-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pour-node {
   display: grid;
-  grid-template-columns: auto 1fr 1fr 1fr auto;
-  gap: 6px;
-  align-items: end;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
 }
 
-.pour-row .field {
-  min-width: 0;
+.pour-node-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 6px;
 }
 
-.pour-row .field span {
-  font-size: 11px;
+/* カード間をつなぐ縦線。最後の追加カードの下では消す。 */
+.pour-node-axis::after {
+  content: '';
+  flex: 1;
+  width: 2px;
+  min-height: 12px;
+  background: var(--line);
 }
 
-.pour-row button {
-  padding: 0 10px;
+.pour-node-last .pour-node-axis::after {
+  display: none;
 }
 
-.pour-index {
-  font-size: 13px;
+.pour-node-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pour-node-badge.ghost {
+  background: transparent;
+  border: 1px dashed var(--line);
   color: var(--muted);
-  white-space: nowrap;
-  padding-bottom: 12px;
+  font-weight: 400;
+}
+
+.pour-node-time {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-node-card {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 10px 12px 12px;
+  margin-bottom: 12px;
+}
+
+.pour-node-remove {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* インラインダイヤル: 選んだ1項目だけ拡大し、残りは1行サマリーに畳む。 */
+.pour-node-card.focused {
+  border-color: var(--accent);
+}
+
+.pour-dial-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 先頭の項目だけは右上の×を避ける。 */
+.pour-dial-stack > .pour-dial-row:first-child,
+.pour-dial-stack > .pour-dial:first-child .pour-dial-head {
+  padding-right: 44px;
+}
+
+.pour-dial-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+
+.pour-dial-row-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pour-dial-row-value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pour-dial {
+  margin: 2px 0 6px;
+}
+
+.pour-dial-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pour-dial-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.pour-dial-unit {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.pour-dial-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pour-dial-steppers {
+  display: flex;
+  gap: 4px;
+}
+
+.pour-dial-step {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pour-dial-track {
+  position: relative;
+  margin-top: 6px;
+}
+
+/* 選択位置を示す中央の指標。 */
+.pour-dial-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  height: 15px;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* 横スクロールの目盛り。中央の指標に合った目盛りが選択値。 */
+.pour-dial-wheel {
+  position: relative;
+  display: flex;
+  height: 44px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  /* 端の目盛りも中央に来られるよう、左右に半分ずつ余白を作る。 */
+  padding: 0 calc(50% - 16px);
+}
+
+.pour-dial-wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.pour-dial-wheel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pour-dial-tick {
+  position: relative;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 44px;
+  scroll-snap-align: center;
+}
+
+/* 目盛りの線。数字を出す位置だけ長くする。 */
+.pour-dial-tick::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 1px;
+  height: 7px;
+  background: var(--muted);
+  opacity: 0.5;
+}
+
+.pour-dial-tick.major::before {
+  height: 11px;
+  opacity: 1;
+}
+
+.pour-dial-tick em {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.pour-node-delta {
+  margin: 6px 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pour-node-add {
+  width: 100%;
+  margin-bottom: 4px;
+  border: 1px dashed var(--line);
+  background: none;
+  color: var(--accent);
+}
+
+.pour-timeline-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
 }
 
 table button {
