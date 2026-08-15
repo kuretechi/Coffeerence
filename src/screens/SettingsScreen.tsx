@@ -18,7 +18,7 @@ import {
   SAME_AS_CHIME_ID,
   canDecodeChime,
   chime,
-  doubleChime,
+  extractAudioTrack,
   primeAudio,
   setCustomChime,
 } from '../ui/useTimer';
@@ -159,7 +159,7 @@ export function SettingsScreen() {
         />
         <SoundPicker
           label="抽出終了の音"
-          hint="抽出終了で2回鳴らす音だけを別にできます。"
+          hint="抽出終了で鳴らす音だけを別にできます。"
           slot={CUSTOM_FINISH_SOUND_ID}
           selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
@@ -321,13 +321,11 @@ function SoundPicker({
   const custom = useCustomSound(slot);
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | undefined>();
-  const isFinish = slot === CUSTOM_FINISH_SOUND_ID;
 
   /** 選んだ音をその場で鳴らす。オフ設定でも試聴だけは鳴らす。 */
   function playPreview(soundId: string, previewPitch = pitch) {
     primeAudio(true, soundId);
-    if (isFinish) doubleChime(true, soundId, previewPitch);
-    else chime(true, soundId, previewPitch);
+    chime(true, soundId, previewPitch);
   }
 
   const playedId = selected === SAME_AS_CHIME_ID ? fallbackId : selected;
@@ -345,15 +343,18 @@ function SoundPicker({
   }
 
   async function upload(file: File) {
-    // 鳴らせない形式を黙って受け入れないよう、保存前にデコードを試す。
-    if (!(await canDecodeChime(file))) {
-      setMessage(`${file.name} はこの端末で再生できません。別の mp3 / wav を選んでください。`);
+    // 動画は映像を持たず、音声トラックだけを wav にして保存する。
+    const audio = await extractAudioTrack(file);
+    // 鳴らせない形式を黙って受け入れないよう、保存前に鳴るか確かめる。
+    if (!audio && !(await canDecodeChime(file))) {
+      setMessage(`${file.name} はこの端末で再生できません。別の音声ファイルか動画を選んでください。`);
       return;
     }
-    await saveCustomSound(file, slot);
+    const sound = audio ?? file;
+    const name = await saveCustomSound(file, slot, audio);
     // 保存の反映を待たずに鳴らせるよう、この場でも登録しておく。
-    setCustomChime(slot, file, `${file.name}:${file.size}`);
-    setMessage(`${file.name} を${label}にしました。`);
+    setCustomChime(slot, sound, `${name}:${sound.size}`);
+    setMessage(`${name} を${label}にしました。`);
     playPreview(slot);
   }
 
@@ -402,7 +403,7 @@ function SoundPicker({
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
         <button type="button" onClick={() => input.current?.click()}>
-          mp3 / wav をアップロード
+          音声 / 動画をアップロード
         </button>
         <button type="button" onClick={() => playPreview(playedId)}>
           試聴
@@ -422,7 +423,7 @@ function SoundPicker({
       <input
         ref={input}
         type="file"
-        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg"
+        accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.mov,.mp4"
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];

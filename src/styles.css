@@ -123,14 +123,10 @@ body {
 }
 
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px 0 20px;
-  background: var(--bg);
 }
 
 .app-title {
@@ -969,6 +965,229 @@ table button {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
   font-weight: 700;
+}
+
+/* 進捗リングと「いま注ぐ投」の大カードを組み合わせたタイマー画面。 */
+.timer-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.timer-stage-recipe {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 4px 8px;
+  font-size: 15px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* 経過時間と次の合図までの進度。縦を使いすぎないよう、進度は細い横バーで示す。 */
+.timer-stage-head {
+  width: min(82vw, 330px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.seven-segment.timer-stage-elapsed {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.timer-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.timer-bar-value {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left center;
+  transition: transform 0.2s linear;
+}
+
+.timer-stage-headline {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+/* 投カードの束。すべて同じマスに重ねて置き、奥のカードだけ傾けてずらす。 */
+.timer-deck {
+  width: 100%;
+  display: grid;
+  grid-template-areas: 'deck';
+  padding-bottom: 26px;
+  touch-action: pan-y;
+}
+
+.timer-deck-card {
+  grid-area: deck;
+  box-sizing: border-box;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+
+.timer-deck-card.front {
+  border-left: 4px solid var(--accent);
+  z-index: 3;
+}
+
+/* 手で覗いているだけのカードは差し色を外し、計測中の投と見分ける。 */
+.timer-deck-card.front.peek {
+  border-left-color: var(--line);
+}
+
+.timer-deck-card[data-depth='1'] {
+  transform: translateY(13px) scale(0.965) rotate(-1.2deg);
+  opacity: 0.72;
+  z-index: 2;
+}
+
+.timer-deck-card[data-depth='2'] {
+  transform: translateY(24px) scale(0.93) rotate(1.4deg);
+  opacity: 0.45;
+  z-index: 1;
+}
+
+/* 奥のカードは枠だけを見せて束の厚みを出す。 */
+.timer-deck-card:not(.front) > * {
+  visibility: hidden;
+}
+
+.timer-deck-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timer-deck-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-strong);
+}
+
+.timer-deck-card:not(.front) .timer-deck-label,
+.timer-deck-card.done .timer-deck-label {
+  color: var(--muted);
+}
+
+.timer-deck-at {
+  font-size: 12px;
+}
+
+.timer-deck-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.timer-deck-index {
+  font-size: 40px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+  color: var(--accent-strong);
+}
+
+.timer-deck-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.timer-deck-grid dt {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.timer-deck-grid dd {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-deck-done {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.timer-deck-nav {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timer-deck-nav .timer-deck-arrow {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  color: var(--muted);
+}
+
+.timer-deck-count {
+  font-size: 12px;
+}
+
+.timer-deck-nav .timer-deck-back {
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--fg);
+}
+
+.timer-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.timer-stage-actions button {
+  flex: 1 1 40%;
+}
+
+.timer-stage-actions .timer-stage-main {
+  flex: 1 1 100%;
+  min-height: 56px;
+  font-size: 17px;
 }
 
 .timer.warning {

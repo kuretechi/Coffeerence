@@ -135,6 +135,8 @@ interface ChimeSource {
 const buffers = new Map<string, AudioBuffer>();
 const loads = new Map<string, Promise<AudioBuffer | undefined>>();
 const customSounds = new Map<SoundSlot, { key: string; blob: Blob }>();
+/** decodeAudioData では開けないアップロード音（動画）。毎回読み直さない。 */
+const elementOnly = new Set<string>();
 
 /**
  * アップロードした音源を登録する。Blob URL を介さず Blob から直接
@@ -189,16 +191,105 @@ export function useCustomChime(): void {
   }, [stored]);
 }
 
+/**
+ * 動画（iPhone の .MOV など）は decodeAudioData では開けないので、
+ * 再生は media 要素に任せて音声トラックだけを鳴らす。
+ */
+function playViaElement(blob: Blob, pitch: number): Promise<boolean> {
+  const url = URL.createObjectURL(blob);
+  const element = document.createElement('video');
+  element.src = url;
+  element.preload = 'auto';
+  // 画面には出さず、再生速度でピッチを変える（音高保持を切る）。
+  element.playbackRate = pitchRate(pitch);
+  element.preservesPitch = false;
+  element.onended = () => URL.revokeObjectURL(url);
+  return element
+    .play()
+    .then(() => true)
+    .catch(() => {
+      URL.revokeObjectURL(url);
+      return false;
+    });
+}
+
+/**
+ * 動画から音声トラックだけを取り出し、wav にして返す。動画のままだと
+ * 映像ぶんの容量を端末に抱えることになるので、取り込み時に捨てる。
+ * この端末でデコードできなければ undefined。
+ */
+export async function extractAudioTrack(blob: Blob): Promise<Blob | undefined> {
+  const ctx = audioContext();
+  if (!ctx) return undefined;
+  try {
+    return toWav(await ctx.decodeAudioData(await blob.arrayBuffer()));
+  } catch {
+    return undefined;
+  }
+}
+
+/** AudioBuffer を 16bit PCM の wav にする。 */
+function toWav(buffer: AudioBuffer): Blob {
+  const channels = Math.min(buffer.numberOfChannels, 2);
+  const samples = buffer.length;
+  const bytes = samples * channels * 2;
+  const view = new DataView(new ArrayBuffer(44 + bytes));
+  const ascii = (offset: number, text: string) => {
+    for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+  };
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + bytes, true);
+  ascii(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, buffer.sampleRate, true);
+  view.setUint32(28, buffer.sampleRate * channels * 2, true);
+  view.setUint16(32, channels * 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, bytes, true);
+  const tracks = Array.from({ length: channels }, (_, channel) => buffer.getChannelData(channel));
+  let offset = 44;
+  for (let i = 0; i < samples; i += 1) {
+    for (const track of tracks) {
+      const value = Math.max(-1, Math.min(1, track[i] ?? 0));
+      view.setInt16(offset, Math.round(value * 32767), true);
+      offset += 2;
+    }
+  }
+  return new Blob([view.buffer], { type: 'audio/wav' });
+}
+
 /** 鳴らせる音源かを調べる（アップロード直後の検査用）。 */
 export async function canDecodeChime(blob: Blob): Promise<boolean> {
   const ctx = audioContext();
-  if (!ctx) return false;
-  try {
-    await ctx.decodeAudioData(await blob.arrayBuffer());
-    return true;
-  } catch {
-    return false;
+  if (ctx) {
+    try {
+      await ctx.decodeAudioData(await blob.arrayBuffer());
+      return true;
+    } catch {
+      /* 動画なら media 要素で鳴るか試す */
+    }
   }
+  return canPlayInElement(blob);
+}
+
+/** media 要素で音声付きとして開けるかを調べる。 */
+function canPlayInElement(blob: Blob): Promise<boolean> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const element = document.createElement('video');
+    const done = (playable: boolean) => {
+      element.onloadedmetadata = element.onerror = null;
+      URL.revokeObjectURL(url);
+      resolve(playable);
+    };
+    element.onloadedmetadata = () => done(element.duration > 0);
+    element.onerror = () => done(false);
+    element.preload = 'metadata';
+    element.src = url;
+  });
 }
 
 /** ユーザー操作の中で呼び、以降のタイマー発火でも鳴るようにする。 */
@@ -207,7 +298,7 @@ export function primeAudio(enabled: boolean, soundId = CHIME_SOUNDS[0].id): void
   try {
     const ctx = audioContext();
     const source = chimeSource(soundId);
-    if (ctx && source) void load(ctx, source);
+    if (ctx && source && !elementOnly.has(source.key)) void load(ctx, source);
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
@@ -291,32 +382,33 @@ export function chime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0)
     if (ctx) {
       const source = chimeSource(soundId);
       // 読み込み前に呼ばれても取りこぼさないよう、完了を待ってから鳴らす。
-      const ready = source ? load(ctx, source) : Promise.resolve(undefined);
+      const ready =
+        source && !elementOnly.has(source.key) ? load(ctx, source) : Promise.resolve<AudioBuffer | undefined>(undefined);
       void ready.then((buffer) => {
         const rate = pitchRate(pitch);
         if (!buffer) {
-          synthChime(ctx, 1244 * rate);
+          // decode できないアップロード音（動画）は media 要素で鳴らす。
+          const blob = isCustom(soundId) ? customSounds.get(soundId)?.blob : undefined;
+          if (!blob) {
+            synthChime(ctx, 1244 * rate);
+            return;
+          }
+          const key = source?.key ?? soundId;
+          void playViaElement(blob, pitch).then((played: boolean) => {
+            if (played) elementOnly.add(key);
+            else synthChime(ctx, 1244 * rate);
+          });
           return;
         }
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.playbackRate.value = rate;
-        source.connect(ctx.destination);
-        source.start();
+        const node = ctx.createBufferSource();
+        node.buffer = buffer;
+        node.playbackRate.value = rate;
+        node.connect(ctx.destination);
+        node.start();
       });
     }
   } catch {
     /* 音が出せない環境では黙って続行する */
   }
   if ('vibrate' in navigator) navigator.vibrate?.(80);
-}
-
-/** 合図音を2回鳴らす。2打目は1打目が鳴り終わってから重ねる。 */
-export function doubleChime(enabled: boolean, soundId = CHIME_SOUNDS[0].id, pitch = 0): void {
-  chime(enabled, soundId, pitch);
-  const source = chimeSource(soundId);
-  const loaded = source ? buffers.get(source.key) : undefined;
-  const played = loaded ? loaded.duration / pitchRate(pitch) : undefined;
-  const gap = played ? Math.min(played, 1.2) * 1000 : 420;
-  window.setTimeout(() => chime(enabled, soundId, pitch), gap);
 }
