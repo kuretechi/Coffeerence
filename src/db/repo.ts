@@ -223,7 +223,7 @@ export async function submitPost(author: string, body: string): Promise<Moderati
   }
   const post: Post = {
     id: uid('post'),
-    author: author.trim() === '' ? '名無し' : author.trim(),
+    author: author.trim() === '' ? '豆挽けば名無し' : author.trim(),
     body,
     createdAt: new Date().toISOString(),
     moderation: verdict,
