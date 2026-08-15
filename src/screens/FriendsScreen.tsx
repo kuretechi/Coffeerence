@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Banner, Card, Field, formatSeconds } from '../ui/components';
+import { Banner, Field, formatSeconds } from '../ui/components';
 import { usePosts, useRecipes } from '../ui/data';
 import { deletePost, importSharedRecipe, submitPost, toSharedRecipe } from '../db/repo';
 import type { SharedRecipe } from '../domain/types';
@@ -155,12 +155,7 @@ export function FriendsScreen() {
 
   return (
     <>
-      <Card title="タイムライン">
-        <div className="row feed-actions">
-          <button className="primary" type="button" onClick={() => setComposing(true)}>
-            投稿する
-          </button>
-        </div>
+      <div className="feed-wrap">
         {posts.length === 0 ? (
           <Banner>まだ投稿がありません。</Banner>
         ) : (
@@ -194,7 +189,20 @@ export function FriendsScreen() {
             ))}
           </div>
         )}
-      </Card>
+      </div>
+
+      <button className="fab" type="button" aria-label="投稿する" onClick={() => setComposing(true)}>
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path
+            d="M4 20h4l10-10-4-4L4 16v4zM16.5 3.5l4 4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
 
       {composing ? <PostDialog onClose={() => setComposing(false)} /> : null}
     </>
