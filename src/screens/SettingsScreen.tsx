@@ -308,7 +308,7 @@ function SecretModeCard({ settings }: { settings: Settings }) {
   return (
     <Card
       title="裏モード"
-      hint="コーヒーに関係ない機能（ビートタブ・MIDI・鍵盤・ピッチ・音のアップロード）を出します。切ると入口ごと消えます。"
+      hint="コーヒーに関係ない機能（ビートタブ・MIDI・鍵盤・ピッチ・効果・音のアップロード）を出します。切ると入口ごと消えます。"
     >
       <Switch
         label="裏モードを使う"
@@ -911,46 +911,46 @@ function SoundPicker({
           <Field label={`${label}の鍵盤`}>
             <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
           </Field>
-        </>
-      ) : null}
-      <Field label={`${label}の効果`}>
-        <div className="segmented">
-          {SOUND_EFFECTS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={effect === item.id ? 'selected' : ''}
-              onClick={() => changeEffect(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </Field>
-      {hasReverb(effect) ? (
-        <>
-          <Field label={`${label}の残響の量（${reverb.mix}%）`}>
-            <input
-              className="slider"
-              type="range"
-              min={REVERB_MIX_RANGE.min}
-              max={REVERB_MIX_RANGE.max}
-              step={REVERB_MIX_RANGE.step}
-              value={reverb.mix}
-              onChange={(event) => changeReverb({ ...reverb, mix: Number(event.target.value) })}
-            />
+          <Field label={`${label}の効果`}>
+            <div className="segmented">
+              {SOUND_EFFECTS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={effect === item.id ? 'selected' : ''}
+                  onClick={() => changeEffect(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </Field>
-          <Field label={`${label}の残響の長さ（${reverb.seconds.toFixed(1)} 秒）`}>
-            <input
-              className="slider"
-              type="range"
-              min={REVERB_SECONDS_RANGE.min}
-              max={REVERB_SECONDS_RANGE.max}
-              step={REVERB_SECONDS_RANGE.step}
-              value={reverb.seconds}
-              onChange={(event) => changeReverb({ ...reverb, seconds: Number(event.target.value) })}
-            />
-          </Field>
+          {hasReverb(effect) ? (
+            <>
+              <Field label={`${label}の残響の量（${reverb.mix}%）`}>
+                <input
+                  className="slider"
+                  type="range"
+                  min={REVERB_MIX_RANGE.min}
+                  max={REVERB_MIX_RANGE.max}
+                  step={REVERB_MIX_RANGE.step}
+                  value={reverb.mix}
+                  onChange={(event) => changeReverb({ ...reverb, mix: Number(event.target.value) })}
+                />
+              </Field>
+              <Field label={`${label}の残響の長さ（${reverb.seconds.toFixed(1)} 秒）`}>
+                <input
+                  className="slider"
+                  type="range"
+                  min={REVERB_SECONDS_RANGE.min}
+                  max={REVERB_SECONDS_RANGE.max}
+                  step={REVERB_SECONDS_RANGE.step}
+                  value={reverb.seconds}
+                  onChange={(event) => changeReverb({ ...reverb, seconds: Number(event.target.value) })}
+                />
+              </Field>
+            </>
+          ) : null}
         </>
       ) : null}
       {message ? <Banner>{message}</Banner> : null}
