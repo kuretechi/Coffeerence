@@ -2192,12 +2192,18 @@ table button {
 }
 
 .secret-latch button {
-  min-height: 32px;
-  padding: 0 8px;
+  min-height: 44px;
+  padding: 0 12px;
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.18em;
-  opacity: 0.5;
+  opacity: 0.7;
+}
+
+.secret-latch-count {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
 }
