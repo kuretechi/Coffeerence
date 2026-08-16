@@ -279,7 +279,7 @@ export function SettingsScreen() {
 
 /** 決めた回数だけロゴ文字を叩くと出てくる裏モード。切ると入口ごと消える。 */
 const SECRET_KNOCKS = 5;
-const KNOCK_WINDOW_MS = 2000;
+const KNOCK_WINDOW_MS = 3000;
 
 function SecretModeCard({ settings }: { settings: Settings }) {
   const on = settings.secretMode === true;
@@ -304,6 +304,8 @@ function SecretModeCard({ settings }: { settings: Settings }) {
         <button type="button" onClick={knock}>
           Coffeerence
         </button>
+        {/* 何も返らないと壊れているのか分からないので、途中から残り回数を出す。 */}
+        {knocks >= 2 ? <span className="secret-latch-count">あと {SECRET_KNOCKS - knocks} 回</span> : null}
       </p>
     );
   }
