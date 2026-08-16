@@ -423,6 +423,8 @@ export interface Settings {
   /** 抽出終了の音の残響量（未設定なら効果ごとの既定値）。 */
   finishSoundReverb?: ReverbAmount;
   targetLine: number; // F-13 目標ライン（合計点）
+  /** 裏モード。コーヒーに関係ない機能（ビート・MIDI）を出すかどうか。 */
+  secretMode?: boolean;
 }
 
 // ─── ビート（タイルを叩いて組む）───────

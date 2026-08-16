@@ -18,7 +18,9 @@ import { UserScreen } from './screens/UserScreen';
 import { MessagesScreen } from './screens/MessagesScreen';
 import { DmThreadScreen } from './screens/DmThreadScreen';
 
-const TABS: { to: string; label: string; icon: TabIconName }[] = [
+type Tab = { to: string; label: string; icon: TabIconName };
+
+const TABS: Tab[] = [
   { to: '/', label: 'レシピ', icon: 'recipe' },
   { to: '/timer', label: 'タイマー', icon: 'timer' },
   { to: '/log', label: '記録', icon: 'log' },
@@ -27,12 +29,18 @@ const TABS: { to: string; label: string; icon: TabIconName }[] = [
   { to: '/settings', label: '設定', icon: 'settings' },
 ];
 
+/** 裏モードのときだけ出すタブ（設定の前に入れる）。 */
+const SECRET_TABS: Tab[] = [{ to: '/beat', label: 'ビート', icon: 'beat' }];
+
 export function App() {
   const settings = useSettings();
   // レシピ画面以外は本文を広く使いたいので、ロゴを小さくする。
   const compactHeader = useLocation().pathname !== '/';
 
   useCustomChime();
+
+  const secret = settings.secretMode === true;
+  const tabs = secret ? [...TABS.slice(0, -1), ...SECRET_TABS, TABS[TABS.length - 1]] : TABS;
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -54,7 +62,8 @@ export function App() {
         <Route path="/timer" element={<TimerScreen />} />
         <Route path="/log" element={<LogScreen />} />
         <Route path="/stats" element={<StatsScreen />} />
-        <Route path="/beat" element={<BeatScreen />} />
+        {/* 裏モードを切ると入口も消えるので、URL直打ちでも出さない。 */}
+        <Route path="/beat" element={secret ? <BeatScreen /> : <Navigate to="/" replace />} />
         <Route path="/friends" element={<FriendsScreen />} />
         <Route path="/account" element={<AccountScreen />} />
         <Route path="/users/:userId" element={<UserScreen />} />
@@ -65,7 +74,7 @@ export function App() {
       </Routes>
 
       <nav className="tabs">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <NavLink key={tab.to} to={tab.to} end={tab.to === '/'} className={({ isActive }) => (isActive ? 'active' : '')}>
             <TabIcon name={tab.icon} />
             <span>{tab.label}</span>
