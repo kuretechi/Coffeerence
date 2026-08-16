@@ -2181,3 +2181,20 @@ table button {
   font-size: 14px;
   text-align: left;
 }
+
+/* 裏モードの入口。設定の末尾に置く飾りのロゴ文字で、決めた回数叩くと開く。 */
+.secret-latch {
+  margin: 18px 0 4px;
+  text-align: center;
+}
+
+.secret-latch button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  opacity: 0.5;
+}

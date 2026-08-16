@@ -47,6 +47,7 @@ import type {
   GearKind,
   RecipeDefaults,
   ReverbAmount,
+  Settings,
   SoundEffect,
   SoundSlot,
   ThemeName,
@@ -72,6 +73,7 @@ export function SettingsScreen() {
   const [defaults, setDefaults] = useState<RecipeDefaults>(settings.recipeDefaults);
   // 音の設定は項目が多いので、合図音と抽出終了の音は切り替えて片方だけ出す。
   const [soundTab, setSoundTab] = useState<'chime' | 'finish'>('chime');
+  const secret = settings.secretMode === true;
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -184,6 +186,7 @@ export function SettingsScreen() {
         {soundTab === 'chime' ? (
         <SoundPicker
           label="合図音"
+          secret={secret}
           slot={CUSTOM_SOUND_ID}
           selected={settings.soundId}
           fallbackId={settings.soundId}
@@ -199,6 +202,7 @@ export function SettingsScreen() {
         <SoundPicker
           label="抽出終了の音"
           hint="抽出終了で鳴らす音だけを別にできます。"
+          secret={secret}
           slot={CUSTOM_FINISH_SOUND_ID}
           selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
@@ -216,10 +220,12 @@ export function SettingsScreen() {
         )}
       </Card>
 
-      <MidiCard
-        effect={settings.soundEffect ?? 'none'}
-        reverb={reverbAmount(settings.soundEffect ?? 'none', settings.soundReverb)}
-      />
+      {secret ? (
+        <MidiCard
+          effect={settings.soundEffect ?? 'none'}
+          reverb={reverbAmount(settings.soundEffect ?? 'none', settings.soundReverb)}
+        />
+      ) : null}
 
       <Card title="データ" hint="すべてこの端末の IndexedDB に保存されています。アカウントもクラウド同期もありません。">
         {message ? <Banner>{message}</Banner> : null}
@@ -262,7 +268,54 @@ export function SettingsScreen() {
       </Card>
 
       <SignOutCard />
+
+      <SecretModeCard settings={settings} />
     </>
+  );
+}
+
+/** 決めた回数だけロゴ文字を叩くと出てくる裏モード。切ると入口ごと消える。 */
+const SECRET_KNOCKS = 5;
+const KNOCK_WINDOW_MS = 2000;
+
+function SecretModeCard({ settings }: { settings: Settings }) {
+  const on = settings.secretMode === true;
+  const [knocks, setKnocks] = useState(0);
+  const lastKnock = useRef(0);
+
+  function knock() {
+    const now = Date.now();
+    const count = now - lastKnock.current > KNOCK_WINDOW_MS ? 1 : knocks + 1;
+    lastKnock.current = now;
+    if (count >= SECRET_KNOCKS) {
+      setKnocks(0);
+      void saveSettings({ ...settings, secretMode: true });
+      return;
+    }
+    setKnocks(count);
+  }
+
+  if (!on) {
+    return (
+      <p className="secret-latch">
+        <button type="button" onClick={knock}>
+          Coffeerence
+        </button>
+      </p>
+    );
+  }
+
+  return (
+    <Card
+      title="裏モード"
+      hint="コーヒーに関係ない機能（ビートタブ・MIDI・鍵盤・ピッチ・効果・音のアップロード）を出します。切ると入口ごと消えます。"
+    >
+      <Switch
+        label="裏モードを使う"
+        checked
+        onChange={() => void saveSettings({ ...settings, secretMode: false })}
+      />
+    </Card>
   );
 }
 
@@ -719,6 +772,7 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
 function SoundPicker({
   label,
   hint,
+  secret,
   slot,
   selected,
   fallbackId,
@@ -733,6 +787,8 @@ function SoundPicker({
 }: {
   label: string;
   hint?: string;
+  /** 裏モード。鍵盤・ピッチ・音のアップロードはこのときだけ出す。 */
+  secret: boolean;
   slot: SoundSlot;
   selected: string;
   /** 「合図音と同じ」のときに実際に鳴る音。 */
@@ -839,69 +895,75 @@ function SoundPicker({
           ) : null}
         </div>
       </Field>
-      <Field label={`${label}のピッチ（${pitch > 0 ? '+' : ''}${pitch} 半音）`}>
-        <input
-          className="slider"
-          type="range"
-          min={-PITCH_RANGE}
-          max={PITCH_RANGE}
-          step={1}
-          value={pitch}
-          onChange={(event) => changePitch(Number(event.target.value))}
-        />
-      </Field>
-      <Field label={`${label}の鍵盤`}>
-        <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
-      </Field>
-      <Field label={`${label}の効果`}>
-        <div className="segmented">
-          {SOUND_EFFECTS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={effect === item.id ? 'selected' : ''}
-              onClick={() => changeEffect(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </Field>
-      {hasReverb(effect) ? (
+      {secret ? (
         <>
-          <Field label={`${label}の残響の量（${reverb.mix}%）`}>
+          <Field label={`${label}のピッチ（${pitch > 0 ? '+' : ''}${pitch} 半音）`}>
             <input
               className="slider"
               type="range"
-              min={REVERB_MIX_RANGE.min}
-              max={REVERB_MIX_RANGE.max}
-              step={REVERB_MIX_RANGE.step}
-              value={reverb.mix}
-              onChange={(event) => changeReverb({ ...reverb, mix: Number(event.target.value) })}
+              min={-PITCH_RANGE}
+              max={PITCH_RANGE}
+              step={1}
+              value={pitch}
+              onChange={(event) => changePitch(Number(event.target.value))}
             />
           </Field>
-          <Field label={`${label}の残響の長さ（${reverb.seconds.toFixed(1)} 秒）`}>
-            <input
-              className="slider"
-              type="range"
-              min={REVERB_SECONDS_RANGE.min}
-              max={REVERB_SECONDS_RANGE.max}
-              step={REVERB_SECONDS_RANGE.step}
-              value={reverb.seconds}
-              onChange={(event) => changeReverb({ ...reverb, seconds: Number(event.target.value) })}
-            />
+          <Field label={`${label}の鍵盤`}>
+            <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
           </Field>
+          <Field label={`${label}の効果`}>
+            <div className="segmented">
+              {SOUND_EFFECTS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={effect === item.id ? 'selected' : ''}
+                  onClick={() => changeEffect(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          {hasReverb(effect) ? (
+            <>
+              <Field label={`${label}の残響の量（${reverb.mix}%）`}>
+                <input
+                  className="slider"
+                  type="range"
+                  min={REVERB_MIX_RANGE.min}
+                  max={REVERB_MIX_RANGE.max}
+                  step={REVERB_MIX_RANGE.step}
+                  value={reverb.mix}
+                  onChange={(event) => changeReverb({ ...reverb, mix: Number(event.target.value) })}
+                />
+              </Field>
+              <Field label={`${label}の残響の長さ（${reverb.seconds.toFixed(1)} 秒）`}>
+                <input
+                  className="slider"
+                  type="range"
+                  min={REVERB_SECONDS_RANGE.min}
+                  max={REVERB_SECONDS_RANGE.max}
+                  step={REVERB_SECONDS_RANGE.step}
+                  value={reverb.seconds}
+                  onChange={(event) => changeReverb({ ...reverb, seconds: Number(event.target.value) })}
+                />
+              </Field>
+            </>
+          ) : null}
         </>
       ) : null}
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
-        <button type="button" onClick={() => input.current?.click()}>
-          音声 / 動画をアップロード
-        </button>
+        {secret ? (
+          <button type="button" onClick={() => input.current?.click()}>
+            音声 / 動画をアップロード
+          </button>
+        ) : null}
         <button type="button" onClick={() => playPreview(playedId)}>
           試聴
         </button>
-        {custom ? (
+        {secret && custom ? (
           <button
             type="button"
             onClick={() => {
