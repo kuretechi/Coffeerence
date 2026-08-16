@@ -157,8 +157,8 @@ export function SettingsScreen() {
       <GearCard kind="kettle" title="ケトル" placeholder="例: 月兎印 ドリップポット 0.7L" notePlaceholder="例: 注ぎ口が細い / 温度計付き" />
       <GearCard kind="mill" title="ミル" placeholder="例: コマンダンテ C40" notePlaceholder="例: 常用ダイヤル 20 / 臼は標準" />
 
-      <Card title="表示と音">
-        <Field label="表示テーマ">
+      <Card title="表示テーマ">
+        <Field label="テーマ">
           <div className="segmented">
             {THEMES.map((theme) => (
               <button
@@ -172,8 +172,11 @@ export function SettingsScreen() {
             ))}
           </div>
         </Field>
+      </Card>
+
+      <Card title="タイマー音">
         <Switch
-          label="タイマー音"
+          label="鳴らす"
           checked={settings.soundEnabled}
           onChange={(soundEnabled) => void saveSettings({ ...settings, soundEnabled })}
         />
