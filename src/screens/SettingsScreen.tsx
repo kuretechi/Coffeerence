@@ -186,6 +186,7 @@ export function SettingsScreen() {
         {soundTab === 'chime' ? (
         <SoundPicker
           label="合図音"
+          secret={secret}
           slot={CUSTOM_SOUND_ID}
           selected={settings.soundId}
           fallbackId={settings.soundId}
@@ -201,6 +202,7 @@ export function SettingsScreen() {
         <SoundPicker
           label="抽出終了の音"
           hint="抽出終了で鳴らす音だけを別にできます。"
+          secret={secret}
           slot={CUSTOM_FINISH_SOUND_ID}
           selected={settings.finishSoundId ?? SAME_AS_CHIME_ID}
           fallbackId={settings.soundId}
@@ -304,7 +306,10 @@ function SecretModeCard({ settings }: { settings: Settings }) {
   }
 
   return (
-    <Card title="裏モード" hint="コーヒーに関係ない機能（ビートタブ・MIDI）を出します。切ると入口ごと消えます。">
+    <Card
+      title="裏モード"
+      hint="コーヒーに関係ない機能（ビートタブ・MIDI・鍵盤・ピッチ・音のアップロード）を出します。切ると入口ごと消えます。"
+    >
       <Switch
         label="裏モードを使う"
         checked
@@ -767,6 +772,7 @@ function Keyboard({ onPlay }: { onPlay: (semitone: number) => void }) {
 function SoundPicker({
   label,
   hint,
+  secret,
   slot,
   selected,
   fallbackId,
@@ -781,6 +787,8 @@ function SoundPicker({
 }: {
   label: string;
   hint?: string;
+  /** 裏モード。鍵盤・ピッチ・音のアップロードはこのときだけ出す。 */
+  secret: boolean;
   slot: SoundSlot;
   selected: string;
   /** 「合図音と同じ」のときに実際に鳴る音。 */
@@ -887,20 +895,24 @@ function SoundPicker({
           ) : null}
         </div>
       </Field>
-      <Field label={`${label}のピッチ（${pitch > 0 ? '+' : ''}${pitch} 半音）`}>
-        <input
-          className="slider"
-          type="range"
-          min={-PITCH_RANGE}
-          max={PITCH_RANGE}
-          step={1}
-          value={pitch}
-          onChange={(event) => changePitch(Number(event.target.value))}
-        />
-      </Field>
-      <Field label={`${label}の鍵盤`}>
-        <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
-      </Field>
+      {secret ? (
+        <>
+          <Field label={`${label}のピッチ（${pitch > 0 ? '+' : ''}${pitch} 半音）`}>
+            <input
+              className="slider"
+              type="range"
+              min={-PITCH_RANGE}
+              max={PITCH_RANGE}
+              step={1}
+              value={pitch}
+              onChange={(event) => changePitch(Number(event.target.value))}
+            />
+          </Field>
+          <Field label={`${label}の鍵盤`}>
+            <Keyboard onPlay={(semitone) => playPreview(playedId, pitch + semitone)} />
+          </Field>
+        </>
+      ) : null}
       <Field label={`${label}の効果`}>
         <div className="segmented">
           {SOUND_EFFECTS.map((item) => (
@@ -943,13 +955,15 @@ function SoundPicker({
       ) : null}
       {message ? <Banner>{message}</Banner> : null}
       <div className="row">
-        <button type="button" onClick={() => input.current?.click()}>
-          音声 / 動画をアップロード
-        </button>
+        {secret ? (
+          <button type="button" onClick={() => input.current?.click()}>
+            音声 / 動画をアップロード
+          </button>
+        ) : null}
         <button type="button" onClick={() => playPreview(playedId)}>
           試聴
         </button>
-        {custom ? (
+        {secret && custom ? (
           <button
             type="button"
             onClick={() => {
